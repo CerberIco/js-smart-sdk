@@ -112,6 +112,7 @@
     "stellar-base": "^0.5.4",
     "superagent": "^1.1.0",
     "toml": "^2.3.0",
-    "urijs": "^1.16.0"
+    "urijs": "^1.16.0",
+    "stellar-wallet-js-sdk" : ">=0.0.0"
   }
 }
