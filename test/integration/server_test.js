@@ -5,9 +5,10 @@ describe("integration tests", function () {
   this.slow(TIMEOUT/2);
 
   // Docker
-  let server = new StellarSdk.Server('http://127.0.0.1:8000');
+  let server = new StellarSdk.Server('http://213.136.82.23:8000');
+  // let server = new StellarSdk.Server('http://127.0.0.1:8000');
   //let server = new StellarSdk.Server('http://192.168.59.103:32773');
-  let master = StellarSdk.Keypair.master();
+  let master = StellarSdk.Keypair.fromSeed("SAWVTL2JG2HTPPABJZKN3GJEDTHT7YD3TW5XWAWPKAE2NNZPWNNBOIXE");// .master();
 
   before(function(done) {
     this.timeout(60*1000);
@@ -31,8 +32,7 @@ describe("integration tests", function () {
       .then(source => {
         let tx = new StellarSdk.TransactionBuilder(source)
           .addOperation(StellarSdk.Operation.createAccount({
-            destination: accountId,
-            startingBalance: "20"
+            destination: accountId
           }))
           .build();
 
@@ -58,8 +58,7 @@ describe("integration tests", function () {
           source.incrementSequenceNumber(); // This will cause an error
           let tx = new StellarSdk.TransactionBuilder(source)
             .addOperation(StellarSdk.Operation.createAccount({
-              destination: StellarSdk.Keypair.random().accountId(),
-              startingBalance: "20"
+              destination: StellarSdk.Keypair.random().accountId()
             }))
             .build();
 
