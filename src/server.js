@@ -49,27 +49,12 @@ export class Server {
      * @returns {Promise} Promise that resolves or rejects with response from horizon.
      */
     submitTransaction(transaction) {
-        let tx = encodeURIComponent(transaction.toEnvelope().toXDR().toString("base64"));
-        var promise = axios.post(
-              URI(this.serverURL).path('transactions').toString(),
-              `tx=${tx}`,
-              {timeout: SUBMIT_TRANSACTION_TIMEOUT}
-            )
-            .then(function(response) {
-                return response.data;
-            })
-            .catch(function (response) {
-                if (response instanceof Error) {
-                    return Promise.reject(response);
-                } else {
-                    return Promise.reject(response.data);
-                }
-            });
-        return toBluebird(promise);
-    }
-
-    submitTransactionString(transactionStr) {
-        let tx = encodeURIComponent(transactionStr);
+        if (isString(transaction)){
+            let tx = encodeURIComponent(transaction);
+        }
+        else{
+            let tx = encodeURIComponent(transaction.toEnvelope().toXDR().toString("base64"));
+        }
         var promise = axios.post(
               URI(this.serverURL).path('transactions').toString(),
               `tx=${tx}`,

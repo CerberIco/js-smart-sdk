@@ -1887,22 +1887,11 @@ var StellarSdk =
 	    _createClass(Server, [{
 	        key: "submitTransaction",
 	        value: function submitTransaction(transaction) {
-	            var tx = encodeURIComponent(transaction.toEnvelope().toXDR().toString("base64"));
-	            var promise = axios.post(URI(this.serverURL).path('transactions').toString(), "tx=" + tx, { timeout: SUBMIT_TRANSACTION_TIMEOUT }).then(function (response) {
-	                return response.data;
-	            })["catch"](function (response) {
-	                if (response instanceof Error) {
-	                    return Promise.reject(response);
-	                } else {
-	                    return Promise.reject(response.data);
-	                }
-	            });
-	            return toBluebird(promise);
-	        }
-	    }, {
-	        key: "submitTransactionString",
-	        value: function submitTransactionString(transactionStr) {
-	            var tx = encodeURIComponent(transactionStr);
+	            if ((0, _lodashIsString2["default"])(transaction)) {
+	                var _tx = encodeURIComponent(transaction);
+	            } else {
+	                var _tx2 = encodeURIComponent(transaction.toEnvelope().toXDR().toString("base64"));
+	            }
 	            var promise = axios.post(URI(this.serverURL).path('transactions').toString(), "tx=" + tx, { timeout: SUBMIT_TRANSACTION_TIMEOUT }).then(function (response) {
 	                return response.data;
 	            })["catch"](function (response) {
