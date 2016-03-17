@@ -8,7 +8,9 @@ describe("integration tests", function () {
   let server = new StellarSdk.Server('http://213.136.82.23:8000');
   // let server = new StellarSdk.Server('http://127.0.0.1:8000');
   //let server = new StellarSdk.Server('http://192.168.59.103:32773');
-  let master = StellarSdk.Keypair.fromSeed("SAWVTL2JG2HTPPABJZKN3GJEDTHT7YD3TW5XWAWPKAE2NNZPWNNBOIXE");// .master();
+  let bankSeed = "SAWVTL2JG2HTPPABJZKN3GJEDTHT7YD3TW5XWAWPKAE2NNZPWNNBOIXE";
+  let bankPublicKey = "GAWIB7ETYGSWULO4VB7D6S42YLPGIC7TY7Y2SSJKVOTMQXV5TILYWBUA";
+  let master = StellarSdk.Keypair.fromSeed(bankSeed);// .master();
 
   before(function(done) {
     this.timeout(60*1000);
@@ -41,6 +43,118 @@ describe("integration tests", function () {
         return server.submitTransaction(tx);
       });
   }
+
+  describe("/smart_transactions", function () {
+    let emissionKeyPair = StellarSdk.Keypair.random();
+    let adminKeyPair = StellarSdk.Keypair.random();
+    let distManagerKeyPair = StellarSdk.Keypair.random();
+    console.log("distManager accountId:", distManagerKeyPair.accountId());
+    it("add an emission key signer", function (done) {
+      // lets prepare the tx for offline signing
+      // this step is performed online
+          
+      server.loadAccount(bankPublicKey)
+        .then(source => {
+          let addEmissionTx = new StellarSdk.TransactionBuilder(source)
+            .addOperation(StellarSdk.Operation.setOptions({
+              signer: {
+                address: emissionKeyPair.accountId(),
+                weight: 250
+              }
+            }))
+            .addOperation(StellarSdk.Operation.setOptions({
+              signer: {
+                address: adminKeyPair.accountId(),
+                weight: 120
+              }
+            }))
+            .build();
+          let serializedTxString = addEmissionTx.toEnvelope().toXDR('base64');
+          // Now we have a string, that represents an unsigned tx. This string is sent to the offline signer.
+
+          let deserializedTx = new StellarSdk.Transaction(serializedTxString);
+          // We can show the user all the fields in the tx, so he can verify what is he signing
+          console.log("deserializedTx:", deserializedTx);
+          let offlineSigner = StellarSdk.Keypair.fromSeed(bankSeed);
+          deserializedTx.sign(offlineSigner);
+          // Now we have a signed transaction, that can be sent to the network 
+          let signedSerializedTxString = deserializedTx.toEnvelope().toXDR('base64');
+
+          // Lets get back online
+
+          let signedDeserializedTx = new StellarSdk.Transaction(signedSerializedTxString);
+
+          server.submitTransaction(signedDeserializedTx)
+            .then(result => {
+              console.log("result:", result);
+              expect(result.ledger).to.be.not.null;
+              done();
+            })
+            .catch(result => done(result));
+        });
+    });
+
+    it("create a new account signed by admin", function (done) {
+    server.loadAccount(bankPublicKey)
+      .then(source => {
+        let tx = new StellarSdk.TransactionBuilder(source)
+          .addOperation(StellarSdk.Operation.createAccount({
+            destination: distManagerKeyPair.accountId()
+          }))
+          .build();
+
+        tx.sign(adminKeyPair);
+        server.submitTransaction(tx)
+        .then(result => {
+              expect(result.ledger).to.be.not.null;
+              done();
+            })
+        .catch(result => done(result));;
+      });
+    });
+
+    it("set trust from dist manager to the bank in EUAH", function (done) {
+    server.loadAccount(distManagerKeyPair.accountId())
+      .then(source => {
+        let tx = new StellarSdk.TransactionBuilder(source)
+          .addOperation(StellarSdk.Operation.changeTrust({
+            asset: new StellarSdk.Asset('EUAH', bankPublicKey)
+          }))
+          .build();
+
+        tx.sign(distManagerKeyPair);
+        server.submitTransaction(tx)
+        .then(result => {
+              expect(result.ledger).to.be.not.null;
+              done();
+            })
+        .catch(result => done(result));;
+      });
+    });
+
+    it("issue some money to distribution manager signed by emission manager", function (done) {
+    server.loadAccount(bankPublicKey)
+      .then(source => {
+        let tx = new StellarSdk.TransactionBuilder(source)
+          .addOperation(StellarSdk.Operation.payment({
+            destination: distManagerKeyPair.accountId(),
+            amount: "1.00", //lets say this is 1.00 UAH
+            asset: new StellarSdk.Asset('EUAH', bankPublicKey)
+          }))
+          .build();
+
+        tx.sign(emissionKeyPair);
+        server.submitTransaction(tx)
+        .then(result => {
+              expect(result.ledger).to.be.not.null;
+              done();
+            })
+        .catch(result => done(result));;
+      });
+    });
+
+
+  });
 
   describe("/transaction", function () {
     it("submits a new transaction", function (done) {
