@@ -68,6 +68,26 @@ export class Server {
         return toBluebird(promise);
     }
 
+    submitTransactionString(transactionStr) {
+        let tx = encodeURIComponent(transactionStr);
+        var promise = axios.post(
+              URI(this.serverURL).path('transactions').toString(),
+              `tx=${tx}`,
+              {timeout: SUBMIT_TRANSACTION_TIMEOUT}
+            )
+            .then(function(response) {
+                return response.data;
+            })
+            .catch(function (response) {
+                if (response instanceof Error) {
+                    return Promise.reject(response);
+                } else {
+                    return Promise.reject(response.data);
+                }
+            });
+        return toBluebird(promise);
+    }
+
     /**
      * Returns new {@link AccountCallBuilder} object configured by a current Horizon server configuration.
      * @returns {AccountCallBuilder}
