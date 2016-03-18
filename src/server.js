@@ -49,12 +49,7 @@ export class Server {
      * @returns {Promise} Promise that resolves or rejects with response from horizon.
      */
     submitTransaction(transaction) {
-        if (isString(transaction)){
-            let tx = encodeURIComponent(transaction);
-        }
-        else{
-            let tx = encodeURIComponent(transaction.toEnvelope().toXDR().toString("base64"));
-        }
+        let tx = encodeURIComponent(isString(transaction) ? transaction : transaction.toEnvelope().toXDR().toString("base64"));
         var promise = axios.post(
               URI(this.serverURL).path('transactions').toString(),
               `tx=${tx}`,
