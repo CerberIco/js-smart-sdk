@@ -15,7 +15,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/stellar/js-stellar-sdk.git"
+    "url": "https://bitbucket.org/atticlab/js-smart-sdk.git"
   },
   "engines": {
     "node": ">=0.10 <=4"
@@ -25,7 +25,7 @@
   "bugs": {
     "url": "https://github.com/stellar/js-stellar-sdk/issues"
   },
-  "homepage": "https://github.com/stellar/js-stellar-sdk",
+  "homepage": "https://bitbucket.org/atticlab/js-smart-sdk",
   "devDependencies": {
     "ansi-styles": "^2.2.0",
     "array-differ": "^1.0.0",
