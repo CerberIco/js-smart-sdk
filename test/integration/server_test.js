@@ -34,7 +34,8 @@ describe("integration tests", function () {
       .then(source => {
         let tx = new StellarSdk.TransactionBuilder(source)
           .addOperation(StellarSdk.Operation.createAccount({
-            destination: accountId
+            destination: accountId,
+            accountType: StellarSdk.xdr.AccountType.accountUser().value
           }))
           .build();
 
@@ -59,13 +60,15 @@ describe("integration tests", function () {
             .addOperation(StellarSdk.Operation.setOptions({
               signer: {
                 address: emissionKeyPair.accountId(),
-                weight: 250
+                weight: 250,
+                signerType: StellarSdk.xdr.SignerType.signerEmission().value
               }
             }))
             .addOperation(StellarSdk.Operation.setOptions({
               signer: {
                 address: adminKeyPair.accountId(),
-                weight: 120
+                weight: 120,
+                signerType: StellarSdk.xdr.SignerType.signerAdmin().value
               }
             }))
             .build();
@@ -74,7 +77,7 @@ describe("integration tests", function () {
 
           let deserializedTx = new StellarSdk.Transaction(serializedTxString);
           // We can show the user all the fields in the tx, so he can verify what is he signing
-          console.log("deserializedTx:", deserializedTx);
+          // console.log("deserializedTx:", deserializedTx);
           let offlineSigner = StellarSdk.Keypair.fromSeed(bankSeed);
           deserializedTx.sign(offlineSigner);
           // Now we have a signed transaction, that can be sent to the network 
@@ -90,7 +93,10 @@ describe("integration tests", function () {
               expect(result.ledger).to.be.not.null;
               done();
             })
-            .catch(result => done(result));
+            .catch(result => {
+              console.log("catch result:", result);
+              done(result)
+            });
         });
     });
 
@@ -99,7 +105,8 @@ describe("integration tests", function () {
       .then(source => {
         let tx = new StellarSdk.TransactionBuilder(source)
           .addOperation(StellarSdk.Operation.createAccount({
-            destination: distManagerKeyPair.accountId()
+            destination: distManagerKeyPair.accountId(),
+            accountType: StellarSdk.xdr.AccountType.accountUser().value
           }))
           .build();
 
@@ -172,7 +179,8 @@ describe("integration tests", function () {
           source.incrementSequenceNumber(); // This will cause an error
           let tx = new StellarSdk.TransactionBuilder(source)
             .addOperation(StellarSdk.Operation.createAccount({
-              destination: StellarSdk.Keypair.random().accountId()
+              destination: StellarSdk.Keypair.random().accountId(),
+              accountType: StellarSdk.xdr.AccountType.accountUser().value
             }))
             .build();
 
