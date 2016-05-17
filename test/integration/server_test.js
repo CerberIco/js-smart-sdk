@@ -35,7 +35,7 @@ describe("integration tests", function () {
         let tx = new StellarSdk.TransactionBuilder(source)
           .addOperation(StellarSdk.Operation.createAccount({
             destination: accountId,
-            accountType: StellarSdk.xdr.AccountType.accountUser().value
+            accountType: StellarSdk.xdr.AccountType.accountAnonymousUser().value
           }))
           .build();
 
@@ -106,7 +106,7 @@ describe("integration tests", function () {
         let tx = new StellarSdk.TransactionBuilder(source)
           .addOperation(StellarSdk.Operation.createAccount({
             destination: distManagerKeyPair.accountId(),
-            accountType: StellarSdk.xdr.AccountType.accountUser().value
+            accountType: StellarSdk.xdr.AccountType.accountDistributionAgent().value
           }))
           .build();
 
