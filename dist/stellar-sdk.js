@@ -21557,7 +21557,7 @@ var StellarSdk =
 
 	var _interopRequireWildcard = function (obj) { return obj && obj.__esModule ? obj : { "default": obj }; };
 
-	// Automatically generated on 2016-05-13T19:37:08+03:00
+	// Automatically generated on 2016-05-17T14:33:54+03:00
 	// DO NOT EDIT or your changes may be overwritten
 
 	/* jshint maxstatements:2147483647  */
@@ -21613,20 +21613,24 @@ var StellarSdk =
 	  //
 	  //   enum AccountType
 	  //   {
-	  //       ACCOUNT_USER = 0,
-	  //       ACCOUNT_MERCHANT = 1,
-	  //       ACCOUNT_DISTRIBUTION_AGENT = 2,
-	  //       ACCOUNT_SETTLEMENT_AGENT = 3,
-	  //       ACCOUNT_EXCHANGE_AGENT = 4
+	  //       ACCOUNT_ANONYMOUS_USER = 0,
+	  //       ACCOUNT_REGISTERED_USER = 1,
+	  //       ACCOUNT_MERCHANT = 2,
+	  //       ACCOUNT_DISTRIBUTION_AGENT = 3,
+	  //       ACCOUNT_SETTLEMENT_AGENT = 4,
+	  //       ACCOUNT_EXCHANGE_AGENT = 5,
+	  //       ACCOUNT_BANK = 6
 	  //   };
 	  //
 	  // ===========================================================================
 	  xdr["enum"]("AccountType", {
-	    accountUser: 0,
-	    accountMerchant: 1,
-	    accountDistributionAgent: 2,
-	    accountSettlementAgent: 3,
-	    accountExchangeAgent: 4 });
+	    accountAnonymousUser: 0,
+	    accountRegisteredUser: 1,
+	    accountMerchant: 2,
+	    accountDistributionAgent: 3,
+	    accountSettlementAgent: 4,
+	    accountExchangeAgent: 5,
+	    accountBank: 6 });
 
 	  // === xdr source ============================================================
 	  //
@@ -24134,6 +24138,52 @@ var StellarSdk =
 
 	  // === xdr source ============================================================
 	  //
+	  //   enum OperationFeeType
+	  //   {
+	  //       opFEE_NONE = 0,
+	  //       opFEE_CHARGED = 1
+	  //   };
+	  //
+	  // ===========================================================================
+	  xdr["enum"]("OperationFeeType", {
+	    opFeeNone: 0,
+	    opFeeCharged: 1 });
+
+	  // === xdr source ============================================================
+	  //
+	  //   struct
+	  //       {
+	  //           Asset asset;
+	  //           int64 amount;
+	  //       }
+	  //
+	  // ===========================================================================
+	  xdr.struct("OperationFeeFee", [["asset", xdr.lookup("Asset")], ["amount", xdr.lookup("Int64")]]);
+
+	  // === xdr source ============================================================
+	  //
+	  //   union OperationFee switch (OperationFeeType type)
+	  //   {
+	  //   case opFEE_NONE:
+	  //       void;
+	  //   case opFEE_CHARGED:
+	  //       struct
+	  //       {
+	  //           Asset asset;
+	  //           int64 amount;
+	  //       } fee;
+	  //   };
+	  //
+	  // ===========================================================================
+	  xdr.union("OperationFee", {
+	    switchOn: xdr.lookup("OperationFeeType"),
+	    switchName: "type",
+	    switches: [["opFeeNone", xdr["void"]()], ["opFeeCharged", "fee"]],
+	    arms: {
+	      fee: xdr.lookup("OperationFeeFee") } });
+
+	  // === xdr source ============================================================
+	  //
 	  //   enum TransactionResultCode
 	  //   {
 	  //       txSUCCESS = 0, // all operations succeeded
@@ -24207,8 +24257,7 @@ var StellarSdk =
 	  //
 	  //   struct TransactionResult
 	  //   {
-	  //       int64 feeCharged; // actual fee charged for the transaction
-	  //  
+	  //       OperationFee fees<>; // actual fees charged for the transaction
 	  //       union switch (TransactionResultCode code)
 	  //       {
 	  //       case txSUCCESS:
@@ -24229,7 +24278,7 @@ var StellarSdk =
 	  //   };
 	  //
 	  // ===========================================================================
-	  xdr.struct("TransactionResult", [["feeCharged", xdr.lookup("Int64")], ["result", xdr.lookup("TransactionResultResult")], ["ext", xdr.lookup("TransactionResultExt")]]);
+	  xdr.struct("TransactionResult", [["fees", xdr.varArray(xdr.lookup("OperationFee"), 2147483647)], ["result", xdr.lookup("TransactionResultResult")], ["ext", xdr.lookup("TransactionResultExt")]]);
 
 	  // === xdr source ============================================================
 	  //
