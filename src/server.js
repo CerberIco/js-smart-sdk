@@ -10,9 +10,10 @@ import {PathCallBuilder} from "./path_call_builder";
 import {PaymentCallBuilder} from "./payment_call_builder";
 import {EffectCallBuilder} from "./effect_call_builder";
 import {FriendbotBuilder} from "./friendbot_builder";
-import {xdr, Account} from "stellar-base";
+import {xdr, Account, hash} from "stellar-base";
 import isString from "lodash/isString";
 
+let querystring = require('querystring');
 let axios = require("axios");
 let toBluebird = require("bluebird").resolve;
 let URI = require("urijs");
@@ -169,6 +170,55 @@ export class Server {
     effects() {
         return new EffectCallBuilder(URI(this.serverURL));
     }
+
+
+    
+    _setAccountOptions(endpoint, options, keypair){
+        let timestamp = Math.floor(new Date().getTime()/1000);
+        let signatureBase = {method: 'post', body: options, timestamp: timestamp};
+
+        let dataStr = querystring.stringify(options);
+        let data = hash(JSON.stringify(signatureBase));
+        let signature = keypair.signDecorated(data);
+
+        var config = {
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+                'X-AuthTimestamp': timestamp.toString(),
+                'X-AuthPublicKey': keypair.accountId(),
+                'X-AuthSignature': signature.toXDR("base64")
+            },
+            timeout: SUBMIT_TRANSACTION_TIMEOUT,
+        };
+        var promise = axios.post(
+              URI(this.serverURL).path(endpoint).toString(),
+              dataStr,
+              config
+            )
+            .then(function(response) {
+                return response.data;
+            })
+            .catch(function (response) {
+                if (response instanceof Error) {
+                    return Promise.reject(response);
+                } else {
+                    return Promise.reject(response.data);
+                }
+            });
+        return toBluebird(promise);
+     }
+
+     restrictAgentAccount(accountId, block_outcoming, block_incoming, keypair){
+        var restrictions = {block_incoming_payments: block_incoming, block_outcoming_payments: block_outcoming};
+        var encodedAccId = encodeURIComponent(accountId);
+        return this._setAccountOptions('accounts/'+encodedAccId+'/traits', restrictions, keypair);
+     }
+
+     setAgentLimits(accountId, asset_code, max_operation, daily_turnnover, monthly_turnover, keypair){
+        var limits = {asset_code: asset_code, max_operation: max_operation, daily_turnnover: daily_turnnover, monthly_turnover:monthly_turnover};
+        var encodedAccId = encodeURIComponent(accountId);
+        return this._setAccountOptions('accounts/'+encodedAccId+'/limits', limits, keypair);
+     }
 
     /**
      * Returns new {@link FriendbotBuilder} object configured with the current Horizon server configuration.
