@@ -71,7 +71,15 @@ describe("integration tests", function () {
       })
     });
     it("set limits on account", function (done) {
-      server.setAgentLimits(distManagerKeyPair.accountId(),"EUAH", 10000, 20000, 30000, adminKeyPair)
+      var limits = {
+            max_operation_out: 100000000,
+            daily_max_out: 100000000, 
+            monthly_max_out: 100000000, 
+            max_operation_in: -1, 
+            daily_max_in: -1, 
+            monthly_max_in: -1
+        };
+      server.setAgentLimits(distManagerKeyPair.accountId(),"EUAH", limits, adminKeyPair)
       .then(result =>{
         console.log("result: ", result);
         done();
