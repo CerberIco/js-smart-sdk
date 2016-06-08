@@ -174,11 +174,12 @@ export class Server {
 
     
     _setAccountOptions(endpoint, options, keypair){
-        let timestamp = Math.floor(new Date().getTime()/1000);
-        let signatureBase = {method: 'post', body: options, timestamp: timestamp};
+        let timestamp = Math.floor(new Date().getTime()/1000).toString();
 
         let dataStr = querystring.stringify(options);
-        let data = hash(JSON.stringify(signatureBase));
+        let signatureBase = "{method: 'post', body: '" + dataStr + "', timestamp: '" + timestamp + "'}";
+        let data = hash(signatureBase);
+        // console.log("signatureData: ", data);
         let signature = keypair.signDecorated(data);
 
         var config = {

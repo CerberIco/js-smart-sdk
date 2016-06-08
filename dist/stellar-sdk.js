@@ -2035,11 +2035,12 @@ var StellarSdk =
 	    }, {
 	        key: "_setAccountOptions",
 	        value: function _setAccountOptions(endpoint, options, keypair) {
-	            var timestamp = Math.floor(new Date().getTime() / 1000);
-	            var signatureBase = { method: 'post', body: options, timestamp: timestamp };
+	            var timestamp = Math.floor(new Date().getTime() / 1000).toString();
 
 	            var dataStr = querystring.stringify(options);
-	            var data = (0, _stellarBase.hash)(JSON.stringify(signatureBase));
+	            var signatureBase = "{method: 'post', body: '" + dataStr + "', timestamp: '" + timestamp + "'}";
+	            var data = (0, _stellarBase.hash)(signatureBase);
+	            // console.log("signatureData: ", data);
 	            var signature = keypair.signDecorated(data);
 
 	            var config = {
