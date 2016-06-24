@@ -17,12 +17,13 @@ export class EncryptedWalletStorage {
     * @returns {Wallet}
     */
     static registerWallet(server, keypair, username, password, domain) {
+        let keychainData = {"seed": keypair.seed()};
         return StellarWallet.createWallet({
             server: server  + '/v2',
             username: username + "@" + domain,
             password: password,
             publicKey: keypair.rawPublicKey().toString('base64'),
-            keychainData: keypair.seed(),
+            keychainData: JSON.stringify(keychainData),
             mainData: 'mainData',
             kdfParams: {
                 algorithm: 'scrypt',
@@ -53,7 +54,10 @@ export class EncryptedWalletStorage {
 
         return StellarWallet.getWallet(params)
             .then(wallet => {
-                wallet.keypair = Keypair.fromSeed(wallet.getKeychainData());
+                console.log("wallet: ", wallet);
+                let keychainData = JSON.parse(wallet.getKeychainData());
+
+                wallet.keypair = Keypair.fromSeed(keychainData.seed);
                 return wallet;
             });
     }

@@ -1874,6 +1874,7 @@ var StellarSdk =
 
 	var _lodashIsString2 = _interopRequireDefault(_lodashIsString);
 
+	var querystring = __webpack_require__(147);
 	var axios = __webpack_require__(122);
 	var toBluebird = __webpack_require__(178).resolve;
 	var URI = __webpack_require__(118);
@@ -2056,6 +2057,59 @@ var StellarSdk =
 	        value: function effects() {
 	            return new _effect_call_builder.EffectCallBuilder(URI(this.serverURL));
 	        }
+	    }, {
+	        key: "_setAccountOptions",
+	        value: function _setAccountOptions(endpoint, options, keypair) {
+	            var timestamp = Math.floor(new Date().getTime() / 1000).toString();
+
+	            var dataStr = querystring.stringify(options);
+	            var signatureBase = "{method: 'post', body: '" + dataStr + "', timestamp: '" + timestamp + "'}";
+	            var data = (0, _stellarBase.hash)(signatureBase);
+	            // console.log("signatureData: ", data);
+	            var signature = keypair.signDecorated(data);
+
+	            var config = {
+	                headers: {
+	                    "Content-Type": "application/x-www-form-urlencoded",
+	                    'X-AuthTimestamp': timestamp.toString(),
+	                    'X-AuthPublicKey': keypair.accountId(),
+	                    'X-AuthSignature': signature.toXDR("base64")
+	                },
+	                timeout: SUBMIT_TRANSACTION_TIMEOUT
+	            };
+	            var promise = axios.post(URI(this.serverURL).path(endpoint).toString(), dataStr, config).then(function (response) {
+	                return response.data;
+	            })["catch"](function (response) {
+	                if (response instanceof Error) {
+	                    return Promise.reject(response);
+	                } else {
+	                    return Promise.reject(response.data);
+	                }
+	            });
+	            return toBluebird(promise);
+	        }
+	    }, {
+	        key: "restrictAgentAccount",
+	        value: function restrictAgentAccount(accountId, block_outcoming, block_incoming, keypair) {
+	            var restrictions = { block_incoming_payments: block_incoming, block_outcoming_payments: block_outcoming };
+	            var encodedAccId = encodeURIComponent(accountId);
+	            return this._setAccountOptions('accounts/' + encodedAccId + '/traits', restrictions, keypair);
+	        }
+	    }, {
+	        key: "setAgentLimits",
+	        value: function setAgentLimits(accountId, asset_code, limit, keypair) {
+	            var limits = {
+	                asset_code: asset_code,
+	                max_operation_out: isNaN(limit.max_operation_out) ? -1 : limit.max_operation_out,
+	                daily_max_out: isNaN(limit.daily_max_out) ? -1 : limit.daily_max_out,
+	                monthly_max_out: isNaN(limit.monthly_max_out) ? -1 : limit.monthly_max_out,
+	                max_operation_in: isNaN(limit.max_operation_in) ? -1 : limit.max_operation_in,
+	                daily_max_in: isNaN(limit.daily_max_in) ? -1 : limit.daily_max_in,
+	                monthly_max_in: isNaN(limit.monthly_max_in) ? -1 : limit.monthly_max_in
+	            };
+	            var encodedAccId = encodeURIComponent(accountId);
+	            return this._setAccountOptions('accounts/' + encodedAccId + '/limits', limits, keypair);
+	        }
 
 	        /**
 	         * Returns new {@link FriendbotBuilder} object configured with the current Horizon server configuration.
@@ -2153,6 +2207,48 @@ var StellarSdk =
 	        key: "accountId",
 	        value: function accountId(id) {
 	            this.filter.push(['accounts', id]);
+	            return this;
+	        }
+
+	        /**
+	         * Returns detailed income/outcome statistics relating to a single account.
+	         *
+	         * @see [Account Details] TODO: link to reference
+	         * @param {string} id For example: `GDGQVOKHW4VEJRU2TETD6DBRKEO5ERCNF353LW5WBFW3JJWQ2BRQ6KDD`
+	         * @returns {AccountCallBuilder}
+	         */
+	    }, {
+	        key: "statisticsForAccount",
+	        value: function statisticsForAccount(id) {
+	            this.filter.push(['accounts', id, "statistics"]);
+	            return this;
+	        }
+
+	        /**
+	         * Returns limits relating to a single account.
+	         *
+	         * @see [Account Details] TODO: link to reference
+	         * @param {string} id For example: `GDGQVOKHW4VEJRU2TETD6DBRKEO5ERCNF353LW5WBFW3JJWQ2BRQ6KDD`
+	         * @returns {AccountCallBuilder}
+	         */
+	    }, {
+	        key: "limits",
+	        value: function limits(id) {
+	            this.filter.push(['accounts', id, "limits"]);
+	            return this;
+	        }
+
+	        /**
+	         * Returns restrictions relating to a single account.
+	         *
+	         * @see [Account Details] TODO: link to reference
+	         * @param {string} id For example: `GDGQVOKHW4VEJRU2TETD6DBRKEO5ERCNF353LW5WBFW3JJWQ2BRQ6KDD`
+	         * @returns {AccountCallBuilder}
+	         */
+	    }, {
+	        key: "traits",
+	        value: function traits(id) {
+	            this.filter.push(['accounts', id, "traits"]);
 	            return this;
 	        }
 	    }]);
@@ -61631,12 +61727,13 @@ var StellarSdk =
 	        * @returns {Wallet}
 	        */
 	        value: function registerWallet(server, keypair, username, password, domain) {
+	            var keychainData = { "seed": keypair.seed() };
 	            return _stellarWalletJsSdk2['default'].createWallet({
 	                server: server + '/v2',
 	                username: username + "@" + domain,
 	                password: password,
 	                publicKey: keypair.rawPublicKey().toString('base64'),
-	                keychainData: keypair.seed(),
+	                keychainData: JSON.stringify(keychainData),
 	                mainData: 'mainData',
 	                kdfParams: {
 	                    algorithm: 'scrypt',
@@ -61668,7 +61765,10 @@ var StellarSdk =
 	            };
 
 	            return _stellarWalletJsSdk2['default'].getWallet(params).then(function (wallet) {
-	                wallet.keypair = _stellarBase.Keypair.fromSeed(wallet.getKeychainData());
+	                console.log("wallet: ", wallet);
+	                var keychainData = JSON.parse(wallet.getKeychainData());
+
+	                wallet.keypair = _stellarBase.Keypair.fromSeed(keychainData.seed);
 	                return wallet;
 	            });
 	        }
