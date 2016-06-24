@@ -48839,6 +48839,11 @@ var StellarSdk =
 	                if (!Keypair.isValidPublicKey(opts.destination)) {
 	                    throw new Error("destination is invalid");
 	                }
+
+	                if (!opts.accountType) {
+	                    throw new Error("Must provide an accountType for a create user operation");
+	                }
+
 	                var attributes = {};
 	                attributes.destination = Keypair.fromAccountId(opts.destination).xdrAccountId();
 	                attributes.accountType = opts.accountType;
