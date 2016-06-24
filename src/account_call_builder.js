@@ -39,7 +39,7 @@ export class AccountCallBuilder extends CallBuilder {
       return this;
     }
     
-        /**
+    /**
      * Returns detailed income/outcome statistics relating to a single account.
      *
      * @see [Account Details] TODO: link to reference
@@ -49,5 +49,31 @@ export class AccountCallBuilder extends CallBuilder {
     statisticsForAccount(id) {
       this.filter.push(['accounts', id, "statistics"]);
       return this;
+    }
+
+    /**
+     * Returns limits relating to a single account.
+     *
+     * @see [Account Details] TODO: link to reference
+     * @param {string} id For example: `GDGQVOKHW4VEJRU2TETD6DBRKEO5ERCNF353LW5WBFW3JJWQ2BRQ6KDD`
+     * @returns {AccountCallBuilder}
+     */
+    limits(id){
+      this.filter.push(['accounts', id, "limits"]);
+      return this;
+
+    }
+
+    /**
+     * Returns restrictions relating to a single account.
+     *
+     * @see [Account Details] TODO: link to reference
+     * @param {string} id For example: `GDGQVOKHW4VEJRU2TETD6DBRKEO5ERCNF353LW5WBFW3JJWQ2BRQ6KDD`
+     * @returns {AccountCallBuilder}
+     */
+    traits(id){
+        this.filter.push(['accounts', id, "traits"]);
+        return this;
+
     }
 }
