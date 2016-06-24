@@ -48664,6 +48664,11 @@ var StellarSdk =
 	        this.signatures = map(signatures, function (s) {
 	            return s;
 	        });
+
+	        var fees = envelope.operationFees() || [];
+	        this.operationFees = map(fees, function (s) {
+	            return s;
+	        });
 	    }
 
 	    _createClass(Transaction, {
@@ -48736,7 +48741,8 @@ var StellarSdk =
 	            value: function toEnvelope() {
 	                var tx = this.tx;
 	                var signatures = this.signatures;
-	                var envelope = new xdr.TransactionEnvelope({ tx: tx, signatures: signatures });
+	                var operationFees = this.operationFees;
+	                var envelope = new xdr.TransactionEnvelope({ tx: tx, signatures: signatures, operationFees: operationFees });
 
 	                return envelope;
 	            }
@@ -48840,7 +48846,7 @@ var StellarSdk =
 	                    throw new Error("destination is invalid");
 	                }
 
-	                if (!opts.accountType) {
+	                if (!opts.accountType && opts.accountType !== 0) {
 	                    throw new Error("Must provide an accountType for a create user operation");
 	                }
 
@@ -49089,6 +49095,10 @@ var StellarSdk =
 
 	                    if (!Keypair.isValidPublicKey(opts.signer.pubKey)) {
 	                        throw new Error("signer.pubKey is invalid");
+	                    }
+
+	                    if (!opts.signer.signerType && opts.signer.signerType !== 0) {
+	                        throw new Error("invalid signer type");
 	                    }
 
 	                    opts.signer.weight = this._checkUnsignedIntValue("signer.weight", opts.signer.weight, weightCheckFunction);
