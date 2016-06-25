@@ -1924,13 +1924,7 @@ var StellarSdk =
 	            var tx = encodeURIComponent((0, _lodashIsString2["default"])(transaction) ? transaction : transaction.toEnvelope().toXDR().toString("base64"));
 	            var promise = axios.post(URI(this.serverURL).path('transactions').toString(), "tx=" + tx, { timeout: SUBMIT_TRANSACTION_TIMEOUT }).then(function (response) {
 	                return response.data;
-	            })["catch"](function (response) {
-	                if (response instanceof Error) {
-	                    return Promise.reject(response);
-	                } else {
-	                    return Promise.reject(response.data);
-	                }
-	            });
+	            })["catch"](this._handleError);
 	            return toBluebird(promise);
 	        }
 
@@ -2079,14 +2073,24 @@ var StellarSdk =
 	            };
 	            var promise = axios.post(URI(this.serverURL).path(endpoint).toString(), dataStr, config).then(function (response) {
 	                return response.data;
-	            })["catch"](function (response) {
-	                if (response instanceof Error) {
-	                    return Promise.reject(response);
-	                } else {
-	                    return Promise.reject(response.data);
-	                }
-	            });
+	            })["catch"](this._handleError);
 	            return toBluebird(promise);
+	        }
+	    }, {
+	        key: "_handleError",
+	        value: function _handleError(response) {
+	            if (response instanceof Error) {
+	                return Promise.reject(response);
+	            } else {
+	                switch (response.status) {
+	                    case 400:
+	                        return Promise.reject(new _errors.BadRequestError(response.data, response));
+	                    case 404:
+	                        return Promise.reject(new _errors.NotFoundError(response.data, response));
+	                    default:
+	                        return Promise.reject(new _errors.NetworkError(response.status, response));
+	                }
+	            }
 	        }
 	    }, {
 	        key: "restrictAgentAccount",
