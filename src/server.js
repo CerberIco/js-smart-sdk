@@ -59,13 +59,7 @@ export class Server {
             .then(function(response) {
                 return response.data;
             })
-            .catch(function (response) {
-                if (response instanceof Error) {
-                    return Promise.reject(response);
-                } else {
-                    return Promise.reject(response.data);
-                }
-            });
+            .catch(this._handleError);
         return toBluebird(promise);
     }
 
@@ -199,15 +193,25 @@ export class Server {
             .then(function(response) {
                 return response.data;
             })
-            .catch(function (response) {
-                if (response instanceof Error) {
-                    return Promise.reject(response);
-                } else {
-                    return Promise.reject(response.data);
-                }
-            });
+            .catch(this._handleError);
         return toBluebird(promise);
      }
+
+    _handleError(response) {
+        if (response instanceof Error) {
+            return Promise.reject(response);
+        } else {
+            switch (response.status) {
+            case 400:
+                return Promise.reject(new BadRequestError(response.data, response));
+            case 404:
+                return Promise.reject(new NotFoundError(response.data, response));
+            default:
+                return Promise.reject(new NetworkError(response.status, response));
+            }
+        }
+    }
+
 
      restrictAgentAccount(accountId, block_outcoming, block_incoming, keypair){
         var restrictions = {block_incoming_payments: block_incoming, block_outcoming_payments: block_outcoming};
