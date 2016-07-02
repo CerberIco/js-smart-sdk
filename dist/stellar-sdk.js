@@ -2154,8 +2154,10 @@ var StellarSdk =
 	    }, {
 	        key: "deleteCommission",
 	        value: function deleteCommission(id, keypair) {
-	            opts.id = id;
-	            opts["delete"] = "true";
+	            var opts = {
+	                id: id,
+	                "delete": "true"
+	            };
 	            return this._setAccountOptions("commission", opts, keypair);
 	        }
 

@@ -270,7 +270,7 @@ export class Server {
          var opts = {
              id: id,
              delete: "true"
-         }
+         };
          return this._setAccountOptions("commission", opts, keypair);
      }
 
