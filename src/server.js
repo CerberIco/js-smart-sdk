@@ -7,6 +7,7 @@ import {OperationCallBuilder} from "./operation_call_builder";
 import {OfferCallBuilder} from "./offer_call_builder";
 import {OrderbookCallBuilder} from "./orderbook_call_builder";
 import {PathCallBuilder} from "./path_call_builder";
+import {CommissionCallBuilder} from "./commission_call_builder";
 import {PaymentCallBuilder} from "./payment_call_builder";
 import {EffectCallBuilder} from "./effect_call_builder";
 import {FriendbotBuilder} from "./friendbot_builder";
@@ -165,6 +166,10 @@ export class Server {
         return new EffectCallBuilder(URI(this.serverURL));
     }
 
+    commission() {
+        return new CommissionCallBuilder(URI(this.serverURL));
+    }
+
 
     
     _setAccountOptions(endpoint, options, keypair){
@@ -231,6 +236,40 @@ export class Server {
         };
         var encodedAccId = encodeURIComponent(accountId);
         return this._setAccountOptions('accounts/'+encodedAccId+'/limits', limits, keypair);
+     }
+
+
+    /**
+    * Creates or update commission object
+    * @param {string} id - Id of commission to be updated. 0 - to create new
+    * @param {object} opts
+    * @param {string} [opts.from] source of operations 
+    * @param {string} [opts.to] destination of operation
+    * @param {int} [opts.from_type] source account type
+    * @param {int} [opts.to_type] destination type
+    * @param {Asset} [opts.asset] - The asset of commission
+    * @param {int64} flat_fee - flat fee defined as amount*10^7
+    * @param {int64} percent_fee - percent fee defined as (amount*10^7)%
+    * @param {keypair} keypair - to sign request
+    * @returns {Promise} Returns a promise to the error if failed to set commission
+    */
+     setCommission(id, opts, flat_fee, percent_fee, keypair) {
+         opts.id = id;
+         opts.flat_fee = flat_fee;
+         opts.percent_fee = percent_fee;
+         console.log("Creating commission: " + opts);
+         return this._setAccountOptions("commission", opts, keypair);
+     }
+
+    /**
+     * Deletes commission
+     * @param {string} id - Id of commission to delete
+     * @param {keypair} keypair - to sign request
+     */
+     deleteCommission(id, keypair) {
+         opts.id = id;
+         opts.delete = "true";
+         return this._setAccountOptions("commission", opts, keypair);
      }
 
     /**

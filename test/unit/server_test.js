@@ -999,5 +999,93 @@ describe("server.js tests", function () {
           })
       });
     });
+
+    describe("CommissionCallBuilder.Calculate", function() {
+      let commissionResponse = {
+        "type": "charged",
+        "type_i": 1,
+        "amount_changed": "5.1000000",
+        "flat_fee": "0.1000000",
+        "percent_fee": "5.0000000"  
+      };
+
+    it("requests the correct endpoint", function (done) {
+      this.axiosMock.expects('get')
+        .withArgs(sinon.match('https://horizon-live.stellar.org:1337/commission/calculate?from=GB6K56UWOQCUOXMMGPP4K2LAAZ5R3LYIAK2FJBSF7RDTWUJ5QBN2MGP7&to=GAJLXJ6AJBYG5IDQZQ45CTDYHJRZ6DI4H4IRJA6CD3W6IIJIKLPAS33R&amount=100&asset_type=credit_alphanum4&asset_code=EUR&asset_issuer=GAJLXJ6AJBYG5IDQZQ45CTDYHJRZ6DI4H4IRJA6CD3W6IIJIKLPAS33R'))
+        .returns(Promise.resolve({data: commissionResponse}));
+
+      this.server.commission().calculate("GB6K56UWOQCUOXMMGPP4K2LAAZ5R3LYIAK2FJBSF7RDTWUJ5QBN2MGP7",
+      "GAJLXJ6AJBYG5IDQZQ45CTDYHJRZ6DI4H4IRJA6CD3W6IIJIKLPAS33R", new StellarSdk.Asset('EUR', 'GAJLXJ6AJBYG5IDQZQ45CTDYHJRZ6DI4H4IRJA6CD3W6IIJIKLPAS33R'), '100')
+      .call()
+        .then(function (response) {
+          expect(response.type).to.be.equal(commissionResponse.type);
+          expect(response.amount_changed).to.be.equal(commissionResponse.amount_changed);
+          done();
+        })
+      .catch(function (err) {
+        done(err);
+      })
+    });
+  });
+  describe("CommissionCallBuilder.Filter", function() {
+      let commissionResponse = {
+        "_links": {
+          "self": {
+            "href": "http://localhost:8000/commission?order=asc\u0026limit=10\u0026cursor="
+          },
+          "next": {
+            "href": "http://localhost:8000/commission?order=asc\u0026limit=10\u0026cursor=3"
+          },
+          "prev": {
+            "href": "http://localhost:8000/commission?order=desc\u0026limit=10\u0026cursor=1"
+          }
+        },
+        "_embedded": {
+          "records": [
+            {
+              "id": 1,
+              "flat_fee": "2.2222222",
+              "percent_fee": "0.0000000",
+              "weight": 0
+            },
+            {
+              "id": 2,
+              "flat_fee": "2.2222222",
+              "percent_fee": "0.0000000",
+              "weight": 0
+            },
+            {
+              "id": 3,
+              "from": "GB6K56UWOQCUOXMMGPP4K2LAAZ5R3LYIAK2FJBSF7RDTWUJ5QBN2MGP7",
+              "to": "GAJLXJ6AJBYG5IDQZQ45CTDYHJRZ6DI4H4IRJA6CD3W6IIJIKLPAS33R",
+              "from_account_type": "settlement_agent",
+              "from_account_type_i": 4,
+              "to_account_type": "registered_user",
+              "to_account_type_i": 1,
+              "flat_fee": "2.2222222",
+              "percent_fee": "0.0000000",
+              "weight": 16
+            }
+          ]
+      }  
+      };
+
+    it("requests the correct endpoint", function (done) {
+      this.axiosMock.expects('get')
+        .withArgs(sinon.match('https://horizon-live.stellar.org:1337/commission?account_id=GB6K56UWOQCUOXMMGPP4K2LAAZ5R3LYIAK2FJBSF7RDTWUJ5QBN2MGP7&account_type=4&asset_type=credit_alphanum4&asset_code=EUR&asset_issuer=GAJLXJ6AJBYG5IDQZQ45CTDYHJRZ6DI4H4IRJA6CD3W6IIJIKLPAS33R'))
+        .returns(Promise.resolve({data: commissionResponse}));
+
+      this.server.commission().forAccount("GB6K56UWOQCUOXMMGPP4K2LAAZ5R3LYIAK2FJBSF7RDTWUJ5QBN2MGP7").forAccountType(4)
+        .forAsset(new StellarSdk.Asset('EUR', 'GAJLXJ6AJBYG5IDQZQ45CTDYHJRZ6DI4H4IRJA6CD3W6IIJIKLPAS33R'))
+        .call()
+        .then(function (response) {
+          expect(response.records).to.be.deep.equal(commissionResponse._embedded.records);
+          done();
+        })
+      .catch(function (err) {
+        done(err);
+      })
+    });
+  });
   })
 });
