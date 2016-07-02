@@ -267,8 +267,10 @@ export class Server {
      * @param {keypair} keypair - to sign request
      */
      deleteCommission(id, keypair) {
-         opts.id = id;
-         opts.delete = "true";
+         var opts = {
+             id: id,
+             delete: "true"
+         }
          return this._setAccountOptions("commission", opts, keypair);
      }
 
