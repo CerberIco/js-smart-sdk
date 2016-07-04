@@ -29,22 +29,12 @@ export class HDWallet{
         this.firstWithMoney = hdw.f_w_m;
         this.firstUnused = hdw.f_u;
         this.map = hdw.map;
-        this.otherChainCount = hdw.otherChainCount;
+        this.seed = hdw.seed;
         this.hdkey = hdw.hd;
         if (this.verB == versionBytes.mpriv)
             this.key = hdw.hd.privateKey;
         else if (this.verB == versionBytes.mpub)
             this.key = hdw.hd.publicKey;
-    }
-
-    static SetBy(str){
-        // TODO: нужно ли оно? Если да исправить.
-        if (str.length == 32)
-            return this.bySeed(str);
-        else if (str.length == 109)
-            return this.byStrKey(str);
-        else
-            return this.byPhrase(str);
     }
 
     static byStrKey(str){
@@ -65,25 +55,24 @@ export class HDWallet{
             case "S": {
                 verStr = "seed";
                 key = strDecode(verStr, str);
-                return this.bySeed(key.toString("hex"));
+                return this.bySeed(key);
             }
             case "W": {
                 verStr = "privW";
                 verB   = versionBytes.mpriv;
                 key = strDecode(verStr, str);
-                return this.bySerWallet(verB, key);
+                return this.deserialize(verB, key);
             }
             case "Z": {
                 verStr = "pubW";
                 verB   = versionBytes.mpub;
                 key = strDecode(verStr, str);
-                return this.bySerWallet(verB, key);
+                return this.deserialize(verB, key);
             }
             default : {
                 throw new Error ("Invalid version of StrKey");
             }
         }
-
     }
 
     static byPhrase(str){
@@ -92,33 +81,35 @@ export class HDWallet{
 
     static bySeed(seed){
         let hdw = {};
-        if (typeof seed == "string")
+        if (typeof seed == "string"){
             hdw.hd = genMaster(new Buffer(seed, "hex"), versionBytes.mpriv);
-        else{
+            hdw.seed = new Buffer(seed, "hex");
+        } else{
             hdw.hd = genMaster(seed, versionBytes.mpriv);
-            // throw new Error("Invalid type of seed");
+            hdw.seed = seed;
         }
+        hdw.ver = versionBytes.mpriv;
         return this.setAllIndex(hdw);
     }
 
-    static bySerWallet(v, w){
+    static deserialize(v, w){
         let hdw = {}, mapLen;
         hdw.ver = v;
         hdw.hd = {};
         hdw.map = [];
         hdw.hd.versions = v;
+        hdw.seed = w.slice(0, 32);
         if (v == versionBytes.mpriv)
-            key.hd.privateKey = w.slice(0, 32);
+            hdw.hd = hdw.hd = genMaster(hdw.seed, versionBytes.mpriv);
         else if (v == versionBytes.mpub)
-            key.hd.publicKey = w.slice(0, 32);
+            hdw.hd.publicKey = w.slice(0, 32);
         hdw.hd.chainCode = w.slice(32, 64);
-        hdw.f_w_m = w.readUInt8(64);
-        hdw.f_u = w.readUInt8(68);
-        hdw.otherChainCount = w.readUInt8(72);
-        mapLen = w.readUInt8(76);
-        for (let i = 0, j =0; i < mapLen * 8; i++, j += 4) {
-            hdw.map[i][0] = w.readUInt32BE(76 + j);
-            hdw.map[i][1] = w.readUInt32BE(80 + j);
+        hdw.f_w_m = w.readUInt8(64, 68);
+        hdw.f_u = w.readUInt8(68, 72);
+        mapLen = w.readUInt8(72, 76);
+        console.log("des: ", mapLen);
+        for (let i = 0, j =0; i < mapLen * 4; i++, j += 4) {
+            hdw.map[i] = w.readUInt32BE(76 + j, 76 + 4 + j);
         }
         return new this(hdw);
     }
@@ -142,13 +133,17 @@ export class HDWallet{
 
     static setAllIndex(hdw){
 
-        // if (hdw.ver !== versionBytes.mpriv){
-        //     throw new Error("Invalid ver");
-        // }
-        let path   = "m/1/",
+        let path,
             f_w_m  = 0,
             f_u    = 0,
             ahead = lookAhead;
+        if (hdw.ver == versionBytes.mpriv){
+            path = "m/1/";
+            hdw.map = this.getPublicMap(hdw.hd);
+         } else if (hdw.ver == versionBytes.mpub) {
+            path = "M/";
+        } else
+            throw new Error("Invalid ver");
         for (let i = 0; i < ahead; i++){
             let derivedKey = hdw.hd.derive(path + i),
                 accountID  = strEncode("accountId", derivedKey.publicKey),
@@ -161,120 +156,145 @@ export class HDWallet{
         }
         hdw.f_w_m = f_w_m;
         hdw.f_u = f_u;
-        // hdw.map = this.getPublicMap(hdw.hd);
+
         return new this(hdw);
     }
 
     static getPublicMap(hd) {
-        let path = "m/2/",
+        let path = "M/2/",
             ahead = lookAhead,
             deep = branchDeep,
             map = [];
         for (let d = 0, j = 0; d < deep; d++){
-            let jT = j;
+            let jT = j, pair = [];
+            map[j] = 0;
             for (let i = 0; i < ahead; i++) {
                 let derivedKey = hd.derive(path + d + "/" + i),
                     accountID = strEncode("accountId", derivedKey.publicKey),
-                    accountStatus = this.checkAccount(accountID),
-                    pair = [2];
+                    accountStatus = this.checkAccount(accountID);
+
                 if (!accountStatus[0]) {
                     ahead++;
-                } else if (accountStatus[1] && map[j][1] === 0){
-                    map[j][0] = d;
-                    map[j][1] = i;
+                } else if (accountStatus[1] && map[j] === 0){
+                    map[j] = i;
                     j++;
+                    break;
                 }
+
             }
+
             if (j == jT)
                 deep++;
         }
+        return map;
     }
 
-
-    saveState(){
-        let ver,
-            mapLen = this.map.length,
-            LEN = 81 + mapLen * 8,
-            buffer = new Buffer(LEN);
-        if (this.verB == versionBytes.mpriv) {
-            this.hdkey.privateKey.copy(buffer, 0);
-            ver = "privW";
-        }
-        else if (this.verB == versionBytes.mpub) {
-            this.hdkey.publicKey.copy(buffer, 10);
-            ver = "pubW";
-        }
-        this.hdkey.chainCode.copy(buffer, 32);
-        buffer.writeUInt32BE(this.firstWithMoney, 64);
-        buffer.writeUInt32BE(this.firstUnused, 68);
-        buffer.writeUInt32BE(this.otherChainCount, 72);
-        buffer.writeUInt32BE(mapLen, 76);
-        for (let i = 0; i < mapLen; i++) {
-            buffer.writeUInt32BE(this.map[i][0], 76 + 4);
-            buffer.writeUInt32BE(this.map[i][1], 76 + 8);
-        }
-        return strEncode(ver, buffer.toString("hex"));
-    }
-
-    makeWithdrawList(sum) {
-        let path = "m/1/",
-            list = [],
-            templSum = 0,
-            lookAh = lookAhead;
-        for (let i = 0, j = 0; i < lookAh; i++) {
-            let derivedKey = this.hd.derive(path + i),
-                accountID = strEncode("accountId", derivedKey.publicKey),
-                accountStatus = this.checkAccount(accountID);
-            if (accountStatus[1]) {
-                if (templSum + account[2] < sum) {
-                    templSum += account[2];
-                    list[j][0] = derivedKey.privateKey;
-                    list[j][1] = account[2];
-                    lookAh++;
-                    j++;
-                } else if (templSum + account[2] >= sum) {
-                    let d = sum - templSum;
-                    list[j][0] = derivedKey.privateKey;
-                    list[j][1] = d;
-                    break;
-                }
-            }
-        }
-        return list;
-    }
-
-    makeInvoiceList(sum){
-        let path = "M/",
-            list = [],
-            templSum = 0,
-            lookAh = lookAhead;
-        for (let i = this.f_u, j = 0; i < lookAh; i++) {
-            let derivedKey = this.hd.derive(path + i),
-                accountID = strEncode("accountId", derivedKey.publicKey),
-                accountStatus = this.checkAccount(accountID);
-            if (!accountStatus[0]) {
-                if (templSum + cashLimit < sum) {
-                    templSum += cashLimit;
-                    list[j][0] = derivedKey.publicKey;
-                    list[j][1] = cashLimit;
-                    lookAh++;
-                    j++;
-                } else if (templSum + cashLimit >= sum) {
-                    let d = sum - templSum;
-                    list[j][0] = derivedKey.publicKey;
-                    list[j][1] = d;
-                    break;
-                }
-            }
-        }
-        return list;
-    }
 
     static checkAccount(accountId){
         let id = strDecode("accountId", accountId);
         let    a = (id.readInt8(0) & 1) > 0,
             b = (id.readInt8(0) & 2) > 0,
-            c = id.readInt8(0) ^ 5;
+            c = id.readUInt8(0) ^ 5;
         return [a, a && b, c];
+    }
+
+    serialize(){
+        let ver,
+            mapLen = this.map.length,
+            LEN = 80 + mapLen * 4,
+            buffer = new Buffer(LEN);
+        if (this.verB == versionBytes.mpriv) {
+            this.seed.copy(buffer, 0);
+            ver = "privW";
+        }
+        else if (this.verB == versionBytes.mpub) {
+            this.hdkey.publicKey.copy(buffer, 0);
+            ver = "pubW";
+        }
+        this.hdkey.chainCode.copy(buffer, 32);
+        buffer.writeUInt8(this.firstWithMoney, 64);
+        buffer.writeUInt8(this.firstUnused, 68);
+        buffer.writeUInt8(mapLen, 72);
+        //TODO: Need to fix map serialize/deserealize
+        for (let i = 0, j = 0; i < mapLen; i++, j += 4) {
+            buffer.writeUInt8(this.map[i], 72 + 4 + j);
+        }
+        return strEncode(ver, buffer);
+    }
+
+    makeWithdrawList(sum) {
+        let path = "m/1/",
+            list = [],
+            pair = [],
+            templSum = 0,
+            lookAh = lookAhead;
+
+        pair[0] = 0;
+        pair[1] = 0;
+
+        for (let i = 0, j = 0; i < lookAh; i++) {
+            let derivedKey = this.hdkey.derive(path + i),
+                accountID = strEncode("accountId", derivedKey.publicKey),
+                accountStatus = HDWallet.checkAccount(accountID);
+            if (accountStatus[1]) {
+                if (templSum + accountStatus[2] < sum) {
+                    templSum += accountStatus[2];
+                    pair[0] = strEncode("seed", derivedKey.privateKey);
+                    pair[1] = accountStatus[2];
+                    list[j] = pair.slice();
+                    lookAh++;
+                    j++;
+                } else if (templSum + accountStatus[2] >= sum) {
+                    let d = sum - templSum;
+                    pair[0] = strEncode("seed", derivedKey.privateKey);
+                    pair[1] = d;
+                    list[j] = pair.slice();
+                    break;
+                }
+            }
+        }
+
+        return list;
+    }
+
+    makeInvoiceList(sum){
+        let path,
+            list = [],
+            pair = [],
+            templSum = 0,
+            lookAh = lookAhead;
+
+        pair[0] = 0;
+        pair[1] = 0;
+
+        if (this.verB == versionBytes.mpriv){
+            path = "m/1/";
+        } else if (this.verB == versionBytes.mpub) {
+            path = "M/";
+        }
+
+        for (let i = this.firstUnused, j = 0; i < (i + lookAh); i++) {
+            let derivedKey = this.hdkey.derive(path + i),
+                accountID = strEncode("accountId", derivedKey.publicKey),
+                accountStatus = HDWallet.checkAccount(accountID);
+            if (!accountStatus[0]) {
+                if (templSum + cashLimit < sum) {
+                    templSum += cashLimit;
+                    pair[0] = strEncode("accountId", derivedKey.publicKey);
+                    pair[1] = cashLimit;
+                    list[j] = pair.slice();
+                    lookAh++;
+                    j++;
+                } else if (templSum + cashLimit >= sum) {
+                    let d = sum - templSum;
+                    pair[0] = strEncode("accountId", derivedKey.publicKey);
+                    pair[1] = d;
+                    list[j] = pair.slice();
+                    break;
+                }
+            }
+        }
+
+        return list;
     }
 }

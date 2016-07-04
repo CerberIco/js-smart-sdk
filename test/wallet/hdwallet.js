@@ -38,14 +38,22 @@ for (let i = 0; i < seed.length; i++){
 // console.log(mpriv);
 // console.log(mpub);
 
-for (let i = 0; i < seed.length; i++){
-        hdwSeed[i] = HDWallet.byStrKey(seed[i]);
-        hdwPhrase[i] = HDWallet.byPhrase(phrase[i]);
-        hdwMpriv[i] = HDWallet.byStrKey(mpriv[i]);
-        // hdwMpub[i] = HDWallet.byStrKey(mpub[i]);
-}
-
-console.log(hdwSeed[3]);
-console.log(hdwPhrase[3]);
-console.log(hdwMpriv[3]);
+// for (let i = 0; i < seed.length; i++){
+        hdwSeed[0] = HDWallet.byStrKey(seed[0]);
+        hdwPhrase[0] = HDWallet.byPhrase(phrase[0]);
+        hdwMpriv[0] = HDWallet.byStrKey(mpriv[0]);
+        hdwMpub[0] = HDWallet.byStrKey(mpub[0]);
+// }
+// console.log(hdwSeed[1]);
+// console.log(hdwPhrase[3]);
+// console.log(hdwMpriv[3]);
 // console.log(hdwMpub[3]);
+let str = hdwSeed[0].serialize();
+// console.log("Invoice===================");
+// console.log(hdwMpriv[0].makeInvoiceList(745));
+// console.log("Withdraw===================");
+// console.log(hdwMpriv[0].makeWithdrawList(5043));
+console.log("State===================");
+// console.log(hdwSeed[0]);
+// console.log(str);
+console.log(HDWallet.byStrKey(str));
