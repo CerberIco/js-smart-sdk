@@ -104,11 +104,11 @@ export class HDWallet{
         else if (v == versionBytes.mpub)
             hdw.hd.publicKey = w.slice(0, 32);
         hdw.hd.chainCode = w.slice(32, 64);
-        hdw.f_w_m = w.readUInt8(64, 68);
-        hdw.f_u = w.readUInt8(68, 72);
-        mapLen = w.readUInt8(72, 76);
+        hdw.f_w_m = w.readUInt32BE(64, 68);
+        hdw.f_u = w.readUInt32BE(68, 72);
+        mapLen = w.readUInt32BE(72, 76);
         console.log("des: ", mapLen);
-        for (let i = 0, j =0; i < mapLen * 4; i++, j += 4) {
+        for (let i = 0, j =0; i < mapLen; i++, j += 4) {
             hdw.map[i] = w.readUInt32BE(76 + j, 76 + 4 + j);
         }
         return new this(hdw);
@@ -201,7 +201,7 @@ export class HDWallet{
     serialize(){
         let ver,
             mapLen = this.map.length,
-            LEN = 80 + mapLen * 4,
+            LEN = 76 + mapLen * 4,
             buffer = new Buffer(LEN);
         if (this.verB == versionBytes.mpriv) {
             this.seed.copy(buffer, 0);
@@ -212,12 +212,12 @@ export class HDWallet{
             ver = "pubW";
         }
         this.hdkey.chainCode.copy(buffer, 32);
-        buffer.writeUInt8(this.firstWithMoney, 64);
-        buffer.writeUInt8(this.firstUnused, 68);
-        buffer.writeUInt8(mapLen, 72);
+        buffer.writeUInt32BE(this.firstWithMoney, 64);
+        buffer.writeUInt32BE(this.firstUnused, 68);
+        buffer.writeUInt32BE(mapLen, 72);
         //TODO: Need to fix map serialize/deserealize
         for (let i = 0, j = 0; i < mapLen; i++, j += 4) {
-            buffer.writeUInt8(this.map[i], 72 + 4 + j);
+            buffer.writeUInt32BE(this.map[i], 72 + 4 + j);
         }
         return strEncode(ver, buffer);
     }
