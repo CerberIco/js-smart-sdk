@@ -17,9 +17,18 @@ const versionBytes = {
     mpub:      0x78,    // "P" in base32
     privW:     0xb0,    // "W" in base32
     pubW:      0xc8 },  // "Z" in base32
+
+    versionStr = {
+        accountId:      "accountId",    // "G" in base32
+        seed:           "seed",         // "S" in base32
+        mpriv:          "mpriv",        // "M" in base32
+        mpub:           "mpub",         // "P" in base32
+        privWallet:     "privWallet",   // "W" in base32
+        pubWallet:      "pubWallet" },  // "Z" in base32
+
     lookAhead = 20,
     branchDeep = 20,
-    cashLimit = 500;
+    accountBalanceLimit = 500;
 
 export class HDWallet{
 
@@ -37,34 +46,34 @@ export class HDWallet{
             this.key = hdw.hd.publicKey;
     }
 
-    static byStrKey(str){
+    static SetByStrKey(str){
         let verB, verStr, key;
         switch (str[0]) {
             case "M": {
-                verStr = "mpriv";
+                verStr = versionStr.mpriv;
                 verB   = versionBytes.mpriv;
                 key = strDecode(verStr, str);
                 return this.initKey(verB, key);
             }
             case "P": {
-                verStr = "mpub";
+                verStr = versionStr.mpub;
                 verB   = versionBytes.mpub;
                 key = strDecode(verStr, str);
                 return this.initKey(verB, key);
             }
             case "S": {
-                verStr = "seed";
+                verStr = versionStr.seed;
                 key = strDecode(verStr, str);
-                return this.bySeed(key);
+                return this.SetBySeed(key);
             }
             case "W": {
-                verStr = "privW";
+                verStr = versionStr.privWallet;
                 verB   = versionBytes.mpriv;
                 key = strDecode(verStr, str);
                 return this.deserialize(verB, key);
             }
             case "Z": {
-                verStr = "pubW";
+                verStr = versionStr.pubWallet;
                 verB   = versionBytes.mpub;
                 key = strDecode(verStr, str);
                 return this.deserialize(verB, key);
@@ -75,11 +84,11 @@ export class HDWallet{
         }
     }
 
-    static byPhrase(str){
-        return this.bySeed(decodeMnemo(str));
+    static SetByPhrase(str){
+        return this.SetBySeed(decodeMnemo(str));
     }
 
-    static bySeed(seed){
+    static SetBySeed(seed){
         let hdw = {};
         if (typeof seed == "string"){
             hdw.hd = genMaster(new Buffer(seed, "hex"), versionBytes.mpriv);
@@ -92,24 +101,26 @@ export class HDWallet{
         return this.setAllIndex(hdw);
     }
 
-    static deserialize(v, w){
+    static deserialize(ver, wallet){
         let hdw = {}, mapLen;
-        hdw.ver = v;
+        hdw.ver = ver;
         hdw.hd = {};
         hdw.map = [];
-        hdw.hd.versions = v;
-        hdw.seed = w.slice(0, 32);
-        if (v == versionBytes.mpriv)
+        hdw.hd.versions = ver;
+        hdw.seed = wallet.slice(0, 32);
+
+        if (ver == versionBytes.mpriv)
             hdw.hd = hdw.hd = genMaster(hdw.seed, versionBytes.mpriv);
-        else if (v == versionBytes.mpub)
-            hdw.hd.publicKey = w.slice(0, 32);
-        hdw.hd.chainCode = w.slice(32, 64);
-        hdw.f_w_m = w.readUInt32BE(64, 68);
-        hdw.f_u = w.readUInt32BE(68, 72);
-        mapLen = w.readUInt32BE(72, 76);
-        console.log("des: ", mapLen);
+        else if (ver == versionBytes.mpub)
+            hdw.hd.publicKey = wallet.slice(0, 32);
+
+        hdw.hd.chainCode = wallet.slice(32, 64);
+        hdw.f_w_m = wallet.readUInt32BE(64, 68);
+        hdw.f_u = wallet.readUInt32BE(68, 72);
+        mapLen = wallet.readUInt32BE(72, 76);
+
         for (let i = 0, j =0; i < mapLen; i++, j += 4) {
-            hdw.map[i] = w.readUInt32BE(76 + j, 76 + 4 + j);
+            hdw.map[i] = wallet.readUInt32BE(76 + j, 76 + 4 + j);
         }
         return new this(hdw);
     }
@@ -136,7 +147,7 @@ export class HDWallet{
         let path,
             f_w_m  = 0,
             f_u    = 0,
-            ahead = lookAhead;
+            currentLookAhead = lookAhead;
         if (hdw.ver == versionBytes.mpriv){
             path = "m/1/";
             hdw.map = this.getPublicMap(hdw.hd);
@@ -144,12 +155,12 @@ export class HDWallet{
             path = "M/";
         } else
             throw new Error("Invalid ver");
-        for (let i = 0; i < ahead; i++){
+        for (let i = 0; i < currentLookAhead; i++){
             let derivedKey = hdw.hd.derive(path + i),
-                accountID  = strEncode("accountId", derivedKey.publicKey),
+                accountID  = strEncode(versionStr.accountId, derivedKey.publicKey),
                 accountStatus = this.checkAccount(accountID);
             if (!accountStatus[0]){
-                ahead++;
+                currentLookAhead++;
             } else if (accountStatus[1] && f_w_m === 0)
                     f_w_m = i;
             f_u = i;
@@ -162,19 +173,19 @@ export class HDWallet{
 
     static getPublicMap(hd) {
         let path = "M/2/",
-            ahead = lookAhead,
+            currentLookAhead = lookAhead,
             deep = branchDeep,
             map = [];
         for (let d = 0, j = 0; d < deep; d++){
-            let jT = j, pair = [];
+            let jT = j;
             map[j] = 0;
-            for (let i = 0; i < ahead; i++) {
+            for (let i = 0; i < currentLookAhead; i++) {
                 let derivedKey = hd.derive(path + d + "/" + i),
-                    accountID = strEncode("accountId", derivedKey.publicKey),
+                    accountID = strEncode(versionStr.accountId, derivedKey.publicKey),
                     accountStatus = this.checkAccount(accountID);
 
                 if (!accountStatus[0]) {
-                    ahead++;
+                    currentLookAhead++;
                 } else if (accountStatus[1] && map[j] === 0){
                     map[j] = i;
                     j++;
@@ -191,7 +202,7 @@ export class HDWallet{
 
 
     static checkAccount(accountId){
-        let id = strDecode("accountId", accountId);
+        let id = strDecode(versionStr.accountId, accountId);
         let    a = (id.readInt8(0) & 1) > 0,
             b = (id.readInt8(0) & 2) > 0,
             c = id.readUInt8(0) ^ 5;
@@ -205,54 +216,64 @@ export class HDWallet{
             buffer = new Buffer(LEN);
         if (this.verB == versionBytes.mpriv) {
             this.seed.copy(buffer, 0);
-            ver = "privW";
+            ver = versionStr.privWallet;
         }
         else if (this.verB == versionBytes.mpub) {
             this.hdkey.publicKey.copy(buffer, 0);
-            ver = "pubW";
+            ver = versionStr.pubWallet;
         }
         this.hdkey.chainCode.copy(buffer, 32);
         buffer.writeUInt32BE(this.firstWithMoney, 64);
         buffer.writeUInt32BE(this.firstUnused, 68);
         buffer.writeUInt32BE(mapLen, 72);
-        //TODO: Need to fix map serialize/deserealize
         for (let i = 0, j = 0; i < mapLen; i++, j += 4) {
             buffer.writeUInt32BE(this.map[i], 72 + 4 + j);
         }
         return strEncode(ver, buffer);
     }
 
-    makeWithdrawList(sum) {
-        let path = "m/1/",
+    makeWithdrawalList(sum) {
+        let path = ["m/1/", "m/2/"],
             list = [],
             pair = [],
             templSum = 0,
-            lookAh = lookAhead;
+            lookAh = lookAhead,
+            deep = branchDeep;
 
         pair[0] = 0;
         pair[1] = 0;
+        for (let p = 0; p < 2; p++) {
+            let currentPath = path[p];
 
-        for (let i = 0, j = 0; i < lookAh; i++) {
-            let derivedKey = this.hdkey.derive(path + i),
-                accountID = strEncode("accountId", derivedKey.publicKey),
-                accountStatus = HDWallet.checkAccount(accountID);
-            if (accountStatus[1]) {
-                if (templSum + accountStatus[2] < sum) {
-                    templSum += accountStatus[2];
-                    pair[0] = strEncode("seed", derivedKey.privateKey);
-                    pair[1] = accountStatus[2];
-                    list[j] = pair.slice();
-                    lookAh++;
-                    j++;
-                } else if (templSum + accountStatus[2] >= sum) {
-                    let d = sum - templSum;
-                    pair[0] = strEncode("seed", derivedKey.privateKey);
-                    pair[1] = d;
-                    list[j] = pair.slice();
-                    break;
-                }
-            }
-        }
+            for (let d = 0, jd = 0; d < deep; d++) {
+                let jT = jd;
+                if (p == 1 )
+                    currentPath = currentPath + d + "/";
+
+                for (let i = 0, j = 0; i < lookAh; i++) {
+                    let derivedKey = this.hdkey.derive(currentPath + i),
+                        accountID = strEncode(versionStr.accountId, derivedKey.publicKey),
+                        accountStatus = HDWallet.checkAccount(accountID);
+                    if (accountStatus[1]) {
+                        if (templSum + accountStatus[2] < sum) {
+                            templSum += accountStatus[2];
+                            pair[0] = strEncode(versionStr.seed, derivedKey.privateKey);
+                            pair[1] = accountStatus[2];
+                            list[j] = pair.slice();
+                            lookAh++;
+                            j++;
+                            jd++;
+                        } else if (templSum + accountStatus[2] >= sum) {
+                            let d = sum - templSum;
+                            pair[0] = strEncode(versionStr.seed, derivedKey.privateKey);
+                            pair[1] = d;
+                            list[j] = pair.slice();
+                            return list;
+                        }}}
+
+                if (jd == jT)
+                    deep++;
+            }}
 
         return list;
     }
@@ -261,7 +282,7 @@ export class HDWallet{
         let path,
             list = [],
             pair = [],
-            templSum = 0,
+            currentSum = 0,
             lookAh = lookAhead;
 
         pair[0] = 0;
@@ -275,19 +296,19 @@ export class HDWallet{
 
         for (let i = this.firstUnused, j = 0; i < (i + lookAh); i++) {
             let derivedKey = this.hdkey.derive(path + i),
-                accountID = strEncode("accountId", derivedKey.publicKey),
+                accountID = strEncode(versionStr.accountId, derivedKey.publicKey),
                 accountStatus = HDWallet.checkAccount(accountID);
             if (!accountStatus[0]) {
-                if (templSum + cashLimit < sum) {
-                    templSum += cashLimit;
-                    pair[0] = strEncode("accountId", derivedKey.publicKey);
-                    pair[1] = cashLimit;
+                if (currentSum + accountBalanceLimit < sum) {
+                    currentSum += accountBalanceLimit;
+                    pair[0] = strEncode(versionStr.accountId, derivedKey.publicKey);
+                    pair[1] = accountBalanceLimit;
                     list[j] = pair.slice();
                     lookAh++;
                     j++;
-                } else if (templSum + cashLimit >= sum) {
-                    let d = sum - templSum;
-                    pair[0] = strEncode("accountId", derivedKey.publicKey);
+                } else if (currentSum + accountBalanceLimit >= sum) {
+                    let d = sum - currentSum;
+                    pair[0] = strEncode(versionStr.accountId, derivedKey.publicKey);
                     pair[1] = d;
                     list[j] = pair.slice();
                     break;

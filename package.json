@@ -83,7 +83,7 @@
     "eventsource": "^0.1.6",
     "jsdoc": "jsdoc3/jsdoc#master",
     "lodash": "^4.0.1",
-    "stellar-base": "file:../js-stellar-base",
+    "stellar-base": "git+https://atticlab:Iy0qoqIbLDYgUop0Pegcxpl0MNQbtxXv@bitbucket.org/atticlab/js-smart-base.git#feature/hdkey",
     "superagent": "^1.1.0",
     "toml": "^2.3.0"
   }

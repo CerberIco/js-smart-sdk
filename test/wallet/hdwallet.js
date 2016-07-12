@@ -39,23 +39,23 @@ console.log(mpriv);
 console.log(mpub);
 
 for (let i = 0; i < seed.length; i++){
-        hdwSeed[i] = HDWallet.byStrKey(seed[i]);
-        hdwPhrase[i] = HDWallet.byPhrase(phrase[i]);
-        hdwMpriv[i] = HDWallet.byStrKey(mpriv[i]);
-        hdwMpub[i] = HDWallet.byStrKey(mpub[i]);
+        hdwSeed[i] = HDWallet.SetByStrKey(seed[i]);
+        hdwPhrase[i] = HDWallet.SetByPhrase(phrase[i]);
+        hdwMpriv[i] = HDWallet.SetByStrKey(mpriv[i]);
+        hdwMpub[i] = HDWallet.SetByStrKey(mpub[i]);
 }
-console.log(hdwSeed[1]);
-console.log(hdwPhrase[3]);
-console.log(hdwMpriv[3]);
-console.log(hdwMpub[3]);
+// console.log(hdwSeed[1]);
+// console.log(hdwPhrase[3]);
+// console.log(hdwMpriv[3]);
+// console.log(hdwMpub[3]);
 let str = hdwSeed[0].serialize(),
-    hdw2 = HDWallet.byStrKey(str),
+    hdw2 = HDWallet.SetByStrKey(str),
     str2 =hdw2.serialize();
 
 console.log("Invoice===================");
 console.log(hdwMpriv[0].makeInvoiceList(745));
 console.log("Withdraw===================");
-console.log(hdwMpriv[0].makeWithdrawList(5043));
+console.log(hdwMpriv[0].makeWithdrawalList(5043));
 console.log("State===================");
 console.log(str);
 console.log(str2);
