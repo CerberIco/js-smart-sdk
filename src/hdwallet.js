@@ -27,7 +27,7 @@ const versionBytes = {
         pubWallet:      "pubWallet" },  // "Z" in base32
 
     lookAhead = 20,
-    branchDeep = 20,
+    branchAhead = 20,
     accountBalanceLimit = 500;
 
 export class HDWallet{
@@ -40,21 +40,11 @@ export class HDWallet{
         this.map = hdw.map;
         this.seed = hdw.seed;
         this.hdkey = hdw.hd;
-        if (this.verB == versionBytes.mpriv)
-            this.key = hdw.hd.privateKey;
-        else if (this.verB == versionBytes.mpub)
-            this.key = hdw.hd.publicKey;
     }
 
     static SetByStrKey(str){
         let verB, verStr, key;
         switch (str[0]) {
-            case "M": {
-                verStr = versionStr.mpriv;
-                verB   = versionBytes.mpriv;
-                key = strDecode(verStr, str);
-                return this.initKey(verB, key);
-            }
             case "P": {
                 verStr = versionStr.mpub;
                 verB   = versionBytes.mpub;
@@ -145,7 +135,7 @@ export class HDWallet{
     static setAllIndex(hdw){
 
         let path,
-            f_w_m  = 0,
+            f_w_m  = uint32(0),
             f_u    = 0,
             currentLookAhead = lookAhead;
         if (hdw.ver == versionBytes.mpriv){
@@ -163,7 +153,7 @@ export class HDWallet{
                 currentLookAhead++;
             } else if (accountStatus[1] && f_w_m === 0)
                     f_w_m = i;
-            f_u = i;
+            f_u = i + 1;
         }
         hdw.f_w_m = f_w_m;
         hdw.f_u = f_u;
@@ -174,9 +164,9 @@ export class HDWallet{
     static getPublicMap(hd) {
         let path = "M/2/",
             currentLookAhead = lookAhead,
-            deep = branchDeep,
+            currentBranchAhead = branchAhead,
             map = [];
-        for (let d = 0, j = 0; d < deep; d++){
+        for (let d = 0, j = 0; d < currentBranchAhead; d++){
             let jT = j;
             map[j] = 0;
             for (let i = 0; i < currentLookAhead; i++) {
@@ -195,7 +185,7 @@ export class HDWallet{
             }
 
             if (j == jT)
-                deep++;
+                currentBranchAhead++;
         }
         return map;
     }
@@ -203,9 +193,9 @@ export class HDWallet{
 
     static checkAccount(accountId){
         let id = strDecode(versionStr.accountId, accountId);
-        let    a = (id.readInt8(0) & 1) > 0,
-            b = (id.readInt8(0) & 2) > 0,
-            c = id.readUInt8(0) ^ 5;
+        let    a = (id.readUInt32BE(0) & 1) > 0,
+            b = (id.readUInt32BE(0) & 2) > 0,
+            c = id.readUInt32BE(0) ^ 5;
         return [a, a && b, c];
     }
 
@@ -236,43 +226,43 @@ export class HDWallet{
         let path = ["m/1/", "m/2/"],
             list = [],
             pair = [],
-            templSum = 0,
-            lookAh = lookAhead,
-            deep = branchDeep;
+            currentSum = 0,
+            currentLookAhead = lookAhead,
+            currentBranchAhead = branchAhead;
 
         pair[0] = 0;
         pair[1] = 0;
         for (let p = 0; p < 2; p++) {
             let currentPath = path[p];
 
-            for (let d = 0, jd = 0; d < deep; d++) {
+            for (let d = 0, jd = 0; d < currentBranchAhead; d++) {
                 let jT = jd;
                 if (p == 1 )
                     currentPath = currentPath + d + "/";
 
-                for (let i = 0, j = 0; i < lookAh; i++) {
+                for (let i = 0, j = 0; i < currentLookAhead; i++) {
                     let derivedKey = this.hdkey.derive(currentPath + i),
                         accountID = strEncode(versionStr.accountId, derivedKey.publicKey),
                         accountStatus = HDWallet.checkAccount(accountID);
                     if (accountStatus[1]) {
-                        if (templSum + accountStatus[2] < sum) {
-                            templSum += accountStatus[2];
+                        if (currentSum + accountStatus[2] < sum) {
+                            currentSum += accountStatus[2];
                             pair[0] = strEncode(versionStr.seed, derivedKey.privateKey);
                             pair[1] = accountStatus[2];
                             list[j] = pair.slice();
-                            lookAh++;
+                            currentLookAhead++;
                             j++;
                             jd++;
-                        } else if (templSum + accountStatus[2] >= sum) {
-                            let d = sum - templSum;
+                        } else if (currentSum + accountStatus[2] >= sum) {
+                            let delta = sum - currentSum;
                             pair[0] = strEncode(versionStr.seed, derivedKey.privateKey);
-                            pair[1] = d;
+                            pair[1] = delta;
                             list[j] = pair.slice();
                             return list;
                         }}}
 
                 if (jd == jT)
-                    deep++;
+                    currentBranchAhead++;
             }}
 
         return list;
@@ -283,7 +273,7 @@ export class HDWallet{
             list = [],
             pair = [],
             currentSum = 0,
-            lookAh = lookAhead;
+            currentLookAhead = lookAhead;
 
         pair[0] = 0;
         pair[1] = 0;
@@ -294,7 +284,7 @@ export class HDWallet{
             path = "M/";
         }
 
-        for (let i = this.firstUnused, j = 0; i < (i + lookAh); i++) {
+        for (let i = this.firstUnused, j = 0; i < (i + currentLookAhead); i++) {
             let derivedKey = this.hdkey.derive(path + i),
                 accountID = strEncode(versionStr.accountId, derivedKey.publicKey),
                 accountStatus = HDWallet.checkAccount(accountID);
@@ -304,12 +294,12 @@ export class HDWallet{
                     pair[0] = strEncode(versionStr.accountId, derivedKey.publicKey);
                     pair[1] = accountBalanceLimit;
                     list[j] = pair.slice();
-                    lookAh++;
+                    currentLookAhead++;
                     j++;
                 } else if (currentSum + accountBalanceLimit >= sum) {
-                    let d = sum - currentSum;
+                    let delta = sum - currentSum;
                     pair[0] = strEncode(versionStr.accountId, derivedKey.publicKey);
-                    pair[1] = d;
+                    pair[1] = delta;
                     list[j] = pair.slice();
                     break;
                 }
