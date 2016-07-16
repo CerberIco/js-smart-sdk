@@ -2,8 +2,8 @@ import * as StellarBase from "stellar-base";
 import {HDKey} from "stellar-base";
 import {HDWallet} from "../../src/hdwallet";
 
-var encodeMnemo = StellarBase.getMnemonicFromSeed,
-    decodeMnemo = StellarBase.getSeedFromMnemonic,
+var encodeMnemo = HDKey.getMnemonicFromSeed,
+    decodeMnemo = HDKey.getSeedFromMnemonic,
     strDecode   = StellarBase.decodeCheck,
     strEncode   = StellarBase.encodeCheck,
     genMaster   = HDKey.fromMasterSeed;
@@ -37,15 +37,14 @@ var seed =
 function createWalletTest() {
 
     var phrase = [],
-        mpriv = [],
+        
         mpub = [],
         hdwSeed = [],
         hdwPhrase = [],
-        hdwMpriv = [],
         hdwMpub = [];
 
 
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < 2; i++) {
         phrase[i] = encodeMnemo(strDecode('seed', seed[i]));
         mpub[i] = StellarBase.getMasterPub(phrase[i]);
     }
@@ -54,7 +53,7 @@ function createWalletTest() {
     // console.log(mpriv);
     // console.log(mpub);
 
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < 2; i++) {
         hdwSeed[i] = HDWallet.SetByStrKey(seed[i]);
         hdwPhrase[i] = HDWallet.SetByPhrase(phrase[i]);
         hdwMpub[i] = HDWallet.SetByStrKey(mpub[i]);
@@ -105,41 +104,62 @@ function createWalletTest() {
     console.log("Wallet serialize 1: ", serWalletFMpub1);
     console.log("Wallet serialize 2: ", serWalletFMpub2);
     console.log("--------------------------------------------------------------");
-    
-    return;
-    
-    let hddd = HDWallet.SetByStrKey("WADDF3F6LSTEJ5PSQONOQ76G2AQB3LN3YQ73QZB3ZCO6MHUMBIMB2RXVKZSNKR56QBTKUMVUPT3XGSSR6HAU5MZVUMT3UYUT3E6KLMM7AAAAAAQAAAAC6AAAAAKAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAABAAAAAAIAAAAAAAAAAAAQAAAAAEAAAAACAAAAAAIAAAAAAAAAAAAQAAAAAIAAAAAAAAAAAAQAAAAACAAAAAAFEBA");
-
-    console.log("HDWallet from tmpl: ");
-    console.log("Ver: ", hddd.verB);
-    console.log("1st with money: ", hddd.firstWithMoney);
-    console.log("1st Unused: ", hddd.firstUnused);
-    console.log("Maps", hddd.map);
-    console.log("PubKey: ", hddd.hdkey.publicKey);
-    console.log("ChainCode: ", hddd.hdkey.chainCode);
-    // console.log("Wallet serialize 1: ", 	serWalletFMpub1);
-    // console.log("Wallet serialize 2: ", 	serWalletFMpub2);
-    console.log("--------------------------------------------------------------");
 }
-
-function checkAccount (accountId){
-    let id = strDecode("seed", accountId);
-    let    a = (id.readInt8(0) & 1) > 0,
-        b = (id.readInt8(0) & 2) > 0,
-        c = id.readUInt8(0) ^ 5;
-    return [a, a && b, c];
+function errorTest() {
+    let hdw, wrongData = [
+        "fix forget despair friendship blue grip glance win blood pie volume odd remove house talent idea stranger sleep respect company mock clearly veil learn",
+        "fix  forget  despair  friendship  blue  grip  glance   win  blood  pie  volume  odd  remove  house  talent  idea  stranger  sleep  respect  company  mock  clearly  veil  learn  ",//0
+        "fixel forget despair friendship blue grip glance win blood pie volume odd remove house talent idea stranger sleep respect company mock clearly veil learn ",//1
+        "fixforgetdespair friendship blue grip glance win blood pie volume odd remove house talentideastrangersleeprespectcompanymockclearlyveillearn",//2
+        "fix forget despair friendship blue grip  company mock clearly veil learn",//3
+        "fix forget despair friendship blue grip glance win blood pie volume odd remove house talent idea stranger sleep respect company mock clearly veil",//4
+        "fix forget despair friendship blue grip glance win blood pie volume odd remove house talent idea stranger sleep respect company mock clearly veil learn learn",//5
+        "fix forget despair friendship blue grip glance win blood pie volume odd remove house talent idea stranger sleep respect company mock clearly veil company mock clearly veil"//6
+    ];
+    for (let i = 0; i < wrongData.length; i++)
+    {
+        try {
+            hdw = HDWallet.SetByPhrase(wrongData[i]);
+            // console.log("Ver: ",            hdw.verB);
+            // console.log("1st with money: ", hdw.firstWithMoney);
+            // console.log("1st Unused: ",     hdw.firstUnused);
+            // console.log("Maps",             hdw.map);
+            // console.log("PubKey: ",         hdw.hdkey.publicKey);
+            // console.log("ChainCode: ",      hdw.hdkey.chainCode);
+            console.log("--------------------------------------------------------------");
+        }
+        catch (err){
+            console.log("ERROR with WRONGDATA [", i, "]---------------------------------");
+            console.log(err.message)
+        }
+    }
 }
-
-function checkAccountTest() {
-    for (let i = 0; i < 22; i++) {
-        let accountStatus = checkAccount(seed[i]);
-        console.log("Account status: ");
-        console.log("Is Valid:    ", accountStatus[0]);
-        console.log("Has Balance: ", accountStatus[1]);
-        console.log("Balance:     ", accountStatus[2]);
-        console.log("-------------------------------");
-        
+function serializeTest(){
+    let nacl = require("../../node_modules/stellar-base/src/util/nacl_util"),
+        t = [], s1 = [], s2 = [];
+        t[0] = Buffer(nacl.randomBytes(76));
+        t[1] = Buffer(nacl.randomBytes(100));
+        t[2] = Buffer(nacl.randomBytes(42));
+    for (let i = 0; i < 3; i++){
+        let hdw1, hdw2;
+        s1[i] = strEncode("privWallet", t[i]);
+        s2[i] = strEncode("pubWallet", t[i]);
+        try {
+            hdw1 = HDWallet.SetByStrKey(s1[i]);
+        }
+        catch (err){
+            console.log(err.message);
+        }
+        console.log("====================================");
+        try {
+            hdw2 = HDWallet.SetByStrKey(s2[i]);
+            console.log(hdw2);    
+        }
+        catch (err){
+            console.log(err.message);
+        }
     }
 }
 // createWalletTest();
-checkAccountTest();
+errorTest();
+serializeTest();
