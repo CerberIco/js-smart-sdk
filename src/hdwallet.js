@@ -43,7 +43,6 @@ export class HDWallet{
      * @constructor
      */
     static SetByPhrase(str){
-        console.log(decodeMnemo(str));
         return this.SetBySeed(decodeMnemo(str));
     }
 
@@ -77,6 +76,12 @@ export class HDWallet{
         }
     }
 
+    /**
+    * Create HDWallet from Seed
+    * @param seed {object} Buffer or hexString
+    * @returns {HDWallet}
+    * @constructor
+    */
     static SetBySeed(seed){
         let hdw = {};
         if (typeof seed == "string"){
@@ -90,6 +95,12 @@ export class HDWallet{
         return this.setAllIndex(hdw);
     }
 
+    /**
+     * Create HDWallet from decoded MasterPublicKey{publicKey, chainCode}
+     * @param rawKey {object} Buffer
+     * @returns {HDWallet}
+     * @constructor
+     */
     static SetByMPublic(rawKey){
         let hdw = {};
         let mpub = new HDKey();
@@ -101,6 +112,13 @@ export class HDWallet{
         return this.setAllIndex(hdw);
     }
 
+    /**
+     * Deserialize HDWallet from serialized byteArray.
+     * @param ver {number} version of HDWallet
+     * @param wallet {object} ByteArray  
+     * < Key[32]||Chain[32]||1stWithMoney[4]||1stUnused[4]||listLen[4]||list[4*listLen]>
+     * @returns {HDWallet}
+     */
     static deserialize(ver, wallet){
         let hdw = {}, listLen;
         hdw.ver = ver;
@@ -125,6 +143,11 @@ export class HDWallet{
         return new this(hdw);
     }
 
+    /**
+     * Setup indexes for all branches and create HDWallet.
+     * @param hdw {object} HDWallet without indexes.
+     * @returns {HDWallet}
+     */
     static setAllIndex(hdw){
         let path,
             indexPair = {f_w_m: 0, f_u:  0, indexingF_u: true};
@@ -145,6 +168,12 @@ export class HDWallet{
         return new this(hdw);
     }
 
+    /**
+     * Make list of pair {1stWithMoney, 1stUnused} for all branches.
+     * @param path {string}  root of branches in which "searching in deep" account with money.
+     * @param hd {HDKey}
+     * @param indexList {object} Array of pair {1stWithMoney, 1stUnused}
+     */
     static updateBranchIndexes(path, hd, indexList){
         let stopIndex = branchAhead;
         for ( let i = 0; i < stopIndex; i++) {
@@ -161,6 +190,13 @@ export class HDWallet{
         indexList.splice(indexList.length - branchAhead + 1, branchAhead);
     }
 
+    /**
+     * Check branch for account with money.
+     * @param branchPath {string}
+     *  @param hd{HDKey}
+     * @param indexPair{object} Pair of indexes {1stWithMoney, 1stUnused}.
+     * @returns {boolean} If branch has no account return "true"
+     */
     static updateAddressIndexes(branchPath, hd, indexPair){
         let currentIndex = min(indexPair.f_w_m, indexPair.f_u);
         if (indexPair.f_w_m < indexPair.f_u)
@@ -188,6 +224,11 @@ export class HDWallet{
         return currentIndex > lookAhead;
     }
 
+    /**
+     * Check account status in ledger.
+     * @param accountId {string} Base32-encoded PublicKey: GBDAF3F6LSTEJ5PSQONOQ76G...
+     * @returns {{valid: boolean, hasBalance: boolean, balance: number}}
+     */
     static checkAccount(accountId){
         let id = strDecode(version.accountId.str, accountId);
         let isValid = (id.readUInt8(0) & 7) === 0,
@@ -198,6 +239,11 @@ export class HDWallet{
         return {valid: isValid, hasBalance: (isValid && hasBalance), balance: balance};
     }
 
+    /**
+     * Serialize HDWallet into Base32-encoded string.
+     * < Key[32]||Chain[32]||1stWithMoney[4]||1stUnused[4]||listLen[4]||list[4*listLen]>
+     * @returns {string} For example: WADDF3F6LSTEJ5PSQONOQ76G...
+     */
     serialize(){
         let ver,
             listLen = this.indexList.length,
@@ -221,6 +267,47 @@ export class HDWallet{
         return strEncode(ver, buffer);
     }
 
+    /**
+     * Makes a list from one branch to make a payment of a given amount.
+     * @param list {object} Array of pair {privateKey, amount}.
+     * @param path {string} Branch in which "search in deep" account with money.
+     * @param sum {number} Amount.
+     * @returns {boolean}
+     */
+    findMoneyInBranch(list, path, sum){
+        let currentSum = 0,
+            currentLookAhead = lookAhead;
+
+        for (let i = 0, j = (list.length - 1); i < currentLookAhead; i++) {
+            let derivedKey = this.hdkey.derive(path + i),
+                accountID = strEncode(version.accountId.str, derivedKey.publicKey),
+                accountStatus = HDWallet.checkAccount(accountID);
+
+            if (accountStatus.hasBalance) {
+                if (currentSum + accountStatus.balance < sum) {
+                    currentSum += accountStatus.balance;
+                    list[j].key = strEncode(version.seed.str, derivedKey.privateKey);
+                    list[j].balance = accountStatus.balance;
+                    list.push({key: "0", balance: 0});
+                    currentLookAhead = min(i + lookAhead, maxIndex);
+                    j++;
+                }
+                else if (currentSum + accountStatus.balance >= sum) {
+                    let delta = sum - currentSum;
+                    list[j].key = strEncode(version.seed.str, derivedKey.privateKey);
+                    list[j].balance = delta;
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Makes a list from all branches to make a payment of a given amount.
+     * @param sum {number} Amount.
+     * @returns {*[]} Array of pair {accountID, amount}.
+     */
     makeWithdrawalList(sum) {
         let path = ["m/1/", "m/2/"],
             list = [{key: "0", balance: 0}],
@@ -241,6 +328,11 @@ export class HDWallet{
         return list;
     }
 
+    /**
+     * Makes a list for getting amount.
+     * @param sum {number} Amount.
+     * @returns {*[]} Array of pair {accountID, amount}.
+     */
     makeInvoiceList(sum){
         let path,
             list = [{key: "0", balance: 0}],
@@ -279,35 +371,10 @@ export class HDWallet{
         return list;
     }
 
-    findMoneyInBranch(list, path, sum){
-        let currentSum = 0,
-            currentLookAhead = lookAhead;
-
-        for (let i = 0, j = (list.length - 1); i < currentLookAhead; i++) {
-            let derivedKey = this.hdkey.derive(path + i),
-                accountID = strEncode(version.accountId.str, derivedKey.publicKey),
-                accountStatus = HDWallet.checkAccount(accountID);
-
-            if (accountStatus.hasBalance) {
-                if (currentSum + accountStatus.balance < sum) {
-                    currentSum += accountStatus.balance;
-                    list[j].key = strEncode(version.seed.str, derivedKey.privateKey);
-                    list[j].balance = accountStatus.balance;
-                    list.push({key: "0", balance: 0});
-                    currentLookAhead = min(i + lookAhead, maxIndex);
-                    j++;
-                }
-                else if (currentSum + accountStatus.balance >= sum) {
-                    let delta = sum - currentSum;
-                    list[j].key = strEncode(version.seed.str, derivedKey.privateKey);
-                    list[j].balance = delta;
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-    
+    /**
+     * Update all indexes of HDWallet.
+     * @constructor
+     */
     Refresh(){
         let path,
             indexPair = {
@@ -328,6 +395,10 @@ export class HDWallet{
         this.firstUnused = indexPair.f_u;
     }
 
+    /**
+     * Setup all indexes in 0 and make Refresh of HDW.
+     * @constructor
+     */
     TotalRefresh(){
         this.firstUnused = 0;
         this.firstWithMoney = 0;
