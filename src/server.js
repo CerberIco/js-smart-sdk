@@ -217,63 +217,6 @@ export class Server {
         }
     }
 
-
-     restrictAgentAccount(accountId, block_outcoming, block_incoming, keypair){
-        var restrictions = {block_incoming_payments: block_incoming, block_outcoming_payments: block_outcoming};
-        var encodedAccId = encodeURIComponent(accountId);
-        return this._setAccountOptions('accounts/'+encodedAccId+'/traits', restrictions, keypair);
-     }
-
-     setAgentLimits(accountId, asset_code, limit, keypair){
-        var limits = {
-            asset_code: asset_code, 
-            max_operation_out: isNaN(limit.max_operation_out)? -1 : limit.max_operation_out,
-            daily_max_out: isNaN(limit.daily_max_out)? -1 : limit.daily_max_out, 
-            monthly_max_out: isNaN(limit.monthly_max_out)? -1 : limit.monthly_max_out, 
-            max_operation_in: isNaN(limit.max_operation_in)? -1 : limit.max_operation_in, 
-            daily_max_in: isNaN(limit.daily_max_in)? -1 : limit.daily_max_in, 
-            monthly_max_in: isNaN(limit.monthly_max_in)? -1 : limit.monthly_max_in
-        };
-        var encodedAccId = encodeURIComponent(accountId);
-        return this._setAccountOptions('accounts/'+encodedAccId+'/limits', limits, keypair);
-     }
-
-
-    /**
-    * Creates or update commission object
-    * @param {string} id - Id of commission to be updated. 0 - to create new
-    * @param {object} opts
-    * @param {string} [opts.from] source of operations 
-    * @param {string} [opts.to] destination of operation
-    * @param {int} [opts.from_type] source account type
-    * @param {int} [opts.to_type] destination type
-    * @param {Asset} [opts.asset] - The asset of commission
-    * @param {int64} flat_fee - flat fee defined as amount*10^7
-    * @param {int64} percent_fee - percent fee defined as (amount*10^7)%
-    * @param {keypair} keypair - to sign request
-    * @returns {Promise} Returns a promise to the error if failed to set commission
-    */
-     setCommission(id, opts, flat_fee, percent_fee, keypair) {
-         opts.id = id;
-         opts.flat_fee = flat_fee;
-         opts.percent_fee = percent_fee;
-         console.log("Creating commission: " + opts);
-         return this._setAccountOptions("commission", opts, keypair);
-     }
-
-    /**
-     * Deletes commission
-     * @param {string} id - Id of commission to delete
-     * @param {keypair} keypair - to sign request
-     */
-     deleteCommission(id, keypair) {
-         var opts = {
-             id: id,
-             delete: "true"
-         };
-         return this._setAccountOptions("commission", opts, keypair);
-     }
-
     /**
      * Returns new {@link FriendbotBuilder} object configured with the current Horizon server configuration.
      * @returns {FriendbotBuilder}
