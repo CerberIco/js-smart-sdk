@@ -49404,18 +49404,45 @@ var StellarSdk =
 	                if (!isString(id)) {
 	                    throw new TypeError("id argument must be of type String");
 	                }
-	                opts.id = id;
 
 	                if (!this.isValidAmount(flat_fee, true)) {
 	                    throw new TypeError("flat_fee argument must be of type String and represent nonnegative number");
 	                }
-	                opts.flat_fee = flat_fee;
 
 	                if (!this.isValidAmount(percent_fee, true)) {
 	                    throw new TypeError("percent_fee argument must be of type String and represent nonnegative number");
 	                }
-	                opts.percent_fee = percent_fee;
-	                return this._createAdministrativeOp(ADMIN_OP_COMMISSION, opts);
+
+	                var attrs = {
+	                    id: id,
+	                    flat_fee: flat_fee,
+	                    percent_fee: percent_fee };
+
+	                if (opts.from) {
+	                    attrs.from = opts.from;
+	                }
+
+	                if (opts.to) {
+	                    attrs.to = opts.to;
+	                }
+
+	                if (opts.from_type) {
+	                    attrs.from_type = opts.from_type;
+	                }
+
+	                if (opts.to_type) {
+	                    attrs.to_type = opts.to_type;
+	                }
+
+	                if (opts.asset) {
+	                    attrs.asset_type = opts.asset.getAssetType();
+	                    if (!opts.asset.isNative()) {
+	                        attrs.asset_code = opts.asset.getCode();
+	                        attrs.asset_issuer = opts.asset.getIssuer();
+	                    }
+	                }
+
+	                return this._createAdministrativeOp(ADMIN_OP_COMMISSION, attrs);
 	            }
 	        },
 	        deleteCommission: {
