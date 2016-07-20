@@ -40,13 +40,11 @@ function createWalletTest() {
         
         mpub = [],
         hdwSeed = [],
-        hdwPhrase = [],
-        hdwMpub = [];
+        hdwPhrase = [];
 
 
     for (let i = 0; i < 2; i++) {
         phrase[i] = encodeMnemo(strDecode('seed', seed[i]));
-        mpub[i] = StellarBase.getMasterPub(phrase[i]);
     }
 
     // console.log(phrase);
@@ -56,7 +54,6 @@ function createWalletTest() {
     for (let i = 0; i < 2; i++) {
         hdwSeed[i] = HDWallet.SetByStrKey(seed[i]);
         hdwPhrase[i] = HDWallet.SetByPhrase(phrase[i]);
-        hdwMpub[i] = HDWallet.SetByStrKey(mpub[i]);
     }
     let serWalletFSeed1 = hdwSeed[0].serialize(),
         tmpHdwSeed = HDWallet.SetByStrKey(serWalletFSeed1),
@@ -64,11 +61,7 @@ function createWalletTest() {
 
         serWalletFPhrase1 = hdwSeed[0].serialize(),
         tmpHdwPhrase = HDWallet.SetByStrKey(serWalletFPhrase1),
-        serWalletFPhrase2 = tmpHdwPhrase.serialize(),
-
-        serWalletFMpub1 = hdwSeed[0].serialize(),
-        tmpHdwMpub = HDWallet.SetByStrKey(serWalletFMpub1),
-        serWalletFMpub2 = tmpHdwMpub.serialize();
+        serWalletFPhrase2 = tmpHdwPhrase.serialize();
 
     // return;
     
@@ -92,17 +85,6 @@ function createWalletTest() {
     console.log("ChainCode: ", hdwPhrase[0].hdkey.chainCode);
     console.log("Wallet serialize 1: ", serWalletFPhrase1);
     console.log("Wallet serialize 2: ", serWalletFPhrase2);
-    console.log("--------------------------------------------------------------");
-
-    console.log("HDWallet from mpub: ");
-    console.log("Ver: ", hdwMpub[0].verB);
-    console.log("1st with money: ", hdwMpub[0].firstWithMoney);
-    console.log("1st Unused: ", hdwMpub[0].firstUnused);
-    console.log("Maps", hdwMpub[0].map);
-    console.log("PubKey: ", hdwMpub[0].hdkey.publicKey);
-    console.log("ChainCode: ", hdwMpub[0].hdkey.chainCode);
-    console.log("Wallet serialize 1: ", serWalletFMpub1);
-    console.log("Wallet serialize 2: ", serWalletFMpub2);
     console.log("--------------------------------------------------------------");
 }
 function errorTest() {
@@ -134,10 +116,11 @@ function errorTest() {
         }
     }
 }
+
 function serializeTest(){
     let nacl = require("../../node_modules/stellar-base/src/util/nacl_util"),
         t = [], s1 = [], s2 = [];
-        t[0] = Buffer(nacl.randomBytes(76));
+        t[0] = Buffer(nacl.randomBytes(32));
         t[1] = Buffer(nacl.randomBytes(100));
         t[2] = Buffer(nacl.randomBytes(42));
     for (let i = 0; i < 3; i++){
@@ -160,6 +143,70 @@ function serializeTest(){
         }
     }
 }
-// createWalletTest();
-errorTest();
-serializeTest();
+
+function txAlgorithmTest() {
+    let hdw = HDWallet.SetByStrKey("SAP46T4ULMAJUFBCDIQ4LWLX2OX2H2ITXKX446O7BLBRMGOLMQOT6X54"),
+        mpub = hdw.GetMPublicNew(),
+        destHDW = HDWallet.SetByStrKey(mpub);
+    
+    let withdrawal = hdw.makeWithdrawalList(2469),
+        invoice = destHDW.makeInvoiceList(2469),
+        masterKeypair = StellarBase.Keypair.fromSeed(withdrawal[0].key),
+        rootAccount = masterKeypair.accountId();
+   
+    let transaction = [{dest:"0", source: "0", amount: 0}];
+
+    console.log("Withdrawal List: ");
+    console.log(withdrawal);
+    console.log("-----------------------------------------");
+    console.log("Invoice List: ");
+    console.log(invoice);
+    console.log("-----------------------------------------");
+
+    let sentAmount = 0,
+        receivedAmount = 0,
+        sourceRest = 0,
+        destRest = 0;
+
+    for (let wI = 0, iI = 0, i = 0; wI < withdrawal.length;) {
+        let toSend;
+        if (sourceRest === 0)
+            sourceRest = withdrawal[wI].balance;
+        
+        if (destRest === 0)
+            toSend = sourceRest;
+        else if (destRest > sourceRest)
+            toSend = sourceRest;
+            else if (destRest <= sourceRest)
+            toSend = destRest;
+        
+        sentAmount += toSend;
+
+        i++;
+        transaction.push({ dest:   invoice[iI].key,
+            source: withdrawal[wI].key,
+            amount: toSend });
+        
+        destRest = invoice[iI].balance - (toSend + receivedAmount);
+        receivedAmount += toSend;
+        
+        if (sentAmount == withdrawal[wI].balance) {
+            console.log("wI = ", wI );
+            sentAmount = 0;
+            sourceRest = 0;
+            wI++;
+        } else
+            sourceRest = withdrawal[wI].balance - sentAmount;
+
+        if (receivedAmount == invoice[iI].balance) {
+            receivedAmount = 0;
+            destRest = 0;
+            console.log("iI = ", iI);
+            iI++;
+        } else
+            destRest = invoice[iI].balance - receivedAmount;
+
+    }
+    console.log("TX List: ");
+    console.log(transaction);
+}
