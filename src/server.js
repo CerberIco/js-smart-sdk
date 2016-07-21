@@ -13,6 +13,7 @@ import {EffectCallBuilder} from "./effect_call_builder";
 import {FriendbotBuilder} from "./friendbot_builder";
 import {xdr, Account, hash} from "stellar-base";
 import isString from "lodash/isString";
+import {AssetsCallBuilder} from "./assets_call_builder";
 
 let querystring = require('querystring');
 let axios = require("axios");
@@ -168,6 +169,14 @@ export class Server {
 
     commission() {
         return new CommissionCallBuilder(URI(this.serverURL));
+    }
+
+    /**
+     * Returns new {@link AssetsCallBuilder} object configured by a current Horizon server configuration.
+     * @returns {AssetsCallBuilder}
+     */
+    assets() {
+        return new AssetsCallBuilder(URI(this.serverURL));
     }
 
 
