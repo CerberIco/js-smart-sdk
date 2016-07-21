@@ -48909,8 +48909,10 @@ var StellarSdk =
 	var ADMIN_OP_TRAITS = "traits";
 	exports.ADMIN_OP_TRAITS = ADMIN_OP_TRAITS;
 	var ADMIN_OP_ACCOUNT_LIMITS = "account_limits";
-
 	exports.ADMIN_OP_ACCOUNT_LIMITS = ADMIN_OP_ACCOUNT_LIMITS;
+	var ADMIN_OP_ASSET = "asset";
+
+	exports.ADMIN_OP_ASSET = ADMIN_OP_ASSET;
 	var ONE = 10000000;
 	var MAX_INT64 = "9223372036854775807";
 
@@ -49580,6 +49582,40 @@ var StellarSdk =
 	                }
 
 	                return this._createAdministrativeOp(ADMIN_OP_TRAITS, restrictions);
+	            }
+	        },
+	        manageAssets: {
+
+	            /** Manages assets. If Asset does not exists - creates one, or updates
+	             * @param {Asset} asset - The asset to be managed
+	             * @param {boolean} isAnonymous - Defines if asset must be anonymous
+	             * @param {boolean} [isDelete] - Defines if asset must be deleted
+	             */
+
+	            value: function manageAssets(asset, isAnonymous, isDelete) {
+	                if (typeof asset === "undefined") {
+	                    throw new TypeError("asset argument must be of type object");
+	                }
+	                var attrs = {
+	                    asset_type: asset.getAssetType()
+	                };
+	                if (!asset.isNative()) {
+	                    attrs.asset_code = asset.getCode();
+	                    attrs.asset_issuer = asset.getIssuer();
+	                }
+	                if (!isBoolean(isAnonymous)) {
+	                    throw new TypeError("isAnonymous argument must be of type Boolean");
+	                }
+	                attrs.is_anonymous = isAnonymous.toString();
+
+	                if (typeof isDelete !== "undefined") {
+	                    if (!isBoolean(isDelete)) {
+	                        throw new TypeError("isDelete argument must be of type Boolean");
+	                    }
+	                    attrs["delete"] = isDelete.toString();
+	                }
+
+	                return this._createAdministrativeOp(ADMIN_OP_ASSET, attrs);
 	            }
 	        },
 	        _createAdministrativeOp: {
