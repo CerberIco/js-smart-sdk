@@ -11,6 +11,7 @@ import {PaymentCallBuilder} from "./payment_call_builder";
 import {EffectCallBuilder} from "./effect_call_builder";
 import {FriendbotBuilder} from "./friendbot_builder";
 import {xdr, Account} from "stellar-base";
+import {HDWallet} from "./hdwallet";
 import isString from "lodash/isString";
 
 let axios = require("axios");
@@ -189,10 +190,37 @@ export class Server {
             .accountId(accountId)
             .call()
             .then(function (res) {
+                console.log(res);
                 return new Account(accountId, res.sequence);
             });
     }
+    loadHDWallet(key) {
+        let hdw;
+        if (key.indexOf(' ') + 1) {
+            hdw = HDWallet.SetByPhrase(key, this.serverURL);
+        } else
+            hdw = HDWallet.SetByStrKey(key, this.serverURL);
+        return hdw;
+    }
 
+
+    getBalances(accountList) {
+        var response = axios.post(
+              URI(this.serverURL).path('balances').toString(),
+              accountList
+            )
+            .then(function(response) {
+                return response.data;
+            })
+            .catch(function (response) {
+                if (response instanceof Error) {
+                    return Promise.reject(response);
+                } else {
+                    return Promise.reject(response.data);
+                }
+            });
+        return toBluebird(response);
+    }
 }
 
  
