@@ -3,8 +3,10 @@ describe("integration tests", function () {
   const TIMEOUT = 20*1000;
   this.timeout(TIMEOUT);
   this.slow(TIMEOUT/2);
+  StellarSdk.Network.use(new StellarSdk.Network("Smart Money Dev ; March 2016"));
+   let server = new StellarSdk.Server('http://dev.stellar.attic.pw:8010');
 
-  let server = new StellarSdk.Server('http://213.136.82.23:8002');
+
   // let server = new StellarSdk.Server('http://127.0.0.1:8000');
   let bankSeed = "SAWVTL2JG2HTPPABJZKN3GJEDTHT7YD3TW5XWAWPKAE2NNZPWNNBOIXE";
   let bankPublicKey = "GAWIB7ETYGSWULO4VB7D6S42YLPGIC7TY7Y2SSJKVOTMQXV5TILYWBUA";
