@@ -1,29 +1,28 @@
+"use strict";
 import * as StellarBase from "stellar-base";
+import * as StellarSdk from './index';
 import {HDKey} from "stellar-base";
+import {Server} from "./server";
 
-// Docker
-// let server = new StellarSdk.Server('http://127.0.0.1:8000');
-//let server = new StellarSdk.Server('http://192.168.59.103:32773');
-// let master = StellarSdk.Keypair.master();
+let toBluebirdRes = require("bluebird").resolve;
+let toBluebirdRej = require("bluebird").reject;
 
-var decodeMnemo = HDKey.getSeedFromMnemonic,
+
+let decodeMnemo = HDKey.getSeedFromMnemonic,
     strDecode   = StellarBase.decodeCheck,
     strEncode   = StellarBase.encodeCheck,
     genMaster   = HDKey.fromMasterSeed;
 
 export class HDWallet{
-    /**
-     *
-     * @param hdw
-     */
-    constructor(hdw){
-
-        this.verB = hdw.ver;
-        this.firstWithMoney = hdw.firstWithMoney;
-        this.firstUnused = hdw.firstUnused;
-        this.indexList = hdw.indexList;
-        this.seed = hdw.seed;
-        this.hdkey = hdw.hd;
+    
+    constructor(url){
+        this.ver = null;
+        this.firstWithMoney = null;
+        this.firstUnused = null;
+        this.indexList = null;
+        this.seed = null;
+        this.hdk = null;
+        this._serverURL = url;
     }
 
     static _version() {
@@ -36,7 +35,7 @@ export class HDWallet{
             pubWallet: {byte: 0xc8, str: "pubWallet"}};// "Z" in base32
     }
     static _lookAhead() {
-        return 10;
+        return 20;
     }
     static _branchAhead() {
         return 5;
@@ -50,41 +49,47 @@ export class HDWallet{
     static _accountBalanceLimit() {
         return 500;
     }
-
+    static _min(a, b) {
+        if (a < b)
+            return a;
+        else
+            return b;
+    }
+    
     /**
      * Decode mnemonic and create HDWallet by seed
      * @param str {string} Mnemonic phrase for example:
      *       "fix forget despair friendship blue grip ..."
+     * @param url
      * @returns {*}
-     * @constructor
      */
-    static SetByPhrase(str){
-        return this.setBySeed(decodeMnemo(str));
+    static SetByPhrase(str, url){
+        return this.setBySeed(decodeMnemo(str), url);
     }
 
     /**
      * Check version of Base32 key, decode and setup HDWallet
      * @param str {string} Base32 key
+     * @param url
      * @returns {*}
-     * @constructor
      */
-    static SetByStrKey(str){
+    static SetByStrKey(str, url){
         switch (str[0]) {
             case "P": {
                 let key = strDecode(this._version().mpub.str, str);
-                return this.setByMPublic(key);
+                return this.setByMPublic(key, url);
             }
             case "S": {
                 let key = strDecode(this._version().seed.str, str);
-                return this.setBySeed(key);
+                return this.setBySeed(key, url);
             }
             case "W": {
                 let key = strDecode(this._version().privWallet.str, str);
-                return this.deserialize(this._version().mpriv.byte, key);
+                return this.deserialize(this._version().mpriv.byte, key, url);
             }
             case "Z": {
                 let key = strDecode(this._version().pubWallet.str, str);
-                return this.deserialize(this._version().mpub.byte, key);
+                return this.deserialize(this._version().mpub.byte, key, url);
             }
             default : {
                 throw new Error ("Invalid version of StrKey");
@@ -92,62 +97,28 @@ export class HDWallet{
         }
     }
 
-    /**
-    * Create HDWallet from Seed
-    * @param seed {object} Buffer or hexString
-    * @returns {HDWallet}
-    * @constructor
-    */
-    static setBySeed(seed){
-        let hdw = {};
-        if (typeof seed == "string"){
-            hdw.hd = genMaster(new Buffer(seed, "hex"), this._version().mpriv.byte);
-            hdw.seed = new Buffer(seed, "hex");
-        } else{
-            hdw.hd = genMaster(seed, this._version().mpriv.byte);
-            hdw.seed = seed;
-        }
-        hdw.ver = this._version().mpriv.byte;
-        return this.setAllIndex(hdw);
-    }
-
-    /**
-     * Create HDWallet from decoded MasterPublicKey {chainCode, publicKey}
-     * @param rawKey {object} Buffer
-     * @returns {HDWallet}
-     * @constructor
-     */
-    static setByMPublic(rawKey){
-        let hdw = {};
-        let mpub = new HDKey();
-        mpub.versions  = this._version().mpub.byte;
-        mpub.chainCode = rawKey.slice(0, 32);
-        mpub.setPublicKey(rawKey.slice(32, 64));
-        hdw.ver = this._version().mpub.byte;
-        hdw.hd = mpub;
-        return this.setAllIndex(hdw);
-    }
-
-    /**
+	/**
      * Deserialize HDWallet from serialized byteArray.
      * @param ver {number} version of HDWallet
      * @param wallet {object} ByteArray  
      * < Key[32]||Chain[32]||1stWithMoney[4]||1stUnused[4]||listLen[4]||list[4*listLen]>
+     * @param url
      * @returns {HDWallet}
      */
-    static deserialize(ver, wallet){
-        let hdw = {}, listLen;
+    static deserialize(ver, wallet, url){
+        let hdw = new HDWallet(url), 
+        	listLen;
         hdw.ver = ver;
-        hdw.hd = {};
+        hdw.hdk = {};
         hdw.indexList = [];
-        hdw.hd.versions = ver;
+        hdw.hdk.versions = ver;
         hdw.seed = wallet.slice(0, 32);
         if (ver == this._version().mpriv.byte)
-            hdw.hd = hdw.hd = genMaster(hdw.seed, this._version().mpriv.byte);
+            hdw.hdk = hdw.hdk = genMaster(hdw.seed, this._version().mpriv.byte);
         else if (ver == this._version().mpub.byte)
-            hdw.hd.publicKey = wallet.slice(0, 32);
+            hdw.hdk.publicKey = wallet.slice(0, 32);
 
-        hdw.hd.chainCode = wallet.slice(32, 64);
+        hdw.hdk.chainCode = wallet.slice(32, 64);
         hdw.firstWithMoney = wallet.readUInt32BE(64, 68);
         hdw.firstUnused = wallet.readUInt32BE(68, 72);
         listLen = wallet.readUInt32BE(72, 76);
@@ -156,243 +127,225 @@ export class HDWallet{
         for (let i = 0, j =0; i < listLen; i++, j += 4) {
             hdw.indexList[i] = wallet.readUInt32BE(76 + j, 76 + 4 + j);
         }
-        return new this(hdw);
+        return toBluebirdRes(hdw);
+    }
+
+
+    /**
+    * Create HDWallet from Seed
+    * @param seed {object} Buffer or hexString
+    * @param url
+    * @returns {HDWallet}
+    */
+    static setBySeed(seed, url){
+        let hdw = new HDWallet(url);
+        if (typeof seed == "string"){
+            hdw.hdk = genMaster(new Buffer(seed, "hex"), this._version().mpriv.byte);
+            hdw.seed = new Buffer(seed, "hex");
+        } else{
+            hdw.hdk = genMaster(seed, this._version().mpriv.byte);
+            hdw.seed = seed;
+        }
+        hdw.ver = this._version().mpriv.byte;
+        return this._setAllIndex(hdw);
+    }
+
+    /**
+     * Create HDWallet from decoded MasterPublicKey {chainCode, publicKey}
+     * @param rawKey {object} Buffer
+     * @param url
+     * @returns {HDWallet}
+     */
+    static setByMPublic(rawKey, url){
+        let hdw = new HDWallet(url);
+        let mpub = new HDKey();
+        mpub.versions  = this._version().mpub.byte;
+        mpub.chainCode = rawKey.slice(0, 32);
+        mpub.setPublicKey(rawKey.slice(32, 64));
+        hdw.ver = this._version().mpub.byte;
+        hdw.hdk = mpub;
+        return this._setAllIndex(hdw);
     }
 
     /**
      * Setup indexes for all branches and create HDWallet.
-     * @param hdw {object} HDWallet without indexes.
+     * @param hdw {HDWallet} HDWallet without indexes.
      * @returns {HDWallet}
      */
-    static setAllIndex(hdw){
-        let path,
+    static _setAllIndex(hdw){
+        let path, self = this,
             indexPair = {f_w_m: 0, f_u:  0, indexingF_u: true};
+
         if (hdw.ver == this._version().mpriv.byte){
             path = "m/1/";
-            hdw.indexList = [];
-            hdw.indexList.push(0);
-            this.updateBranchIndexes("M/2/", hdw.hd, hdw.indexList);
-         } else if (hdw.ver == this._version().mpub.byte) {
+            let indexList = [];
+            indexList.push(0);
+
+            return self._updateBranchIndexes("M/2/", hdw, indexList)
+            	.then(list => {
+                    hdw.indexList = list.slice();
+            		return self._updateAddressIndexes(path, hdw, indexPair)
+            		.then(result => {
+        				hdw.firstWithMoney = indexPair.f_w_m;
+        				hdw.firstUnused = indexPair.f_u;
+        				return hdw;
+            		});
+
+
+            	});
+        } else if (hdw.ver == this._version().mpub.byte) {
             path = "M/";
+            return self._updateAddressIndexes(path, hdw, indexPair)
+            		.then(result => {
+        				hdw.firstWithMoney = indexPair.f_w_m;
+        				hdw.firstUnused = indexPair.f_u;
+        				return hdw;
+            		});
         } else
-            throw new Error("Invalid ver");
-        this.updateAddressIndexes(path, hdw.hd, indexPair);
-        hdw.firstWithMoney = indexPair.f_w_m;
-        hdw.firstUnused = indexPair.f_u;
-        return new this(hdw);
+            return toBluebirdRej(new Error("Invalid ver"));
     }
 
     /**
-     * Make list of pair {1stWithMoney, 1stUnused} for all branches.
-     * @param path {string}  root of branches in which "searching in deep" account with money.
-     * @param hd {HDKey}
-     * @param indexList {object} Array of pair {1stWithMoney, 1stUnused}
+     *
+     * @param path
+     * @param hdw
+     * @param indexList
+     * @returns {*}
      */
-    static updateBranchIndexes(path, hd, indexList){
-        let stopIndex = this._branchAhead();
-        for ( let i = 0; i < stopIndex; i++) {
-            let indexPair = {f_w_m: indexList[i], f_u: indexList[i]};
-            if (this.updateAddressIndexes(path + i, hd, indexPair) === false) {
-                indexList.push(0);
-                continue;
-            }
-            indexList.push(0);
-            stopIndex = this._min(i + this._branchAhead(), this._maxListLen());
-            indexList[i] = indexPair.f_w_m;
-        }
-        indexList.splice(indexList.length - this._branchAhead + 1, this._branchAhead);
+    static _updateBranchIndexes(path, hdw, indexList){
+    	let _index = 0, sliceCounter = 0;
+    	let _stopIndex = this._branchAhead();
+    	let self = this;
+        function indexing(index, stopIndex) {
+    		let indexPair = {f_w_m: indexList[index], f_u: indexList[index], indexingF_u: false};
+    		return self._updateAddressIndexes(path + index + "/", hdw, indexPair)
+                .then(result => {
+
+    				if ((result === 0) && (index < stopIndex)) {
+    					indexList.push(0);
+                		sliceCounter += 1;
+                        _index += 1;
+                		return indexing(_index, _stopIndex);
+                	}
+                	else if ((result === 1) && (index < stopIndex)) {
+                		indexList.push(0);
+                        sliceCounter = 0;
+                		indexList[index] = indexPair.f_w_m;
+                		_stopIndex = self._min(index + self._branchAhead(), self._maxListLen());
+                		_index += 1;
+                		return indexing(_index, _stopIndex);
+                	}    				
+    				return indexList.slice(0, indexList.length - sliceCounter - 1);
+    			});
+    	}
+        return indexing(_index, _stopIndex);
     }
 
     /**
      * Check branch for account with money.
      * @param branchPath {string}
-     *  @param hd{HDKey}
+     * @param hdw{HDWallet}
      * @param indexPair{object} Pair of indexes {1stWithMoney, 1stUnused}.
-     * @returns {boolean} If branch has no account return "true"
+     * @returns {*}
      */
-    static updateAddressIndexes(branchPath, hd, indexPair){
-        let currentIndex = this._min(indexPair.f_w_m, indexPair.f_u);
-        if (indexPair.f_w_m < indexPair.f_u)
-            currentIndex = indexPair.f_w_m;
-        else
-            currentIndex = indexPair.f_u;
-
-        indexPair.f_w_m = 0;
+  	static _updateAddressIndexes(branchPath, hdw, indexPair){
+        let _index = this._min(indexPair.f_w_m, indexPair.f_u);
+        let _stopIndex = this._lookAhead() + _index;
+        let self = this;
+        indexPair.f_w_m = -1;
         indexPair.f_u = 0;
-        for ( let stopIndex = currentIndex + this._lookAhead(); currentIndex < stopIndex; currentIndex++){
-            let derivedKey = hd.derive(branchPath + currentIndex),
-                accountID  = strEncode(this._version().accountId.str, derivedKey.publicKey),
-                accountStatus = this.checkAccount(accountID);
-            if (accountStatus.valid === false){
+
+        function request() {
+        	let accountList = [];
+        	for (let index = _index, l = 0; l < _stopIndex; index++, l++) {
+            	let derivedKey = hdw.hdk.derive(branchPath + index);
+            	accountList[l] = strEncode(self._version().accountId.str, derivedKey.publicKey);
+        	}
+
+        	return self._checkAccount(accountList, hdw._serverURL)
+        		.then(respList => {
+                    if (respList === 0)
+                        return 0;
+                    let res = self._indexSetting(respList, indexPair);
+        			switch (res){
+        			case  true:  return 1;
+        			case false:  {
+            			_index += self._lookAhead();
+            			_stopIndex = _index + self._lookAhead();
+            			request();
+            		} 
+            	} });
+        }
+        return request();
+    }
+
+    /**
+     *
+     * @param request
+     * @param url
+     * @returns {Promise.<TResult>|*}
+     * @private
+     */
+    static _checkAccount(request, url){
+        if (request.length === 0)
+            toBluebirdRej("Invalid request");
+        let server = new Server(url);
+        return server
+            .getBalances(request)           
+            .then(response => {
+                let assets = response.assets;
+                if (assets.length === 0)
+                    return 0;
+                let responseList = request.slice();
+
+                assets.forEach( function(data) {
+                    data.balances.forEach( function(account) {
+
+                        let pos = request.indexOf(account.account_id);
+
+                        if ( typeof responseList[pos] == "string")
+                            responseList[pos] = [];
+                    
+                        responseList[pos].push({   
+                            asset: data.asset.asset_code,
+                            balance: account.balance });    
+                    }); 
+                });
+              
+                for (let i = 0; i < responseList.length; i++ ){
+                    if ( typeof responseList[i] == "string"){
+                	    responseList[i] = -1;
+                    }
+                }
+                return responseList;
+            });
+    }
+
+    /**
+     *
+     * @param accountStatus
+     * @param indexPair
+     * @returns {boolean}
+     */
+  	static _indexSetting(accountStatus, indexPair) {
+        let resp = false;
+        for (let index = 0; index < accountStatus.length; index++) {
+            if (accountStatus[index] == -1) {
                 continue;
             }
-            stopIndex = this._min(currentIndex + this._lookAhead(), this._maxIndex());
-            if ((accountStatus.balance > 0) && indexPair.f_w_m === 0){
-                indexPair.f_w_m = currentIndex;
-                if (!indexPair.indexingF_u)
-                    return true;
-            }
-            indexPair.f_u = currentIndex + 1;
-        }
-        return currentIndex > this._lookAhead();
-    }
-
-    /**
-     * Check account status in ledger.
-     * @param accountId {string} Base32-encoded PublicKey: GBDAF3F6LSTEJ5PSQONOQ76G...
-     * @returns {{valid: boolean, hasBalance: boolean, balance: number}}
-     */
-    static checkAccount(accountId){
-        let id = strDecode(this._version().accountId.str, accountId);
-        let isValid = (id.readUInt8(0) & 31) === 0,
-            hasBalance = (id.readUInt8(1) & 1) > 0,
-            balance = 0;
-            if (isValid && hasBalance)
-                balance = id.readUInt8(0) ^ 5 + 8;
-        return {valid: isValid, hasBalance: (isValid && hasBalance), balance: balance};
-    }
-
-
-    /**
-     * Serialize HDWallet into Base32-encoded string.
-     * < Key[32]||Chain[32]||1stWithMoney[4]||1stUnused[4]||listLen[4]||list[4*listLen]>
-     * @returns {string} For example: WADDF3F6LSTEJ5PSQONOQ76G...
-     */
-    Serialize(){
-        let ver,
-            listLen = this.indexList.length,
-            LEN = 76 + listLen * 4,
-            buffer = new Buffer(LEN);
-        if (this.verB == HDWallet._version().mpriv.byte) {
-            this.seed.copy(buffer, 0);
-            ver = HDWallet._version().privWallet.str;
-        }
-        else if (this.verB == HDWallet._version().mpub.byte) {
-            this.hdkey.publicKey.copy(buffer, 0);
-            ver = HDWallet._version().pubWallet.str;
-        }
-        this.hdkey.chainCode.copy(buffer, 32);
-        buffer.writeUInt32BE(this.firstWithMoney, 64);
-        buffer.writeUInt32BE(this.firstUnused, 68);
-        buffer.writeUInt32BE(listLen, 72);
-        for (let i = 0, j = 0; i < listLen; i++, j += 4) {
-            buffer.writeUInt32BE(this.indexList[i], 72 + 4 + j);
-        }
-        return StellarBase.encodeWithoutPad(ver, buffer);
-    }
-
-    /**
-     * Makes a list from all branches to make a payment of a given amount.
-     * @param sum {number} Amount.
-     * @returns {*[]} Array of pair {accountID, amount}.
-     */
-    makeWithdrawalList(sum) {
-        let path = ["m/1/", "m/2/"],
-            list = [{key: "0", balance: 0}],
-            currentBranchAhead = HDWallet._branchAhead(),
-            currentPath = path[0],
-            result  = this.findMoneyInBranch(list, currentPath, sum);
-        if (result === sum) {
-            return list;
-        }
-        let rest = result;
-        for (let d = 0; d < currentBranchAhead; d++) {
-            currentPath = path[1] + d + "/";
-            let res = this.findMoneyInBranch(list, currentPath, rest);
-            if (res === rest)
-                break;
-            currentBranchAhead = HDWallet._min(d + currentBranchAhead, HDWallet._maxListLen());
-            rest = res;
-        }
-        return list;
-    }
-
-    /**
-     * Makes a list from one branch to make a payment of a given amount.
-     * @param list {object} Array of pair {privateKey, amount}.
-     * @param path {string} Branch in which "search in deep" account with money.
-     * @param sum {number} Amount.
-     * @returns {number} restSum
-     */
-    findMoneyInBranch(list, path, sum){
-        let currentSum = 0,
-            currentLookAhead = HDWallet._lookAhead();
-        for (let i = 0, j = (list.length - 1); i < currentLookAhead; i++) {
-            let derivedKey = this.hdkey.derive(path + i),
-                accountID = strEncode(HDWallet._version().accountId.str, derivedKey.publicKey),
-                accountStatus = HDWallet.checkAccount(accountID);
-            if ( (accountStatus.hasBalance === true) && (accountStatus.balance !== 0) ) {
-                if (currentSum + accountStatus.balance < sum) {
-                    currentSum += accountStatus.balance;
-                    list[j].key = strEncode(HDWallet._version().seed.str, derivedKey.privateKey);
-                    list[j].balance = accountStatus.balance;
-                    list.push({key: "0", balance: 0});
-                    currentLookAhead = HDWallet._min(i + HDWallet._lookAhead(), HDWallet._maxIndex());
-                    j++;
-                }
-                else if (currentSum + accountStatus.balance >= sum) {
-                    let delta = sum - currentSum;
-                    list[j].key = strEncode(HDWallet._version().seed.str, derivedKey.privateKey);
-                    list[j].balance = delta;
-                    return currentSum + delta;
+            if ((accountStatus[index][0].balance > 0) && (indexPair.f_w_m === -1)) {
+                indexPair.f_w_m = index;
+                resp = true;
+                if (indexPair.indexingF_u === false) {
+                    indexPair.f_u = -1;
+                    return resp;
                 }
             }
-            //TODO: Change increment, must use FirstUnusedIndex as max. Or not???
-            currentLookAhead = HDWallet._min(i + HDWallet._lookAhead(), HDWallet._maxIndex());
-        }
-        return currentSum;
+       	    indexPair.f_u = index + 1;
+   	    }
+   	    return resp;
     }
 
-    /**
-     * Makes a list for getting amount.
-     * @param sum {number} Amount.
-     * @returns {*[]} Array of pair {accountID, amount}.
-     */
-    makeInvoiceList(sum){
-        let path,
-            list = [{key: "0", balance: 0}],
-            currentSum = 0,
-            currentLookAhead = HDWallet._lookAhead();
-
-        if (this.verB == HDWallet._version().mpriv.byte){
-            path = "m/1/";
-        } else if (this.verB == HDWallet._version().mpub.byte) {
-            path = "M/";
-        } else
-            throw new Error("Version of HDWallet mismatch");
-
-        for (let i = this.firstUnused, j = 0; i < (i + currentLookAhead); i++) {
-            let derivedKey = this.hdkey.derive(path + i),
-                accountID = strEncode(HDWallet._version().accountId.str, derivedKey.publicKey),
-                accountStatus = HDWallet.checkAccount(accountID);
-            if (!accountStatus.valid) {
-                if (currentSum + HDWallet._accountBalanceLimit() < sum) {
-                    currentSum += HDWallet._accountBalanceLimit();
-                    list[j].key = strEncode(HDWallet._version().accountId.str, derivedKey.publicKey);
-                    list[j].balance = HDWallet._accountBalanceLimit();
-                    list.push({key: "0", balance: 0});
-                    currentLookAhead++;
-                    j++;
-                }
-                else if (currentSum + HDWallet._accountBalanceLimit() >= sum) {
-                    let delta = sum - currentSum;
-                    list[j].key = strEncode(HDWallet._version().accountId.str, derivedKey.publicKey);
-                    list[j].balance = delta;
-                    break;
-                }
-            }
-        }
-
-        return list;
-    }
-
-    static _min(a, b) {
-        if (a < b)
-            return a;
-        else
-            return b;
-    }
-    
     /**
      * Setup all indexes in 0 and make Refresh of HDW.
      * @constructor
@@ -408,44 +361,272 @@ export class HDWallet{
      * Update all indexes of HDWallet.
      * @constructor
      */
-    Refresh(){
+    Refresh(){ //TODO: Уточни касательно Refresh и наличия возвращаемого значения!!
         let path,
             indexPair = {
                 f_w_m: this.firstWithMoney,
                 f_u:  this.firstUnused,
                 indexingF_u: true};
 
-        if (this.verB == HDWallet._version().mpriv.byte){
+        if (this.ver == HDWallet._version().mpriv.byte){
             path = "m/1/";
             this.indexList.push(0);
-            HDWallet.updateBranchIndexes("M/2/", this.hdkey, this.indexList);
-        } else if (this.verB == HDWallet._version().mpub.byte) {
+            return HDWallet._updateBranchIndexes("M/2/", this, this.indexList)
+            	.then(list => {
+            		
+                    this.indexList = list.slice();
+            		return HDWallet._updateAddressIndexes(path, this, indexPair)
+            		.then(result => {
+        				this.firstWithMoney = indexPair.f_w_m;
+        				this.firstUnused = indexPair.f_u;
+        				return this;
+            		});
+            	});
+        } else if (this.ver == HDWallet._version().mpub.byte) {
             path = "M/";
+            return HDWallet._updateAddressIndexes(path, this, indexPair)
+            		.then(result => {
+        				this.firstWithMoney = indexPair.f_w_m;
+        				this.firstUnused = indexPair.f_u;
+        				return this;
+            		});
         } else
-            throw new Error("Version of HDWallet mismatch");
-        HDWallet.updateAddressIndexes(path, this.hdkey, indexPair);
-        this.firstWithMoney = indexPair.f_w_m;
-        this.firstUnused = indexPair.f_u;
+            return toBluebirdRej(new Error("Version of HDWallet mismatch"));
     }
 
+    /**
+     * @return {string}
+     */
     GetMPublicNew(){
         return this.GetMPub(this.indexList.length + 1);
     }
 
-    GetMPub(index){
-        return this.getMPub("M/" + index);
+    /**
+     * @return {string}
+     */
+    GetMPub(path){
+        if (typeof path == "number")
+            return this.hdk.getMasterPub("M/" + path);
+        if (typeof path == "string")
+            return this.hdk.getMasterPub(path);
+        else
+            throw new Error("Invalid argument! Must be index (type = number) or path (type = string).");
     }
 
-    getMPub(path){
-        return this.hdkey.getMasterPub(path);
+	/**
+     * Makes a list for getting amount.
+     * @param amount {number} Amount.
+     * @returns {*[]} Array of pair {accountID, amount}.
+     */
+    MakeInvoiceList(amount){
+        let path, self = this,
+            data = {},
+            _index = this.firstUnused,
+            _stopIndex = HDWallet._lookAhead() + this.firstUnused;
+        data.amount = amount;
+        data.currentSum = 0;
+
+        if (self.ver == HDWallet._version().mpriv.byte){
+            path = "M/1/";
+        } else if (self.ver == HDWallet._version().mpub.byte) {
+            path = "M/";
+        } else
+            throw new Error("Version of HDWallet mismatch");
+
+        function makingList(index, stopIndex) {
+            let accountList = [],
+                list = [];
+            data.addend = [];
+            for (let i = index, l = 0; i < stopIndex; i++, l++){
+                let derivedKey = self.hdk.derive(path + i);
+                accountList[l]  = derivedKey.accountId();
+                data.addend.push(HDWallet._accountBalanceLimit());
+            }
+
+            return HDWallet._checkAccount(accountList, self._serverURL)
+                .then(respList => {
+                    if (respList === 0) {
+                        data.accountList = accountList;
+
+                    } else {
+                        data.accountList = [];
+                        for (let i = 0; i < respList.length; i++) {
+                            if (respList[i] === -1) {
+                                data.accountList.push(accountList[i]);
+                            }
+                        }
+                    }
+
+                    if (HDWallet._sumCollecting(data, list) === true){
+                        return list;
+                    }
+                    _index += HDWallet._lookAhead();
+                    _stopIndex = HDWallet._min(_index + HDWallet._lookAhead(), HDWallet._maxIndex());
+                    return makingList(_index, _stopIndex);
+                });   
+        }
+        return makingList(_index, _stopIndex);
     }
 
-    doPayment(mpub, amount){
-        let withdrawal = this.makeWithdrawalList(amount),
-            destHDW = HDWallet.SetByStrKey(mpub),
-            invoice = destHDW.makeInvoiceList(amount);
-       
-        let txList = [],
+    /**
+     * Makes a list from all branches to make a payment of a given amount.
+     * @param amount {number} Amount.
+     * @param asset
+     * @returns {*[]} Array of pair {accountID, amount}.
+     */
+    MakeWithdrawalList(amount, asset) {
+        let path = ["m/1/", "m/2/"],
+            list = [], self = this,
+            data = {}, d = 0;
+        data.amount = amount;
+        data.asset = asset.code;
+        data.currentSum = 0;
+        data.path = path[0];
+        data.f_w_m = this.firstWithMoney;
+
+        function completeList(_data) {
+            if (d >= self.indexList.length)
+                return toBluebirdRej(new Error("Not enough money!"));
+            return self._findMoneyInBranch(list, _data)
+                .then(result => {
+                    if (result === amount) {
+                        return list;
+                    }
+                    data.f_w_m = self.indexList[d];
+                    data.path = path[1] + d + "/";
+                    data.amount = amount - result;
+                    d++;
+
+                    return self._findMoneyInBranch(list, data);
+
+                    }
+                );
+        }
+
+        return completeList(data);
+    }
+
+    /**
+     * Makes a list from one branch to make a payment of a given amount.
+
+     */
+    _findMoneyInBranch(list, data) {
+        let self = this,
+            _index = data.f_w_m,
+            _stopIndex = HDWallet._lookAhead() + _index;
+
+        function makingList(index, stopIndex) {
+            let accountList = [],
+                privateKeyList = [];
+
+            for (let i = index, l = 0; i < stopIndex; i++, l++) {
+                let derivedKey = self.hdk.derive(data.path + i);
+                accountList[l] = strEncode(HDWallet._version().accountId.str, derivedKey.publicKey);
+                privateKeyList[l] = strEncode(HDWallet._version().mpriv.str, derivedKey.privateKey);
+            }
+            if (accountList.length === 0) {
+                return toBluebirdRes(data.currentSum);
+            }
+            return HDWallet._checkAccount(accountList, self._serverURL)
+                .then(respList => {
+                    if (respList === 0) {
+                        return data.currentSum;
+                    }
+                    data.accountList = [];
+                    data.addend = [];
+
+                    for (let i = 0; i < respList.length; i++) {
+                        if (respList[i] !== -1) {
+                            for (let j = 0; j < respList[i].length; j++) {
+                                if (respList[i][j].asset == data.asset) {
+                                    data.accountList.push(privateKeyList[i]);
+                                    data.addend.push(respList[i][j].balance % 1000);
+                                }
+                            }
+                        }
+                    }
+
+                    if (HDWallet._sumCollecting(data, list) === true) {
+                        return data.currentSum;
+                    }
+                    _index += HDWallet._lookAhead();
+                    _stopIndex = HDWallet._min(_index + HDWallet._lookAhead(), HDWallet._maxIndex());
+                    return makingList(_index, _stopIndex);
+                });
+        }
+
+        return makingList(_index, _stopIndex);
+    }
+
+    static _sumCollecting ( data, list ) {
+        for (let i = 0; i < data.accountList.length; i++) {
+            if (data.currentSum + data.addend[i] < data.amount) {
+                data.currentSum += data.addend[i];
+                list.push({
+                    key: data.accountList[i],
+                    amount: data.addend[i]
+                });
+            }
+            else if (data.currentSum + data.addend[i] >= data.amount) {
+                let delta = data.amount - data.currentSum;
+                data.currentSum += delta;
+                list.push({
+                    key: data.accountList[i],
+                    amount: delta
+                });
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    DoPayment(invoice, asset) {
+        let server = new Server(this._serverURL);
+        return this.createTX(invoice, asset)
+            .then(txEnvelope => {
+                return server.submitTransaction(txEnvelope);
+            });
+    }
+    
+    createTX(invoice, asset) {
+        let amount = 0;
+        let self = this;
+        for (let i = 0; i < invoice.length; i++) {
+            if (StellarBase.Keypair.isValidPublicKey(invoice[i].key) === false)
+                throw new Error("Invalid public key in invoice list");
+            amount += invoice[i].amount;
+        }
+
+        return self.MakeWithdrawalList(amount, asset)
+            .then(withdrawal => {
+                let paymentList = HDWallet._makePaymentList(invoice, withdrawal);
+                console.log(paymentList[0].source);
+                let keypair = HDKey.getKeyPair(paymentList[0].source),
+                    server = new Server(self._serverURL);
+
+                return server.loadAccount(keypair.accountId())
+                    .then(account => {
+                        let transaction = new StellarSdk.TransactionBuilder(account);
+                        for (let i = 0; i < paymentList.length; i++) {
+                            transaction.addOperation(StellarSdk.Operation.payment({
+                                destination: paymentList[i].dest,
+                                source: HDKey.getKeyPair(paymentList[i].source).accountId(),
+                                asset: asset,
+                                amount: paymentList[i].amount.toString()
+                            }));
+                        }
+                        let txEnvelope = transaction.build();
+
+                        for (let i = 0; i < withdrawal.length; i++) {
+                            txEnvelope.sign(HDKey.getKeyPair(withdrawal[i].key));
+                        }
+                        return txEnvelope;
+                    });
+            });
+    }
+
+    static _makePaymentList(invoice, withdrawal){
+        let opList = [],
             sentAmount = 0,
             receivedAmount = 0,
             sourceRest = 0,
@@ -454,7 +635,7 @@ export class HDWallet{
         for (let wI = 0, iI = 0, i = 0; wI < withdrawal.length;) {
             let toSend;
             if (sourceRest === 0)
-                sourceRest = withdrawal[wI].balance;
+                sourceRest = withdrawal[wI].amount;
 
             if (destRest === 0)
                 toSend = sourceRest;
@@ -466,43 +647,27 @@ export class HDWallet{
             sentAmount += toSend;
 
             i++;
-            txList.push({ dest: invoice[iI].key,
-                        source: withdrawal[wI].key,
-                        amount: toSend });
+            opList.push({ dest: invoice[iI].key,
+                source: withdrawal[wI].key,
+                amount: toSend });
 
-            destRest = invoice[iI].balance - (toSend + receivedAmount);
+            destRest = invoice[iI].amount - (toSend + receivedAmount);
             receivedAmount += toSend;
 
-            if (sentAmount == withdrawal[wI].balance) {
+            if (sentAmount == withdrawal[wI].amount) {
                 sentAmount = 0;
                 sourceRest = 0;
                 wI++;
             } else
-                sourceRest = withdrawal[wI].balance - sentAmount;
+                sourceRest = withdrawal[wI].amount - sentAmount;
 
-            if (receivedAmount == invoice[iI].balance) {
+            if (receivedAmount == invoice[iI].amount) {
                 receivedAmount = 0;
                 destRest = 0;
                 iI++;
             } else
-                destRest = invoice[iI].balance - receivedAmount;
+                destRest = invoice[iI].amount - receivedAmount;
         }
-        
-        for (let i = 0; i < txList.length; i++) 
-            HDWallet.createTx(txList[i]);
+        return opList;
     }
-    
-    static createTx(txData) {
-    let keypair = StellarSdk.Keypair.fromSeed(txData.source);
-    let account = server.loadAccount(keypair.accountId());
-    let transaction = new StellarSdk.TransactionBuilder(account)
-        .addOperation(StellarSdk.Operation.payment({
-            destination: txData.dest,
-            asset: StellarSdk.Asset.native(),
-            amount: txData.amount
-        }))
-        .build();
-    transaction.sign(keypair);
-    }
-    
 }

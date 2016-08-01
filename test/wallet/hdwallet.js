@@ -55,34 +55,34 @@ function createWalletTest() {
         hdwSeed[i] = HDWallet.SetByStrKey(seed[i]);
         hdwPhrase[i] = HDWallet.SetByPhrase(phrase[i]);
     }
-    let serWalletFSeed1 = hdwSeed[0].serialize(),
+    let serWalletFSeed1 = hdwSeed[0].Serialize(),
         tmpHdwSeed = HDWallet.SetByStrKey(serWalletFSeed1),
-        serWalletFSeed2 = tmpHdwSeed.serialize(),
+        serWalletFSeed2 = tmpHdwSeed.Serialize(),
 
-        serWalletFPhrase1 = hdwSeed[0].serialize(),
+        serWalletFPhrase1 = hdwSeed[0].Serialize(),
         tmpHdwPhrase = HDWallet.SetByStrKey(serWalletFPhrase1),
-        serWalletFPhrase2 = tmpHdwPhrase.serialize();
+        serWalletFPhrase2 = tmpHdwPhrase.Serialize();
 
     // return;
     
     console.log("HDWallet from seed: ");
-    console.log("Ver: ", hdwSeed[0].verB);
-    console.log("1st with money: ", hdwSeed[0].firstWithMoney);
-    console.log("1st Unused: ", hdwSeed[0].firstUnused);
-    console.log("Maps", hdwSeed[0].map);
-    console.log("PubKey: ", hdwSeed[0].hdkey.publicKey);
-    console.log("ChainCode: ", hdwSeed[0].hdkey.chainCode);
+    console.log("Ver: ", hdwSeed[1].verB);
+    console.log("1st with money: ", hdwSeed[1].firstWithMoney);
+    console.log("1st Unused: ", hdwSeed[1].firstUnused);
+    console.log("Maps", hdwSeed[1].indexList);
+    console.log("PubKey: ", hdwSeed[1].hdkey.publicKey);
+    console.log("ChainCode: ", hdwSeed[1].hdkey.chainCode);
     console.log("Wallet serialize 1: ", serWalletFSeed1);
     console.log("Wallet serialize 2: ", serWalletFSeed2);
     console.log("--------------------------------------------------------------");
 
     console.log("HDWallet from phrase: ");
-    console.log("Ver: ", hdwPhrase[0].verB);
-    console.log("1st with money: ", hdwPhrase[0].firstWithMoney);
-    console.log("1st Unused: ", hdwPhrase[0].firstUnused);
-    console.log("Maps", hdwPhrase[0].map);
-    console.log("PubKey: ", hdwPhrase[0].hdkey.publicKey);
-    console.log("ChainCode: ", hdwPhrase[0].hdkey.chainCode);
+    console.log("Ver: ", hdwPhrase[1].verB);
+    console.log("1st with money: ", hdwPhrase[1].firstWithMoney);
+    console.log("1st Unused: ", hdwPhrase[1].firstUnused);
+    console.log("Maps", hdwPhrase[1].indexList);
+    console.log("PubKey: ", hdwPhrase[1].hdkey.publicKey);
+    console.log("ChainCode: ", hdwPhrase[1].hdkey.chainCode);
     console.log("Wallet serialize 1: ", serWalletFPhrase1);
     console.log("Wallet serialize 2: ", serWalletFPhrase2);
     console.log("--------------------------------------------------------------");
@@ -210,3 +210,32 @@ function txAlgorithmTest() {
     console.log("TX List: ");
     console.log(transaction);
 }
+
+function createWallet() {
+    StellarSdk.Network.use(new StellarSdk.Network("Smart Money Dev ; March 2016"));
+    let server = new StellarSdk.Server('http://dev.stellar.attic.pw:8010');
+    let testList = [
+            "GDDP7EL6EOTER4E4CVCT4IHKQKVHC5PPE7OONTGS5TLCGIFPYAOCDMO3",
+            "GAWIB7ETYGSWULO4VB7D6S42YLPGIC7TY7Y2SSJKVOTMQXV5TILYWBUA",
+            "GANMTUHZGIZMC4BWAPL22WFFVUCEPS6BGDGUE6GGTTMKH24UR5AUTJSZ"
+        ],
+        rootMnemonic = "belief mere bone careful small chair awake meant wrap mutter " +
+            "goose belly men perhaps waste carefully sadness taste rant grab thread garden bliss misery",
+        rootSeed = StellarBase.HDKey.getSeedFromMnemonic(rootMnemonic),
+        hdwRoot = StellarSdk.HDWallet.setBySeed(rootSeed),
+        bankPublicKey = "GAWIB7ETYGSWULO4VB7D6S42YLPGIC7TY7Y2SSJKVOTMQXV5TILYWBUA";
+    console.log("hdwRoot - ", hdwRoot);
+    console.log("======================================");
+    let mpubRoot = hdwRoot.hdkey.getMasterPub("M/1"),
+        pubWalletRoot = StellarSdk.HDWallet.SetByStrKey(mpubRoot);
+    console.log("hdwRoot - ", pubWalletRoot);
+    console.log("======================================");
+    let mpub0 = hdwRoot.hdkey.getMasterPub("M/2/0"),
+        pubWallet0 = StellarSdk.HDWallet.SetByStrKey(mpub0);
+    console.log("hdw0 - ", pubWallet0);
+    console.log("======================================");
+}
+
+createWallet();
+// createWalletTest();
+// txAlgorithmTest();

@@ -194,6 +194,7 @@ export class Server {
                 return new Account(accountId, res.sequence);
             });
     }
+
     loadHDWallet(key) {
         let hdw;
         if (key.indexOf(' ') + 1) {
