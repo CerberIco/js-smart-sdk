@@ -266,53 +266,47 @@ export class Server {
 
     /**
     * Creates or update commission object
-    * @param {string} id - Id of commission to be updated. 0 - to create new
     * @param {object} opts
     * @param {string} [opts.from] source of operations 
     * @param {string} [opts.to] destination of operation
     * @param {int} [opts.from_type] source account type
     * @param {int} [opts.to_type] destination type
     * @param {Asset} [opts.asset] - The asset of commission
-    * @param {int64} flat_fee - flat fee defined as amount*10^7
-    * @param {int64} percent_fee - percent fee defined as (amount*10^7)%
+    * @param {int64} flat_fee - flat fee ("12.5")
+    * @param {int64} percent_fee - percent fee defined as ("3.5")%
     * @param {keypair} keypair - to sign request
     * @returns {Promise} Returns a promise to the error if failed to set commission
     */
-     setCommission(id, opts, flat_fee, percent_fee, signer, bankMasterAccountId) {
+     setCommission(opts, flat_fee, percent_fee, signer, bankMasterAccountId) {
         var self = this;
         return self.loadAccount(bankMasterAccountId).then(function (source) {
             console.log("Creating commission");
-            var op = StellarSdk.Operation.setCommission(id, opts, flat_fee, percent_fee);
+            var op = StellarSdk.Operation.setCommission(opts, flat_fee, percent_fee);
             var tx = new StellarSdk.TransactionBuilder(source).addOperation(op).build();
             tx.sign(signer);
             return self.submitTransaction(tx);
         });
-         //     opts.id = id;
-         // opts.flat_fee = flat_fee;
-         // opts.percent_fee = percent_fee;
-         // console.log("Creating commission: " + opts);
-         // return this._setAccountOptions("commission", opts, keypair);
      }
 
     /**
      * Deletes commission
-     * @param {string} id - Id of commission to delete
+     * @param {object} opts
+     * @param {string} [opts.from] source of operations 
+     * @param {string} [opts.to] destination of operation
+     * @param {int} [opts.from_type] source account type
+     * @param {int} [opts.to_type] destination type
+     * @param {Asset} [opts.asset] - The asset of commission
      * @param {keypair} keypair - to sign request
      */
-     deleteCommission(id, signer, bankMasterAccountId) {
+     deleteCommission(opts, signer, bankMasterAccountId) {
         var self = this;
         return self.loadAccount(bankMasterAccountId).then(function (source) {
             console.log("Deleting commission");
-            var op = StellarSdk.Operation.deleteCommission(id);
+            var op = StellarSdk.Operation.deleteCommission(opts);
             var tx = new StellarSdk.TransactionBuilder(source).addOperation(op).build();
             tx.sign(signer);
             return self.submitTransaction(tx);
         });
-         // var opts = {
-         //     id: id,
-         //     delete: "true"
-         // };
-         // return this._setAccountOptions("commission", opts, keypair);
      }
 
      manageAsset(asset, isAnonymous, isDelete, signer, bankMasterAccountId) {
