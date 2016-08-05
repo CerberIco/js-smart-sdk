@@ -57,7 +57,7 @@
     "gulp-istanbul": "^0.10.1",
     "gulp-jshint": "^1.10.0",
     "gulp-load-plugins": "^0.9.0",
-    "gulp-mocha": "^2.0.1",
+    "gulp-mocha": "^3.0.0",
     "gulp-plumber": "^1.0.0",
     "gulp-rename": "~1.2.0",
     "gulp-rimraf": "~0.1.0",
@@ -85,7 +85,7 @@
     "lodash.template": "^4.2.2",
     "minami": "^1.1.1",
     "mkdirp": "^0.5.1",
-    "mocha": "~1.17.1",
+    "mocha": "^3.0.0",
     "multipipe": "^0.3.0",
     "object-assign": "^4.0.1",
     "replace-ext": "0.0.1",
@@ -113,6 +113,6 @@
     "superagent": "^1.1.0",
     "toml": "^2.3.0",
     "urijs": "^1.16.0",
-    "stellar-wallet-js-sdk" : ">=0.0.0"
+    "stellar-wallet-js-sdk": ">=0.0.0"
   }
 }

@@ -108,13 +108,6 @@ gulp.task('test:wallet', ['build:node'], function() {
       }));
 });
 
-gulp.task('test:reqres', ['build:node'], function() {
-  return gulp.src(["test/test-helper.js", "test/walletReqRes/**/*.js"])
-      .pipe(plugins.mocha({
-        reporter: ['spec']
-      }));
-});
-
 gulp.task('test:browser', ["build:browser"], function (done) {
   var Server = require('karma').Server;
   var server = new Server({ configFile: __dirname + '/karma.conf.js' });

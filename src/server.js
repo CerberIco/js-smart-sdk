@@ -198,9 +198,9 @@ export class Server {
     loadHDWallet(key) {
         let hdw;
         if (key.indexOf(' ') + 1) {
-            hdw = HDWallet.SetByPhrase(key, this.serverURL);
+            hdw = HDWallet.setByPhrase(key, this.serverURL);
         } else
-            hdw = HDWallet.SetByStrKey(key, this.serverURL);
+            hdw = HDWallet.setByStrKey(key, this.serverURL);
         return hdw;
     }
 
