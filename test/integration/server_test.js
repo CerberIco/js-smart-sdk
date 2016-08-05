@@ -20,10 +20,10 @@ describe("integration tests", function () {
   let createAccSeed = "SCD2AXMPMK2FYCDYSP6RMAHQ7J2W3XSFHFNVTXM2ACVT3OHD45NGQXSG";
   let userCreatingOthers = StellarSdk.Keypair.fromSeed(createAccSeed);
     
-  let tXresult = new StellarSdk.xdr.TransactionResult();
-  tXresult.result(new StellarSdk.xdr.TransactionResultResult(StellarSdk.xdr.TransactionResultCode.txBadSeq()));
-  tXresult.fees([]);
-  tXresult.ext(new StellarSdk.xdr.TransactionResultExt(0));
+  // let tXresult = new StellarSdk.xdr.TransactionResult();
+  // tXresult.result(new StellarSdk.xdr.TransactionResultResult(StellarSdk.xdr.TransactionResultCode.txBadSeq()));
+  // tXresult.fees([]);
+  // tXresult.ext(new StellarSdk.xdr.TransactionResultExt(0));
     console.log("userCreatingOthers accountId:", userCreatingOthers.accountId());
     console.log("userCreatingOthers seed:", userCreatingOthers.seed());
 
@@ -97,7 +97,10 @@ describe("integration tests", function () {
 
     let distManagerKeyPair = StellarSdk.Keypair.fromSeed("SDRHAQQNAK7HPMP24254PTAVSLWNH7M345A5KESPQYKVT5JBBWCQ6E7H");
     let userCount = 10;
+    let distManagerKeyPair2 = StellarSdk.Keypair.random();
+    
 
+    let user = StellarSdk.Keypair.random();
     // let users = [];
     // for (var i = 0; i < userCount; i++) {
     //   users.append(StellarSdk.Keypair.random());
@@ -107,8 +110,10 @@ describe("integration tests", function () {
     console.log("emissionKeyPair seed:", emissionKeyPair.seed());
     console.log("adminKeyPair seed:", adminKeyPair.seed());
     
-    console.log("distManager accountId:", distManagerKeyPair.accountId());
-    console.log("distManager seed:", distManagerKeyPair.seed());
+    console.log("distManager accountId:", distManagerKeyPair2.accountId());
+    console.log("distManager seed:", distManagerKeyPair2.seed());
+    console.log("user accountId:", user.accountId());
+    console.log("user seed:", user.seed());
     
 //     it("add an emission key signer", function (done) {
 
@@ -229,50 +234,88 @@ describe("integration tests", function () {
 //         });
 //     });
 
-    // it("create a new account signed by admin", function (done) {
-    // server.loadAccount(bankPublicKey)
-    //   .then(source => {
-    //     let tx = new StellarSdk.TransactionBuilder(source)
-    //       // .addOperation(StellarSdk.Operation.createAccount({
-    //       //   destination: distManagerKeyPair.accountId(),
-    //       //   accountType: StellarSdk.xdr.AccountType.accountDistributionAgent().value
-    //       // }))
-    //       .addOperation(StellarSdk.Operation.createAccount({
-    //         destination: userCreatingOthers.accountId(),
-    //         accountType: StellarSdk.xdr.AccountType.accountAnonymousUser().value
-    //       }))
-    //       .build();
+    it("create a new account signed by admin", function (done) {
+    server.loadAccount(bankPublicKey)
+      .then(source => {
+        let tx = new StellarSdk.TransactionBuilder(source)
+          .addOperation(StellarSdk.Operation.createAccount({
+            destination: distManagerKeyPair2.accountId(),
+            accountType: StellarSdk.xdr.AccountType.accountDistributionAgent().value
+          }))
+          // .addOperation(StellarSdk.Operation.createAccount({
+          //   destination: userCreatingOthers.accountId(),
+          //   accountType: StellarSdk.xdr.AccountType.accountAnonymousUser().value
+          // }))
+          .build();
 
-    //     tx.sign(adminKeyPair);
-    //     server.submitTransaction(tx)
-    //     .then(result => {
-    //           expect(result.ledger).to.be.not.null;
-    //           done();
-    //         })
-    //     .catch(result => {
-    //       console.log("exception!");
-    //       done(result)});;
-    //   });
-    // });
+        tx.sign(adminKeyPair);
+        server.submitTransaction(tx)
+        .then(result => {
+              expect(result.ledger).to.be.not.null;
+              done();
+            })
+        .catch(result => {
+          console.log("exception!");
+          done(result)});;
+      });
+    });
 
-//     it("set trust from dist manager to the bank in EUAH", function (done) {
-//     server.loadAccount(distManagerKeyPair.accountId())
-//       .then(source => {
-//         let tx = new StellarSdk.TransactionBuilder(source)
-//           .addOperation(StellarSdk.Operation.changeTrust({
-//             asset: new StellarSdk.Asset('EUAH', bankPublicKey)
-//           }))
-//           .build();
+    it("set trust from dist manager to the bank in EUAH", function (done) {
+    server.loadAccount(distManagerKeyPair2.accountId())
+      .then(source => {
+        let tx = new StellarSdk.TransactionBuilder(source)
+          .addOperation(StellarSdk.Operation.changeTrust({
+            asset: new StellarSdk.Asset('EUAH', bankPublicKey)
+          }))
+          .build();
 
-//         tx.sign(distManagerKeyPair);
-//         server.submitTransaction(tx)
-//         .then(result => {
-//               expect(result.ledger).to.be.not.null;
-//               done();
-//             })
-//         .catch(result => done(result));;
-//       });
-//     });
+        tx.sign(distManagerKeyPair2);
+        server.submitTransaction(tx)
+        .then(result => {
+              expect(result.ledger).to.be.not.null;
+              done();
+            })
+        .catch(result => done(result));;
+      });
+    });
+
+
+    it("transition tx", function (done) {
+    server.loadAccount(bankPublicKey)
+      .then(source => {
+        let tx = new StellarSdk.TransactionBuilder(source)
+          .addOperation(StellarSdk.Operation.payment({
+            destination: distManagerKeyPair2.accountId(),
+            source: bankPublicKey,
+            amount: "10000.00", //lets say this is 10 000.00 UAH
+            asset: new StellarSdk.Asset('EUAH', bankPublicKey)
+          }))
+          .addOperation(StellarSdk.Operation.payment({
+            destination: user.accountId(),
+            source: distManagerKeyPair2.accountId(),
+            amount: "10000.00", //lets say this is 10 000.00 UAH
+            asset: new StellarSdk.Asset('EUAH', bankPublicKey)
+          }))
+          
+          .build();
+
+        tx.sign(emissionKeyPair);
+        tx.sign(distManagerKeyPair2);
+        console.log("tx: ",JSON.stringify(tx));
+        server.submitTransaction(tx)
+        .then(result => {
+              console.log("result: ", JSON.stringify(result));
+              expect(result.ledger).to.be.not.null;
+              let buffer = new Buffer(result.result_xdr, "base64");
+              let tXresult = StellarSdk.xdr.TransactionResult.fromXDR(buffer);
+              console.log("tXresult: ",JSON.stringify(tXresult,null,2));
+
+              done();
+            })
+        .catch(result => {console.log("catch: ", result);
+          done(result)});;
+      });
+    });
 
 //     it("issue some money to distribution manager signed by emission manager", function (done) {
 //     server.loadAccount(bankPublicKey)
