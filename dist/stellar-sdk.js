@@ -61878,7 +61878,7 @@ var StellarSdk =
 	            indexPair.indexingF_u = true;
 
 	            if (this.ver == HDWallet._version().mpriv.byte) {
-	                path = "m/1/";
+	                path = "M/1/";
 	                var indexList = this.indexList.slice();
 
 	                return HDWallet._updateBranchIndexes("M/2/", this, indexList).then(function (list) {
@@ -61966,7 +61966,7 @@ var StellarSdk =
 	                    return toBluebirdRes(data.currentSum);
 	                }
 
-	                return HDWallet._checkAccount(accountList, self._serverURL).then(function (respList) {
+	                return HDWallet._checkAccounts(accountList, self._serverURL).then(function (respList) {
 	                    if (respList === 0 && d < self.indexList.length) {
 	                        _index = self.indexList[d];
 	                        _stopIndex = HDWallet._min(_index + HDWallet._lookAhead(), HDWallet._maxIndex());
@@ -62115,7 +62115,7 @@ var StellarSdk =
 	                    data.addend.push(HDWallet._accountBalanceLimit());
 	                }
 
-	                return HDWallet._checkAccount(accountList, self._serverURL).then(function (respList) {
+	                return HDWallet._checkAccounts(accountList, self._serverURL).then(function (respList) {
 	                    if (respList === 0) {
 	                        data.accountList = accountList;
 	                    } else {
@@ -62195,7 +62195,7 @@ var StellarSdk =
 	                if (accountList.length === 0) {
 	                    return toBluebirdRes(data.currentSum);
 	                }
-	                return HDWallet._checkAccount(accountList, self._serverURL).then(function (respList) {
+	                return HDWallet._checkAccounts(accountList, self._serverURL).then(function (respList) {
 	                    if (respList === 0) {
 	                        return data.currentSum;
 	                    }
@@ -62429,29 +62429,22 @@ var StellarSdk =
 	                    accountList[l] = strEncode(self._version().accountId.str, derivedKey.publicKey);
 	                }
 
-	                return self._checkAccount(accountList, hdw._serverURL).then(function (respList) {
+	                return self._checkAccounts(accountList, hdw._serverURL).then(function (respList) {
 	                    if (respList === 0) return 0;
 
 	                    var res = self._indexSetting(respList, indexPair);
 	                    if (indexPair.f_w_m < temp) indexPair.f_w_m = temp;
 
-	                    switch (res) {
-	                        case true:
-	                            return 1;
-	                        case false:
-	                            {
-	                                _index += self._lookAhead();
-	                                _stopIndex = _index + self._lookAhead();
-	                                request();
-	                            }
-	                    }
+	                    _index += self._lookAhead();
+	                    _stopIndex = _index + self._lookAhead();
+	                    request();
 	                });
 	            }
 	            return request();
 	        }
 	    }, {
-	        key: "_checkAccount",
-	        value: function _checkAccount(request, url) {
+	        key: "_checkAccounts",
+	        value: function _checkAccounts(request, url) {
 	            if (request.length === 0) toBluebirdRej("Invalid request - ", request);
 	            var server = new _server.Server(url);
 	            return server.getBalances(request).then(function (response) {

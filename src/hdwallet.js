@@ -143,7 +143,7 @@ export class HDWallet {
             hdw.hdk = genMaster(seed, this._version().mpriv.byte);
             hdw.seed = seed;
         }
-        
+
         hdw.ver = this._version().mpriv.byte;
         return hdw.totalRefresh();
         // return this._setAllIndex(hdw);
@@ -166,7 +166,7 @@ export class HDWallet {
         return hdw.totalRefresh();
         // return this._setAllIndex(hdw);
     }
-    
+
     /**
      * Update all indexes of HDWallet.
      */
@@ -187,7 +187,7 @@ export class HDWallet {
         indexPair.indexingF_u = true;
 
         if (this.ver == HDWallet._version().mpriv.byte){
-            path = "m/1/";
+            path = "M/1/";
             let indexList = this.indexList.slice();
 
             return HDWallet._updateBranchIndexes("M/2/", this, indexList)
@@ -226,8 +226,8 @@ export class HDWallet {
         this.firstWithMoney = 0;
         this.indexList = [];
         return this.refresh();
-    }    
-    
+    }
+
     /**
      * Return Base32 encoded MasterPublicKey
      * @param path {number} or {string}
@@ -280,7 +280,7 @@ export class HDWallet {
                 return toBluebirdRes(data.currentSum);
             }
 
-            return HDWallet._checkAccount(accountList, self._serverURL)
+            return HDWallet._checkAccounts(accountList, self._serverURL)
                 .then(respList => {
                     if ((respList === 0) && (d < self.indexList.length)) {
                         _index = self.indexList[d];
@@ -302,7 +302,7 @@ export class HDWallet {
                             }
                         }
                     }
-                    
+
                     _index += HDWallet._lookAhead();
                     _stopIndex = HDWallet._min(_index + HDWallet._lookAhead(), HDWallet._maxIndex());
                     return findMoney(_index, _stopIndex);
@@ -341,7 +341,7 @@ export class HDWallet {
         }
         return StellarBase.encodeWithoutPad(ver, buffer);
     }
-    
+
     /**
      * Create and submit transaction
      * @param invoice {*[]} Array of pair {accountID, amount}
@@ -397,7 +397,7 @@ export class HDWallet {
                     });
             });
     }
-    
+
     /**
      * Makes a list for getting amount.
      * @param amount {number} Amount.
@@ -428,31 +428,31 @@ export class HDWallet {
                 data.addend.push(HDWallet._accountBalanceLimit());
             }
 
-            return HDWallet._checkAccount(accountList, self._serverURL)
-            .then(respList => {
-                if (respList === 0) {
-                    data.accountList = accountList;
+            return HDWallet._checkAccounts(accountList, self._serverURL)
+                .then(respList => {
+                    if (respList === 0) {
+                        data.accountList = accountList;
 
-                } else {
-                    data.accountList = [];
-                    for (let i = 0; i < respList.length; i++) {
-                        if (respList[i] === -1) {
-                            data.accountList.push(accountList[i]);
+                    } else {
+                        data.accountList = [];
+                        for (let i = 0; i < respList.length; i++) {
+                            if (respList[i] === -1) {
+                                data.accountList.push(accountList[i]);
+                            }
                         }
                     }
-                }
 
-                if (HDWallet._sumCollecting(data, list) === true){
-                    return list;
-                }
-                _index += HDWallet._lookAhead();
-                _stopIndex = HDWallet._min(_index + HDWallet._lookAhead(), HDWallet._maxIndex());
-                return makingList(_index, _stopIndex);
-            });
+                    if (HDWallet._sumCollecting(data, list) === true){
+                        return list;
+                    }
+                    _index += HDWallet._lookAhead();
+                    _stopIndex = HDWallet._min(_index + HDWallet._lookAhead(), HDWallet._maxIndex());
+                    return makingList(_index, _stopIndex);
+                });
         }
         return makingList(_index, _stopIndex);
     }
-    
+
     /**
      * Makes a list from all branches to make a payment of a given amount.
      * @param amount {number}
@@ -508,7 +508,7 @@ export class HDWallet {
             if (accountList.length === 0) {
                 return toBluebirdRes(data.currentSum);
             }
-            return HDWallet._checkAccount(accountList, self._serverURL)
+            return HDWallet._checkAccounts(accountList, self._serverURL)
                 .then(respList => {
                     if (respList === 0) {
                         return data.currentSum;
@@ -545,13 +545,13 @@ export class HDWallet {
         let _index = 0;
         let _stopIndex = this._branchAhead();
         let indexListLen = indexList.length;
-        
+
         function indexing(index, stopIndex) {
             if (indexListLen <= _index)
                 indexList.push(0);
 
             let indexPair = {f_w_m: indexList[index], f_u: indexList[index], indexingF_u: false};
-            
+
             return self._updateAddressIndexes(path + index + "/", hdw, indexPair)
                 .then(result => {
                     _index += 1;
@@ -590,28 +590,25 @@ export class HDWallet {
                 accountList[l] = strEncode(self._version().accountId.str, derivedKey.publicKey);
             }
 
-            return self._checkAccount(accountList, hdw._serverURL)
+            return self._checkAccounts(accountList, hdw._serverURL)
                 .then(respList => {
                     if (respList === 0)
                         return 0;
-                    
+
                     let res = self._indexSetting(respList, indexPair);
                     if (indexPair.f_w_m < temp)
                         indexPair.f_w_m = temp;
-                    
-                    switch (res){
-                        case  true:  return 1;
-                        case false:  {
-                            _index += self._lookAhead();
-                            _stopIndex = _index + self._lookAhead();
-                            request();
-                        }
-                    } });
+
+                    _index += self._lookAhead();
+                    _stopIndex = _index + self._lookAhead();
+                    request();
+
+                 });
         }
         return request();
     }
 
-    static _checkAccount(request, url) {
+    static _checkAccounts(request, url) {
         if (request.length === 0)
             toBluebirdRej("Invalid request - ", request);
         let server = new Server(url);
@@ -621,7 +618,7 @@ export class HDWallet {
                 if (assets.length === 0)
                     return 0;
                 let responseList = request.slice();
-                
+
                 assets.forEach( function(data) {
                     data.balances.forEach( function(account) {
                         let pos = request.indexOf(account.account_id);
@@ -645,7 +642,7 @@ export class HDWallet {
 
     static _indexSetting(accountStatus, indexPair) {
         let resp = false;
-        
+
         for (let index = 0; index < accountStatus.length; index++) {
             if (accountStatus[index] == -1) {
                 continue;
