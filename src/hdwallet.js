@@ -145,7 +145,8 @@ export class HDWallet {
         }
         
         hdw.ver = this._version().mpriv.byte;
-        return this._setAllIndex(hdw);
+        return hdw.totalRefresh();
+        // return this._setAllIndex(hdw);
     }
 
     /**
@@ -162,7 +163,8 @@ export class HDWallet {
         mpub._setPublicKey(rawKey.slice(32, 64));
         hdw.ver = this._version().mpub.byte;
         hdw.hdk = mpub;
-        return this._setAllIndex(hdw);
+        return hdw.totalRefresh();
+        // return this._setAllIndex(hdw);
     }
     
     /**
@@ -187,9 +189,9 @@ export class HDWallet {
         if (this.ver == HDWallet._version().mpriv.byte){
             path = "m/1/";
             let indexList = this.indexList.slice();
+
             return HDWallet._updateBranchIndexes("M/2/", this, indexList)
                 .then(list => {
-
                     this.indexList = list.slice();
                     return HDWallet._updateAddressIndexes(path, this, indexPair)
                         .then(result => {
@@ -222,7 +224,7 @@ export class HDWallet {
     totalRefresh() {
         this.firstUnused = 0;
         this.firstWithMoney = 0;
-        this.indexList = [0];
+        this.indexList = [];
         return this.refresh();
     }    
     
@@ -233,7 +235,7 @@ export class HDWallet {
      */
     getMPub(path) {
         if (typeof path == "number")
-            return this.hdk.getMasterPub("M/" + path);
+            return this.hdk.getMasterPub("M/2/" + path);
         if (typeof path == "string")
             return this.hdk.getMasterPub(path);
         else
@@ -245,7 +247,7 @@ export class HDWallet {
      * @return {string}
      */
     getMPublicNew() {
-        return this.GetMPub(this.indexList.length + 1);
+        return this.getMPub(this.indexList.length);
     }
 
     /**
@@ -538,83 +540,36 @@ export class HDWallet {
         return makingList(_index, _stopIndex);
     }
 
-    /**
-     * Setup indexes for all branches.
-     * @param hdw {HDWallet}
-     * @returns {HDWallet}
-     */
-    static _setAllIndex(hdw){
-        let path, self = this,
-            indexPair = {f_w_m: 0, f_u:  0, indexingF_u: true};
-
-        if (hdw.ver == this._version().mpriv.byte){
-            path = "m/1/";
-            let indexList = [];
-            indexList.push(0);
-            
-            return self._updateBranchIndexes("M/2/", hdw, indexList)
-                .then(list => {
-                    hdw.indexList = list.slice();
-                    
-                    return self._updateAddressIndexes(path, hdw, indexPair)
-                        .then(result => {
-                            if (indexPair.f_w_m !== -1)
-                                hdw.firstWithMoney = indexPair.f_w_m;
-                            else
-                                hdw.firstWithMoney = 0;
-                            hdw.firstUnused = indexPair.f_u;
-                    
-                            return hdw;
-                        });
-
-
-                });
-        } else if (hdw.ver == this._version().mpub.byte) {
-            path = "M/";
-            return self._updateAddressIndexes(path, hdw, indexPair)
-                .then(result => {
-                    if (indexPair.f_w_m !== -1)
-                        hdw.firstWithMoney = indexPair.f_w_m;
-                    else
-                        hdw.firstWithMoney = 0;
-                    hdw.firstUnused = indexPair.f_u;
-                    return hdw;
-                });
-        } else
-            return toBluebirdRej(new Error("Invalid ver"));
-    }
-
     static _updateBranchIndexes(path, hdw, indexList){
         let self = this;
         let _index = 0;
         let _stopIndex = this._branchAhead();
         let indexListLen = indexList.length;
-
+        
         function indexing(index, stopIndex) {
+            if (indexListLen <= _index)
+                indexList.push(0);
+
             let indexPair = {f_w_m: indexList[index], f_u: indexList[index], indexingF_u: false};
+            
             return self._updateAddressIndexes(path + index + "/", hdw, indexPair)
                 .then(result => {
-                    if ((result === 0) && (index < stopIndex)) {
-                        _index += 1;
-                        if (indexListLen <= _index)
-                            indexList.push(0);
+                    _index += 1;
+                    if(_index  >= stopIndex)
+                        return indexList.slice(0, indexList.length - self._branchAhead());
+
+                    if (result === 0)
                         return indexing(_index, _stopIndex);
-                    }
-                    else if ((result === 1) && (index < stopIndex)) {
-                        _stopIndex = self._min(index + self._branchAhead(), self._maxListLen());
-                        _index += 1;
 
-                        if ((indexPair.f_w_m !== -1)  && (indexList[index] <= indexPair.f_w_m))
-                            indexList[index] = indexPair.f_w_m;
-                        else if (indexList[index] <= indexPair.f_w_m)
-                            indexList[index] = 0;
+                    _stopIndex = self._min(_index + self._branchAhead(), self._maxListLen());
 
-                        if (indexListLen <= _index)
-                            indexList.push(0);
+                    if ((indexPair.f_w_m !== -1)  && (indexList[index] <= indexPair.f_w_m))
+                        indexList[index] = indexPair.f_w_m;
+                    else if (indexList[index] <= indexPair.f_w_m)
+                        indexList[index] = 0;
 
-                        return indexing(_index, _stopIndex);
-                    }
-                    return indexList.slice(0, indexList.length - self._branchAhead());
+                    return indexing(_index, _stopIndex);
+
                 });
         }
         return indexing(_index, _stopIndex);
@@ -637,12 +592,13 @@ export class HDWallet {
 
             return self._checkAccount(accountList, hdw._serverURL)
                 .then(respList => {
-
                     if (respList === 0)
                         return 0;
+                    
                     let res = self._indexSetting(respList, indexPair);
                     if (indexPair.f_w_m < temp)
                         indexPair.f_w_m = temp;
+                    
                     switch (res){
                         case  true:  return 1;
                         case false:  {
@@ -665,14 +621,13 @@ export class HDWallet {
                 if (assets.length === 0)
                     return 0;
                 let responseList = request.slice();
-
+                
                 assets.forEach( function(data) {
                     data.balances.forEach( function(account) {
                         let pos = request.indexOf(account.account_id);
 
                         if ( typeof responseList[pos] == "string")
                             responseList[pos] = [];
-
                         responseList[pos].push({
                             asset: data.asset.asset_code,
                             balance: parseInt(account.balance) });
@@ -690,11 +645,12 @@ export class HDWallet {
 
     static _indexSetting(accountStatus, indexPair) {
         let resp = false;
+        
         for (let index = 0; index < accountStatus.length; index++) {
             if (accountStatus[index] == -1) {
                 continue;
             }
-            if ((accountStatus[index][0].balance > 0) && (indexPair.f_w_m === -1)) {
+            if ((accountStatus[index][0].balance >= 0) && (indexPair.f_w_m === -1)) {
                 indexPair.f_w_m = index;
                 resp = true;
                 if (indexPair.indexingF_u === false) {

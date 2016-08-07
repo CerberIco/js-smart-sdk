@@ -190,7 +190,6 @@ export class Server {
             .accountId(accountId)
             .call()
             .then(function (res) {
-                console.log(res);
                 return new Account(accountId, res.sequence);
             });
     }

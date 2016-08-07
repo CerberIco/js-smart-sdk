@@ -33,17 +33,17 @@ var constSeed = [
         'despair lady remain chin shine tangle soldier today bliss weave mother pure witch attempt powerful master run honest drift struggle rose buy tell pack',
         'desert glance mock throne just await social warn sob fault stomach friend kingdom metal clear curve scale stole too tremble bee center moon lip' ],
     constSerWallet = [
-        "WDYATL2QUTE7PNY6RAVT3SNFTUT7ZWSFXDKHNGPWFWLXJ5NCMV5W5ZO3W44MV4ZCGWZBKTDP7Q6G4ZIXMFNQTCJT5GH3OYDTRZ6H2ZGTAAAAAAYAAAABEAAAAACAAAAAAUAAAAAQAAAAACYAAAAAQAAAAAAAA5MW",
-        "WCA2IS36YWTAGG47T42UDWT3MNSBCFTCSJQTQSK2EK66SJVC2UG24VNIBSRS6UIN2CPFRFXMSKO3SSJBRYPNBDLYZM4QYN4XFT7MV3V3AAAAAAIAAAAAUAAAAACQAAAAAEAAAAABAAAAAAYAAAAAGAAAAAFAAPTS",
-        "WC76UOC3QDBUVEWHPTQILGGETWKZJ3SYNS243LX6ODHC2C5GWNWDKU5XLAXOGGJV3TR63VG2DW4WULFYKTEPAJPA6ZANMI6W6TK6SXJZAAAAACQAAAABAAAAAABQAAAAB4AAAAADAAAAABQAAAAABEMJ",
-        "WCCHU46KLOBVDDKPF3RRZZJ47DYF7SALZG5C2KKMG7NBPZDDN62RONM5P6XZI33IKKZ4AL3TTXZYVPBKXITVXSJLH4G6OWVWKVRERKOBAAAAACQAAAABGAAAAAAQAAAAA4AAB5J2",
-        "WDMW72Y3SO2NXI43UFNRCMHAMDVBWNNAWWFRQLZSY4GQDALXV7TJ6OZGSRLOPM6VJ3AHXBESOS6DQBLBF6BPHAEC2W4KUNTTJCPCNLX4AAAAAAAAAAABGAAAAAEAAAAAAEAAAAAGAAAAAAIAAAAAKAAAAAEQAAAAAEAAAAAJAAAAABIAAAAAAP43",
-        "WBYZC43MT6RPQZJQFYEXFMRYIA64N4TM3TDETQH3GONXF37QNNJPWZKWUTZHVG3RCW5QSTVCXYR6UX3HI3V3R37CWIQIUYHTK62Q7B5LAAAAADAAAAAA2AAAAABAAAAABAAAAAAFAAAAA6LZ"
+        "WDYATL2QUTE7PNY6RAVT3SNFTUT7ZWSFXDKHNGPWFWLXJ5NCMV5W5ZO3W44MV4ZCGWZBKTDP7Q6G4ZIXMFNQTCJT5GH3OYDTRZ6H2ZGTAAAAAAAAAAAAAAAAAABAAAAACAAAAAAEAAAABGDB",
+        "WCA2IS36YWTAGG47T42UDWT3MNSBCFTCSJQTQSK2EK66SJVC2UG24VNIBSRS6UIN2CPFRFXMSKO3SSJBRYPNBDLYZM4QYN4XFT7MV3V3AAAAAAYAAAAAQAAAAAAABPDJ",
+        "WC76UOC3QDBUVEWHPTQILGGETWKZJ3SYNS243LX6ODHC2C5GWNWDKU5XLAXOGGJV3TR63VG2DW4WULFYKTEPAJPA6ZANMI6W6TK6SXJZAAAAAAAAAAAAAAAAAAWQAAAAAAAAAAAGAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAIAAAAAAAAAAAA4AAAAAAAAAAACIAAAAAAAAAAAAAAAAAAEAAAAAHAAAAACIAAAAAAAAAAAAAAAAAAAAAAAABAAAAABUAAAAAAAAAAABQAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAOAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAABEAAAAAAAAAAAAAAAAAAAAAAAAIQAAAAAAAAAAAAAAAAAAAAAAAA6AAAAAAAAKEW",
+        "WCCHU46KLOBVDDKPF3RRZZJ47DYF7SALZG5C2KKMG7NBPZDDN62RONM5P6XZI33IKKZ4AL3TTXZYVPBKXITVXSJLH4G6OWVWKVRERKOBAAAAACQAAAABGAAAAANQAAAAAAAAAAANAAAAAAAAAAAAAAAAAACQAAAAA4AAAAAGAAAAAAAAAAAAEAAAAAEAAAAAAAAAAAAAAAAAAEQAAAAAAAAAAAGAAAAAAAAAAAAJAAAAABQAAAAA2AAAAAGQAAAAAAAAAAAAAAAAAAAAAAAACAAAAAHAAAAAAEAAAAAMAAAAARZ5",
+        "WDMW72Y3SO2NXI43UFNRCMHAMDVBWNNAWWFRQLZSY4GQDALXV7TJ6OZGSRLOPM6VJ3AHXBESOS6DQBLBF6BPHAEC2W4KUNTTJCPCNLX4AAAAADIAAAAA4AAAAADAAAAAAAAAAAAHAAAAAAAAAAAAAAAAAAEAAAAAAEAABOY7",
+        "WBYZC43MT6RPQZJQFYEXFMRYIA64N4TM3TDETQH3GONXF37QNNJPWZKWUTZHVG3RCW5QSTVCXYR6UX3HI3V3R37CWIQIUYHTK62Q7B5LAAAAAAAAAAAAAAAAAAGAAAAAAIAAAAAFAAAAAAAAAAAAMAAAAAAAAAAAAYAAAAAAAAAAAAAAAAABGAAAAAAAAAAACMAAAAACAAAAAYH5"
     ];
 
 function bufferCompare(buf1, buf2) {
     for (let l = 0; l < 31; l++)
-        if (buf1[l] != buf2[l])
+        if (buf1[l] !== buf2[l])
             return false;
     
     return true ;
@@ -52,7 +52,7 @@ function bufferCompare(buf1, buf2) {
 function checkList(list, constList) {
     // let res = 0;
     for (let i = 0; i < list.length; i++) {
-        if (((list.key == constList.key) && (list.amount == constList.amount)) !== true)
+        if ((list.key !== constList.key) || (list.amount !== constList.amount))
             return false;
             // res = res + 1;
     }
@@ -65,21 +65,20 @@ function makeResponseList(request) {
     // console.log("-------------------------------");
     let response =
     {
-        "assets": [
-            {
-                "asset": {  "asset_type": "credit_alphanum4",
-                                "asset_code": "EUAH",
-                                "asset_issuer": "GAWIB7ETYGSWULO4VB7D6S42YLPGIC7TY7Y2SSJKVOTMQXV5TILYWBUA" },
-                "balances": []
-
-            }
-        ]
+        "assets": [ ]
     };
+    
+    let result = {
+        "asset": {  "asset_type": "credit_alphanum4",
+            "asset_code": "EUAH",
+            "asset_issuer": "GAWIB7ETYGSWULO4VB7D6S42YLPGIC7TY7Y2SSJKVOTMQXV5TILYWBUA" },
+        "balances": []
 
+    }; 
     for (let i = 0; i < request.length; i++) {
         let id = StellarBase.decodeCheck("accountId", request[i]);
 
-        let isValid = (id.readUInt8(0) & 3) === 0,
+        let isValid = (id.readUInt8(0) & 31) === 0,
             hasBalance = (id.readUInt8(1) & 1) > 0,
             balance = 0;
 
@@ -87,14 +86,16 @@ function makeResponseList(request) {
             balance = (id.readUInt8(0) ^ 5) + 8;
 
         if (isValid) {
-            response.assets[0].balances.push({
+            result.balances.push({
                 "account_id": request[i],
-                "balance": balance,
+                "balance": balance.toString(10),
                 "limit": "922337203685.4775807"
             });
         }
     }
-    // console.log("response - ", response.assets[0].balances);
+    if(result.balances.length !== 0)
+       response.assets[0] = result; 
+    
     return Promise.resolve(response);
 }
 //
@@ -102,7 +103,7 @@ function makeResponseList(request) {
 
 describe("HDWallet Test. ", function () {
 
-    describe('HDWallet. Set by Mnemonic', function () {
+    describe('Set by Mnemonic: ', function () {
         let phrase = [];
         for (let i = 0; i < 3; i++)
             phrase[i] = constPhrase[i];
@@ -113,11 +114,11 @@ describe("HDWallet Test. ", function () {
             sinon.stub(StellarSdk.Server.prototype, "getBalances", makeResponseList);
             done();
         });
-    
-        it("Seed in HDW compare with const", function (done) {
+
+        it("seed in HDW compare with const", function (done) {
             this.timeout(300000);
             let promise = Promise.resolve();
-    
+
             phrase.forEach(function (mnemonic, i) {
                 let p = () => {
                     return HDWallet.setByPhrase(mnemonic, url)
@@ -128,7 +129,7 @@ describe("HDWallet Test. ", function () {
                 };
                 promise = promise.then(p)
             });
-    
+
             promise.then(() => {
                 StellarSdk.Server.prototype.getBalances.restore();
                 done()
@@ -137,26 +138,25 @@ describe("HDWallet Test. ", function () {
                 done(err)
             });
         });
-    
-        it("Serialize/deserialize of HDWallet correctly", function (done) {
+
+        it("serialize/deserialize of HDWallet correctly", function (done) {
             this.timeout(300000);
             let promise = Promise.resolve();
-    
+
             phrase.forEach(function (mnemonic) {
                 let p = () => {
                     return HDWallet.setByPhrase(mnemonic, url)
                         .then(hdw => {
                             let strOriginal = hdw.serialize();
-                            return HDWallet.setByStrKey(strOriginal, url);
-                        })
-                        .then(deserialized => {
-                            let str = deserialized.serialize();
-                            expect(str).to.equal(strOriginal);
-                            return Promise.resolve();
+                            return HDWallet.setByStrKey(strOriginal, url)
+                                .then(deserialized => {
+                                    let str = deserialized.serialize();
+                                    expect(str).to.equal(strOriginal);
+                                    return Promise.resolve();
+                                });
                         });
                 };
                 promise = promise.then(p)
-    
             });
             promise.then(() => {
                 StellarSdk.Server.prototype.getBalances.restore();
@@ -165,9 +165,9 @@ describe("HDWallet Test. ", function () {
                 StellarSdk.Server.prototype.getBalances.restore();
                 done(err)
             });
-    
+
         });
-    
+
         it("Setting indexes and refresh of HDWallet", function (done) {
             this.timeout(300000);
             let promise = Promise.resolve();
@@ -176,7 +176,7 @@ describe("HDWallet Test. ", function () {
                     return HDWallet.setByPhrase(mnemonic, url)
                         .then(hdw => {
                             let serWallet = hdw.serialize();
-                            // console.log(serWallet);
+                            // console.log("ser wallet", serWallet);
                             expect(serWallet).to.equal(constSerWallet[i]);
                             return hdw.refresh();
                         })
@@ -188,7 +188,7 @@ describe("HDWallet Test. ", function () {
                 };
                 promise = promise.then(p)
             });
-    
+
             promise.then(() => {
                 StellarSdk.Server.prototype.getBalances.restore();
                 done()
@@ -208,19 +208,20 @@ describe("HDWallet Test. ", function () {
             let hdk = HDKey.fromMasterSeed(seed[i]);
             mpub[i] = hdk.getMasterPub("_");
         }
-    
+
         beforeEach(function (done) {
+            this.timeout(300000);
             // console.log('Before called');
             sinon.stub(StellarSdk.Server.prototype, "getBalances", makeResponseList);
             done();
         });
-    
-    
+
+
         it("create HDWallet by seed correctly", function (done) {
-    
+
             this.timeout(300000);
             let promises = [];
-    
+
             seed.forEach((currentSeed) => {
                 let p =  HDWallet.setBySeed(currentSeed, url)
                     .then(hdw => {
@@ -229,7 +230,7 @@ describe("HDWallet Test. ", function () {
                     });
                 promises.push(p)
             });
-    
+
             Promise.all(promises)
                 .then(result => {
                     result.forEach(function (value) {
@@ -237,7 +238,7 @@ describe("HDWallet Test. ", function () {
                             return false;
                     });
                     return true;
-    
+
                 })
                 .then(res => {
                     expect(res).to.equal(true);
@@ -249,11 +250,11 @@ describe("HDWallet Test. ", function () {
                     done(err)
                 });
         });
-    
+
         it("create HDWallet by mpub correctly", function (done) {
             this.timeout(300000);
             let promises = [];
-    
+
             mpub.forEach(function (mPublic, i) {
                 let p = HDWallet.setByStrKey(mPublic, url)
                     .then(hdw => {
@@ -261,11 +262,11 @@ describe("HDWallet Test. ", function () {
                         expect(pub).to.equal(mpub[i]);
                         return Promise.resolve(true);
                     });
-    
+
                 promises.push(p);
-    
+
             });
-    
+
             Promise.all(promises)
                 .then(result => {
                     result.forEach(function (value) {
@@ -279,8 +280,8 @@ describe("HDWallet Test. ", function () {
                     done(err)
                 });
         });
-    
-    
+
+
     });
 
     describe("Tx Test. ", function () {
@@ -420,7 +421,7 @@ describe("HDWallet Test. ", function () {
             sinon.stub(StellarSdk.Server.prototype, "getBalances", makeResponseList);
             done();
         });
-        
+
         it("Making correct Invoice/Withdrawal list", function (done) {
             this.timeout(300000);
             let promise = Promise.resolve();
@@ -431,11 +432,11 @@ describe("HDWallet Test. ", function () {
                         .then(hdw => {
                             return hdw.makeInvoiceList(amount[i], asset)
                                 .then(list => {
-                                    console.log("invoice ", amount[i], " | ", list);
+                                    // console.log("invoice ", amount[i], " | ", list);
                                     // console.log(" ");
-    
+
                                     let constL = listConst.invoice[i];
-    
+
                                     expect(checkList(list, constL)).to.equal(true);
                                     return hdw;
                                 });
@@ -443,11 +444,11 @@ describe("HDWallet Test. ", function () {
                         .then(hdw => {
                             return hdw.makeWithdrawalList(amount[i], asset)
                                 .then(list => {
-                                    console.log("withdrawal ", amount[i], " | ", list);
+                                    // console.log("withdrawal ", amount[i], " | ", list);
                                     // console.log(" ");
-    
+
                                     let constL = listConst.invoice[i];
-    
+
                                     expect(checkList(list, constL)).to.equal(true);
                                     return Promise.resolve();
                                 });
@@ -468,7 +469,7 @@ describe("HDWallet Test. ", function () {
                     done(err)
             });
         });
-    
+
     });
 
 
