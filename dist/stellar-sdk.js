@@ -61858,58 +61858,56 @@ var StellarSdk =
 	    }
 
 	    _createClass(HDWallet, [{
-	        key: "refresh",
+	        key: "totalRefresh",
 
-	        // return this._setAllIndex(hdw);
+	        /**
+	         * Setup all indexes in 0 and make Refresh of HDW.
+	         *
+	         */
+	        value: function totalRefresh() {
+	            this.firstUnused = 0;
+	            this.firstWithMoney = 0;
+	            this.indexList = [];
+	            return this.refresh();
+	        }
 
 	        /**
 	         * Update all indexes of HDWallet.
 	         */
+	    }, {
+	        key: "refresh",
 	        value: function refresh() {
 	            var _this = this;
 
 	            var path = undefined,
 	                indexPair = {};
 
-	            if (this.firstWithMoney !== -1) indexPair.f_w_m = this.firstWithMoney;else indexPair.f_w_m = 0;
-
-	            if (this.firstUnused !== -1) indexPair.f_u = this.firstUnused;else indexPair.f_u = 0;
-
+	            indexPair.f_w_m = this.firstWithMoney;
+	            indexPair.f_u = this.firstUnused;
 	            indexPair.indexingF_u = true;
 
 	            if (this.ver == HDWallet._version().mpriv.byte) {
 	                path = "M/1/";
-	                var indexList = this.indexList.slice();
 
-	                return HDWallet._updateBranchIndexes("M/2/", this, indexList).then(function (list) {
+	                return HDWallet._updateIndexesInOtherBranches("M/2/", this, this.indexList).then(function (list) {
 	                    _this.indexList = list.slice();
-	                    return HDWallet._updateAddressIndexes(path, _this, indexPair).then(function (result) {
-	                        if (_this.firstWithMoney < indexPair.f_w_m) _this.firstWithMoney = indexPair.f_w_m;
-	                        if (_this.firstUnused < indexPair.f_u) _this.firstUnused = indexPair.f_u;
+
+	                    return HDWallet._updateIndexesInOwnBranch(path, _this, indexPair).then(function (resultPair) {
+	                        _this.firstWithMoney = resultPair.f_w_m;
+	                        _this.firstUnused = resultPair.f_u;
+
 	                        return _this;
 	                    });
 	                });
 	            } else if (this.ver == HDWallet._version().mpub.byte) {
 	                path = "M/";
-	                return HDWallet._updateAddressIndexes(path, this, indexPair).then(function (result) {
-	                    if (_this.firstWithMoney < indexPair.f_w_m) _this.firstWithMoney = indexPair.f_w_m;
-	                    if (_this.firstUnused < indexPair.f_u) _this.firstUnused = indexPair.f_u;
+	                return HDWallet._updateIndexesInOwnBranch(path, this, indexPair).then(function (resultPair) {
+	                    _this.firstWithMoney = resultPair.f_w_m;
+	                    _this.firstUnused = resultPair.f_u;
+
 	                    return _this;
 	                });
 	            } else return toBluebirdRej(new Error("Version of HDWallet mismatch"));
-	        }
-
-	        /**
-	         * Setup all indexes in 0 and make Refresh of HDW.
-	         *
-	         */
-	    }, {
-	        key: "totalRefresh",
-	        value: function totalRefresh() {
-	            this.firstUnused = 0;
-	            this.firstWithMoney = 0;
-	            this.indexList = [];
-	            return this.refresh();
 	        }
 
 	        /**
@@ -61945,47 +61943,46 @@ var StellarSdk =
 	            var path = ["M/1/", "M/2/"],
 	                self = this,
 	                data = {},
-	                d = 0;
+	                otherBranchIndex = 0;
 
 	            data.asset = asset.code;
 	            data.balance = 0;
 	            data.path = path[0];
 
 	            var _index = this.firstWithMoney,
-	                _stopIndex = this.firstUnused;
+	                _stopIndex = _index + HDWallet._lookAhead();
 
 	            function findMoney(index, stopIndex) {
 	                var accountList = [];
-
 	                for (var i = index, l = 0; i < stopIndex; i++, l++) {
 	                    var derivedKey = self.hdk.derive(data.path + i);
 	                    accountList[l] = strEncode(HDWallet._version().accountId.str, derivedKey.publicKey);
 	                }
 
-	                if (accountList.length === 0) {
-	                    return toBluebirdRes(data.currentSum);
-	                }
-
 	                return HDWallet._checkAccounts(accountList, self._serverURL).then(function (respList) {
-	                    if (respList === 0 && d < self.indexList.length) {
-	                        _index = self.indexList[d];
-	                        _stopIndex = HDWallet._min(_index + HDWallet._lookAhead(), HDWallet._maxIndex());
-
-	                        data.path = path[1] + d + "/";
-	                        d++;
-	                        return findMoney(_index, _stopIndex);
-	                    } else if (respList === 0 && d >= self.indexList.length) return data.balance;
+	                    var currentBalance = data.balance;
 
 	                    for (var i = 0; i < respList.length; i++) {
-	                        if (respList[i] !== -1) {
-	                            for (var j = 0; j < respList[i].length; j++) {
-	                                if (respList[i][j].asset == data.asset) {
-	                                    data.balance += respList[i][j].balance;
-	                                }
-	                            }
+	                        if (respList[i][0].isValid === false) continue;
+
+	                        for (var j = 0; j < respList[i].length; j++) {
+	                            if (respList[i][j].asset == data.asset) currentBalance += respList[i][j].balance;
 	                        }
 	                    }
 
+	                    if (currentBalance === data.balance) {
+	                        if (otherBranchIndex < self.indexList.length) {
+	                            _index = self.indexList[otherBranchIndex];
+	                            _stopIndex = HDWallet._min(_index + HDWallet._lookAhead(), HDWallet._maxIndex());
+	                            data.path = path[1] + otherBranchIndex + "/";
+	                            otherBranchIndex++;
+
+	                            return findMoney(_index, _stopIndex);
+	                        }
+	                        if (otherBranchIndex >= self.indexList.length) return currentBalance;
+	                    }
+
+	                    data.balance = currentBalance;
 	                    _index += HDWallet._lookAhead();
 	                    _stopIndex = HDWallet._min(_index + HDWallet._lookAhead(), HDWallet._maxIndex());
 	                    return findMoney(_index, _stopIndex);
@@ -62028,7 +62025,7 @@ var StellarSdk =
 	        }
 
 	        /**
-	         * Create and submit transaction
+	         * Create and submit transaction.
 	         * @param invoice {*[]} Array of pair {accountID, amount}
 	         * @param asset {Asset} XDR.Asset
 	         * @returns {Promise.<TResult>|*}
@@ -62043,7 +62040,7 @@ var StellarSdk =
 	        }
 
 	        /**
-	         * Create transaction
+	         * Create transaction envelope.
 	         * @param invoice {*[]} Array of pair {accountID, amount}
 	         * @param asset {Asset} XDR.Asset
 	         * @returns {Promise.<TResult>|*} txEnvelope
@@ -62059,13 +62056,14 @@ var StellarSdk =
 	            }
 
 	            return self.makeWithdrawalList(amount, asset).then(function (withdrawal) {
-	                var paymentList = HDWallet._makePaymentList(invoice, withdrawal);
+	                var paymentList = HDWallet._makePaymentListOpt(invoice, withdrawal);
 	                var keypair = _stellarBase.HDKey.getHDKeyForSigning(paymentList[0].source),
 	                    server = new _server.Server(self._serverURL);
 
 	                return server.loadAccount(keypair.accountId()).then(function (account) {
 	                    var transaction = new StellarSdk.TransactionBuilder(account);
 	                    for (var i = 0; i < paymentList.length; i++) {
+	                        console.log(paymentList[i].amount, "==", paymentList[i].amount.toString());
 	                        transaction.addOperation(StellarSdk.Operation.payment({
 	                            destination: paymentList[i].dest,
 	                            source: _stellarBase.HDKey.getHDKeyForSigning(paymentList[i].source).accountId(),
@@ -62094,6 +62092,7 @@ var StellarSdk =
 	            var path = undefined,
 	                self = this,
 	                data = {},
+	                invoiceList = [],
 	                _index = this.firstUnused,
 	                _stopIndex = HDWallet._lookAhead() + this.firstUnused;
 	            data.amount = amount;
@@ -62106,8 +62105,8 @@ var StellarSdk =
 	            } else throw new Error("Version of HDWallet mismatch");
 
 	            function makingList(index, stopIndex) {
-	                var accountList = [],
-	                    list = [];
+	                var accountList = [];
+
 	                data.addend = [];
 	                for (var i = index, l = 0; i < stopIndex; i++, l++) {
 	                    var derivedKey = self.hdk.derive(path + i);
@@ -62116,20 +62115,16 @@ var StellarSdk =
 	                }
 
 	                return HDWallet._checkAccounts(accountList, self._serverURL).then(function (respList) {
-	                    if (respList === 0) {
-	                        data.accountList = accountList;
-	                    } else {
-	                        data.accountList = [];
-	                        for (var i = 0; i < respList.length; i++) {
-	                            if (respList[i] === -1) {
-	                                data.accountList.push(accountList[i]);
-	                            }
+	                    data.accountList = [];
+
+	                    for (var i = 0; i < respList.length; i++) {
+	                        if (respList[i][0].isValid === false) {
+	                            data.accountList.push(accountList[i]);
 	                        }
 	                    }
 
-	                    if (HDWallet._sumCollecting(data, list) === true) {
-	                        return list;
-	                    }
+	                    if (HDWallet._sumCollecting(data, invoiceList) === true) return invoiceList;
+
 	                    _index += HDWallet._lookAhead();
 	                    _stopIndex = HDWallet._min(_index + HDWallet._lookAhead(), HDWallet._maxIndex());
 	                    return makingList(_index, _stopIndex);
@@ -62148,10 +62143,10 @@ var StellarSdk =
 	        key: "makeWithdrawalList",
 	        value: function makeWithdrawalList(amount, asset) {
 	            var path = ["m/1/", "m/2/"],
-	                list = [],
+	                withdrawalList = [],
 	                self = this,
 	                data = {},
-	                d = 0;
+	                otherBranchIndex = 0;
 	            data.amount = amount;
 	            data.asset = asset.code;
 	            data.currentSum = 0;
@@ -62159,18 +62154,17 @@ var StellarSdk =
 	            data.f_w_m = this.firstWithMoney;
 
 	            function completeList(_data) {
-	                if (d >= self.indexList.length) return toBluebirdRej(new Error("Not enough money!"));
-	                return self._findMoneyInBranch(list, _data).then(function (result) {
-	                    if (result === amount) {
-	                        return list;
-	                    }
 
-	                    data.f_w_m = self.indexList[d];
-	                    data.path = path[1] + d + "/";
-	                    data.amount = amount - result;
-	                    d++;
+	                if (otherBranchIndex > self.indexList.length + 2) return toBluebirdRej(new Error("Not enough money!"));
 
-	                    return self._findMoneyInBranch(list, data);
+	                return self._findMoneyInBranch(withdrawalList, _data).then(function (result) {
+	                    if (result == amount) return withdrawalList;
+
+	                    data.f_w_m = self.indexList[otherBranchIndex];
+	                    data.path = path[1] + otherBranchIndex + "/";
+	                    otherBranchIndex++;
+
+	                    return completeList(data);
 	                });
 	            }
 
@@ -62178,7 +62172,7 @@ var StellarSdk =
 	        }
 	    }, {
 	        key: "_findMoneyInBranch",
-	        value: function _findMoneyInBranch(list, data) {
+	        value: function _findMoneyInBranch(withdrawalList, data) {
 	            var self = this,
 	                _index = data.f_w_m,
 	                _stopIndex = HDWallet._lookAhead() + _index;
@@ -62192,30 +62186,26 @@ var StellarSdk =
 	                    accountList[l] = strEncode(HDWallet._version().accountId.str, derivedKey.publicKey);
 	                    privateKeyList[l] = strEncode(HDWallet._version().mpriv.str, derivedKey.privateKey);
 	                }
-	                if (accountList.length === 0) {
-	                    return toBluebirdRes(data.currentSum);
-	                }
+
 	                return HDWallet._checkAccounts(accountList, self._serverURL).then(function (respList) {
-	                    if (respList === 0) {
-	                        return data.currentSum;
-	                    }
 	                    data.accountList = [];
 	                    data.addend = [];
 
 	                    for (var i = 0; i < respList.length; i++) {
-	                        if (respList[i] !== -1) {
-	                            for (var j = 0; j < respList[i].length; j++) {
-	                                if (respList[i][j].asset == data.asset && respList[i][j].balance !== 0) {
-	                                    data.accountList.push(privateKeyList[i]);
-	                                    data.addend.push(respList[i][j].balance);
-	                                }
+	                        if (respList[i][0].isValid === false) continue;
+
+	                        for (var j = 0; j < respList[i].length; j++) {
+	                            if (respList[i][j].asset == data.asset && respList[i][j].balance !== 0) {
+	                                data.accountList.push(privateKeyList[i]);
+	                                data.addend.push(respList[i][j].balance);
 	                            }
 	                        }
 	                    }
 
-	                    if (HDWallet._sumCollecting(data, list) === true) {
-	                        return data.currentSum;
-	                    }
+	                    if (data.accountList.length === 0) return data.currentSum;
+
+	                    if (HDWallet._sumCollecting(data, withdrawalList) === true) return data.currentSum;
+
 	                    _index += HDWallet._lookAhead();
 	                    _stopIndex = HDWallet._min(_index + HDWallet._lookAhead(), HDWallet._maxIndex());
 	                    return makingList(_index, _stopIndex);
@@ -62271,7 +62261,7 @@ var StellarSdk =
 	    }, {
 	        key: "setByPhrase",
 	        value: function setByPhrase(str, url) {
-	            return this.setBySeed(decodeMnemo(str), url);
+	            return this.setByRawSeed(decodeMnemo(str), url);
 	        }
 
 	        /**
@@ -62292,7 +62282,7 @@ var StellarSdk =
 	                case "S":
 	                    {
 	                        var key = strDecode(this._version().seed.str, str);
-	                        return this.setBySeed(key, url);
+	                        return this.setByRawSeed(key, url);
 	                    }
 	                case "W":
 	                    {
@@ -62350,8 +62340,8 @@ var StellarSdk =
 	         * @returns {HDWallet}
 	         */
 	    }, {
-	        key: "setBySeed",
-	        value: function setBySeed(seed, url) {
+	        key: "setByRawSeed",
+	        value: function setByRawSeed(seed, url) {
 	            var hdw = new HDWallet(url);
 	            if (typeof seed == "string") {
 	                hdw.hdk = genMaster(new Buffer(seed, "hex"), this._version().mpriv.byte);
@@ -62363,7 +62353,6 @@ var StellarSdk =
 
 	            hdw.ver = this._version().mpriv.byte;
 	            return hdw.totalRefresh();
-	            // return this._setAllIndex(hdw);
 	        }
 
 	        /**
@@ -62385,8 +62374,8 @@ var StellarSdk =
 	            return hdw.totalRefresh();
 	        }
 	    }, {
-	        key: "_updateBranchIndexes",
-	        value: function _updateBranchIndexes(path, hdw, indexList) {
+	        key: "_updateIndexesInOtherBranches",
+	        value: function _updateIndexesInOtherBranches(path, hdw, indexList) {
 	            var self = this;
 	            var _index = 0;
 	            var _stopIndex = this._branchAhead();
@@ -62397,15 +62386,16 @@ var StellarSdk =
 
 	                var indexPair = { f_w_m: indexList[index], f_u: indexList[index], indexingF_u: false };
 
-	                return self._updateAddressIndexes(path + index + "/", hdw, indexPair).then(function (result) {
+	                return self._updateIndexesInOwnBranch(path + index + "/", hdw, indexPair).then(function (resultIndexPair) {
 	                    _index += 1;
+
 	                    if (_index >= stopIndex) return indexList.slice(0, indexList.length - self._branchAhead());
 
-	                    if (result === 0) return indexing(_index, _stopIndex);
+	                    if (resultIndexPair.f_u === 0) return indexing(_index, _stopIndex);
+
+	                    indexList[index] = resultIndexPair.f_w_m;
 
 	                    _stopIndex = self._min(_index + self._branchAhead(), self._maxListLen());
-
-	                    if (indexPair.f_w_m !== -1 && indexList[index] <= indexPair.f_w_m) indexList[index] = indexPair.f_w_m;else if (indexList[index] <= indexPair.f_w_m) indexList[index] = 0;
 
 	                    return indexing(_index, _stopIndex);
 	                });
@@ -62413,31 +62403,49 @@ var StellarSdk =
 	            return indexing(_index, _stopIndex);
 	        }
 	    }, {
-	        key: "_updateAddressIndexes",
-	        value: function _updateAddressIndexes(branchPath, hdw, indexPair) {
-	            var _index = this._min(indexPair.f_w_m, indexPair.f_u);
+	        key: "_updateIndexesInOwnBranch",
+	        value: function _updateIndexesInOwnBranch(branchPath, hdw, indexPairOld) {
+	            var _index = this._min(indexPairOld.f_w_m, indexPairOld.f_u);
 	            var _stopIndex = this._lookAhead() + _index;
 	            var self = this;
-	            var temp = indexPair.f_w_m;
+	            var firstWithMoneyOld = indexPairOld.f_w_m;
+	            var indexPair = {};
+
 	            indexPair.f_w_m = -1;
 	            indexPair.f_u = 0;
+	            indexPair.indexingF_u = true;
 
 	            function request() {
 	                var accountList = [];
-	                for (var index = _index, l = 0; index < _stopIndex; index++, l++) {
-	                    var derivedKey = hdw.hdk.derive(branchPath + index);
+	                for (var i = _index, l = 0; i < _stopIndex; i++, l++) {
+	                    var derivedKey = hdw.hdk.derive(branchPath + i);
 	                    accountList[l] = strEncode(self._version().accountId.str, derivedKey.publicKey);
 	                }
 
 	                return self._checkAccounts(accountList, hdw._serverURL).then(function (respList) {
-	                    if (respList === 0) return 0;
 
-	                    var res = self._indexSetting(respList, indexPair);
-	                    if (indexPair.f_w_m < temp) indexPair.f_w_m = temp;
+	                    for (var i = 0; i < respList.length; i++) {
+	                        if (respList[i][0].isValid === false) {
+	                            continue;
+	                        }
+	                        if (respList[i][0].balance > 0 && indexPair.f_w_m === -1) {
+	                            indexPair.f_w_m = i;
+
+	                            if (indexPair.indexingF_u === false) {
+	                                indexPair.f_u = -1;
+	                                return indexPair;
+	                            }
+	                        }
+	                        indexPair.f_u = _index + i + 1;
+	                    }
+
+	                    if (indexPair.f_w_m < firstWithMoneyOld) indexPair.f_w_m = firstWithMoneyOld;
+
+	                    if (indexPair.f_u <= _index) return indexPair;
 
 	                    _index += self._lookAhead();
 	                    _stopIndex = _index + self._lookAhead();
-	                    request();
+	                    return request();
 	                });
 	            }
 	            return request();
@@ -62449,7 +62457,6 @@ var StellarSdk =
 	            var server = new _server.Server(url);
 	            return server.getBalances(request).then(function (response) {
 	                var assets = response.assets;
-	                if (assets.length === 0) return 0;
 	                var responseList = request.slice();
 
 	                assets.forEach(function (data) {
@@ -62458,6 +62465,7 @@ var StellarSdk =
 
 	                        if (typeof responseList[pos] == "string") responseList[pos] = [];
 	                        responseList[pos].push({
+	                            isValid: true,
 	                            asset: data.asset.asset_code,
 	                            balance: parseInt(account.balance) });
 	                    });
@@ -62465,32 +62473,12 @@ var StellarSdk =
 
 	                for (var i = 0; i < responseList.length; i++) {
 	                    if (typeof responseList[i] == "string") {
-	                        responseList[i] = -1;
+	                        responseList[i] = [{ isValid: false,
+	                            balance: 0 }];
 	                    }
 	                }
 	                return responseList;
 	            });
-	        }
-	    }, {
-	        key: "_indexSetting",
-	        value: function _indexSetting(accountStatus, indexPair) {
-	            var resp = false;
-
-	            for (var index = 0; index < accountStatus.length; index++) {
-	                if (accountStatus[index] == -1) {
-	                    continue;
-	                }
-	                if (accountStatus[index][0].balance >= 0 && indexPair.f_w_m === -1) {
-	                    indexPair.f_w_m = index;
-	                    resp = true;
-	                    if (indexPair.indexingF_u === false) {
-	                        indexPair.f_u = -1;
-	                        return resp;
-	                    }
-	                }
-	                indexPair.f_u = index + 1;
-	            }
-	            return resp;
 	        }
 	    }, {
 	        key: "_sumCollecting",
