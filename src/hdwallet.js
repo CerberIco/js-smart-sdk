@@ -3,10 +3,14 @@ import * as StellarBase from "stellar-base";
 import * as StellarSdk from './index';
 import {HDKey} from "stellar-base";
 import {Server} from "./server";
+import BigNumber from 'bignumber.js';
+import isString from 'lodash/isString';
 
 let toBluebirdRes = require("bluebird").resolve;
 let toBluebirdRej = require("bluebird").reject;
 
+const ONE = 10000000;
+const MAX_INT64 = '9223372036854775807';
 
 let decodeMnemo = HDKey.getSeedFromMnemonic,
     strDecode   = StellarBase.decodeCheck,
@@ -45,12 +49,11 @@ export class HDWallet {
             pubWallet: {byte: 0xc8, str: "pubWallet"}}; // "Z" in base32
     }
 
-    static _accountBalanceLimit() { return 500; }
+    static _accountBalanceLimit() { return new BigNumber("500").mul(ONE); }
     static _branchAhead() { return 5; }
     static _lookAhead() { return 20; }
     static _maxIndex() { return 2147000000; }
     static _maxListLen() { return 50; }
-
 
     /**
      * Decode mnemonic and create HDWallet by seed
@@ -126,7 +129,6 @@ export class HDWallet {
         }
         return toBluebirdRes(hdw);
     }
-
 
     /**
      * Create HDWallet from Seed
@@ -241,7 +243,7 @@ export class HDWallet {
     /**
      * Calculate total balance of wallet for getting asset.
      * @param asset {Asset}
-     * @returns {number} balance
+     * @returns {string} balance
      */
     getBalance(asset) {
         let path = ["M/1/", "M/2/"],
@@ -250,7 +252,7 @@ export class HDWallet {
             otherBranchIndex = 0;
 
         data.asset = asset.code;
-        data.balance = 0;
+        data.balance = new BigNumber(0);
         data.path = path[0];
 
         let _index = this.firstWithMoney,
@@ -273,11 +275,11 @@ export class HDWallet {
                         
                         for (let j = 0; j < respList[i].length; j++) {
                             if (respList[i][j].asset == data.asset)
-                                currentBalance += respList[i][j].balance;
+                                currentBalance = currentBalance.plus(respList[i][j].balance);
                         }
                     }
 
-                    if (currentBalance === data.balance) {
+                    if (currentBalance.equals(data.balance)) {
                         if(otherBranchIndex < self.indexList.length) {
                             _index = self.indexList[otherBranchIndex];
                             _stopIndex = HDWallet._min(_index + HDWallet._lookAhead(), HDWallet._maxIndex());
@@ -287,7 +289,7 @@ export class HDWallet {
                             return findMoney(_index, _stopIndex);
                         }
                         if (otherBranchIndex >= self.indexList.length)
-                            return currentBalance;
+                            return HDWallet._fromAmount(currentBalance);
                     }
                     
                     data.balance = currentBalance;
@@ -351,17 +353,17 @@ export class HDWallet {
      * @returns {Promise.<TResult>|*} txEnvelope
      */
     createTx(invoice, asset) {
-        let amount = 0;
+        let amount = new BigNumber(0);
         let self = this;
         for (let i = 0; i < invoice.length; i++) {
             if (StellarBase.Keypair.isValidPublicKey(invoice[i].key) === false)
                 throw new Error("Invalid public key in invoice list");
-            amount += invoice[i].amount;
+            amount = amount.plus(invoice[i].amount);
         }
 
         return self.makeWithdrawalList(amount, asset)
             .then(withdrawal => {
-                let paymentList = HDWallet._makePaymentListOpt(invoice, withdrawal);
+                let paymentList = HDWallet._makePaymentList(invoice, withdrawal);
                 let keypair = HDKey.getHDKeyForSigning(paymentList[0].source),
                     server = new Server(self._serverURL);
 
@@ -369,12 +371,11 @@ export class HDWallet {
                     .then(account => {
                         let transaction = new StellarSdk.TransactionBuilder(account);
                         for (let i = 0; i < paymentList.length; i++) {
-                            console.log(paymentList[i].amount, "==", paymentList[i].amount.toString());
                             transaction.addOperation(StellarSdk.Operation.payment({
                                 destination: paymentList[i].dest,
                                 source: HDKey.getHDKeyForSigning(paymentList[i].source).accountId(),
                                 asset: asset,
-                                amount: paymentList[i].amount.toString()
+                                amount: HDWallet._fromAmount(paymentList[i].amount)
                             }));
                         }
                         let txEnvelope = transaction.build();
@@ -389,7 +390,7 @@ export class HDWallet {
 
     /**
      * Makes a list for getting amount.
-     * @param amount {number} Amount.
+     * @param amount {string} Amount.
      * @returns {*[]} Array of pair {accountID, amount}.
      */
     makeInvoiceList(amount){
@@ -398,8 +399,8 @@ export class HDWallet {
             invoiceList = [],
             _index = this.firstUnused,
             _stopIndex = HDWallet._lookAhead() + this.firstUnused;
-        data.amount = amount;
-        data.currentSum = 0;
+        data.amount = HDWallet._toAmount(amount);
+        data.currentSum = new BigNumber(0);
 
         if (self.ver == HDWallet._version().mpriv.byte){
             path = "M/1/";
@@ -411,11 +412,11 @@ export class HDWallet {
         function makingList(index, stopIndex) {
             let accountList = [];
 
-            data.addend = [];
+            data.balance = [];
             for (let i = index, l = 0; i < stopIndex; i++, l++){
                 let derivedKey = self.hdk.derive(path + i);
                 accountList[l]  = derivedKey.accountId();
-                data.addend.push(HDWallet._accountBalanceLimit());
+                data.balance.push(HDWallet._accountBalanceLimit());
             }
 
             return HDWallet._checkAccounts(accountList, self._serverURL)
@@ -451,18 +452,18 @@ export class HDWallet {
             data = {}, otherBranchIndex = 0;
         data.amount = amount;
         data.asset = asset.code;
-        data.currentSum = 0;
+        data.currentSum = new BigNumber(0);
         data.path = path[0];
         data.f_w_m = this.firstWithMoney;
         
         function completeList(_data) {
 
-            if (otherBranchIndex > self.indexList.length + 2)
+            if (otherBranchIndex > self.indexList.length)
                 return toBluebirdRej(new Error("Not enough money!"));
 
             return self._findMoneyInBranch(withdrawalList, _data)
                 .then(result => {
-                    if (result == amount)
+                    if (result.equals(data.amount))
                         return withdrawalList;
 
                     data.f_w_m = self.indexList[otherBranchIndex];
@@ -490,20 +491,23 @@ export class HDWallet {
                 accountList[l] = strEncode(HDWallet._version().accountId.str, derivedKey.publicKey);
                 privateKeyList[l] = strEncode(HDWallet._version().mpriv.str, derivedKey.privateKey);
             }
-            
+
             return HDWallet._checkAccounts(accountList, self._serverURL)
                 .then(respList => {
                     data.accountList = [];
-                    data.addend = [];
+                    data.balance = [];
 
                     for (let i = 0; i < respList.length; i++) {
                         if (respList[i][0].isValid === false) 
                             continue;
                         
                         for (let j = 0; j < respList[i].length; j++) {
-                            if ((respList[i][j].asset == data.asset) && (respList[i][j].balance !== 0)) {
+                            if ((respList[i][j].asset == data.asset) && !(respList[i][j].balance.isZero())) {
                                 data.accountList.push(privateKeyList[i]);
-                                data.addend.push(respList[i][j].balance);
+                                if(respList[i][j].balance.gt(HDWallet._accountBalanceLimit()))
+                                    data.balance.push(HDWallet._accountBalanceLimit());
+                                else
+                                    data.balance.push(respList[i][j].balance);
                             }
                         }
                     }
@@ -560,12 +564,12 @@ export class HDWallet {
         let _index = this._min(indexPairOld.f_w_m, indexPairOld.f_u);
         let _stopIndex = this._lookAhead() + _index;
         let self = this;
-        let firstWithMoneyOld = indexPairOld.f_w_m;
+        let f_w_mFound = false;
         let indexPair = {};
 
-        indexPair.f_w_m = -1;
+        indexPair.f_w_m = _index;
         indexPair.f_u = 0;
-        indexPair.indexingF_u = true;
+        indexPair.indexingF_u = indexPairOld.indexingF_u;
 
         function request() {
             let accountList = [];
@@ -576,14 +580,13 @@ export class HDWallet {
 
             return self._checkAccounts(accountList, hdw._serverURL)
                 .then(respList => {
-
                     for (let i = 0; i < respList.length; i++) {
-                        if (respList[i][0].isValid === false) {
+                        if (respList[i][0].isValid === false)
                             continue;
-                        }
-                        if ((respList[i][0].balance > 0) && (indexPair.f_w_m === -1)) {
-                            indexPair.f_w_m = i;
 
+                        if ( !(respList[i][0].balance.isZero()) && (f_w_mFound === false)) {
+                            indexPair.f_w_m = _index + i;
+                            f_w_mFound = true;
                             if (indexPair.indexingF_u === false) {
                                 indexPair.f_u = -1;
                                 return indexPair;
@@ -591,17 +594,14 @@ export class HDWallet {
                         }
                         indexPair.f_u = _index + i + 1;
                     }
-                    
-                    if (indexPair.f_w_m < firstWithMoneyOld)
-                        indexPair.f_w_m = firstWithMoneyOld;
 
-                    if (indexPair.f_u <= _index)
+                    if (indexPair.f_u <= _index) {
                         return indexPair;
-                    
+                    }
+
                     _index += self._lookAhead();
                     _stopIndex = _index + self._lookAhead();
                     return request();
-
                  });
         }
         return request();
@@ -609,7 +609,7 @@ export class HDWallet {
 
     static _checkAccounts(request, url) {
         if (request.length === 0)
-            toBluebirdRej("Invalid request - ", request);
+            toBluebirdRej("Invalid request");
         let server = new Server(url);
         return server.getBalances(request)
             .then(response => {
@@ -625,33 +625,31 @@ export class HDWallet {
                         responseList[pos].push({
                             isValid: true,
                             asset: data.asset.asset_code,
-                            balance: parseInt(account.balance) });
+                            balance: HDWallet._toAmount(account.balance) });
                     });
                 });
 
                 for (let i = 0; i < responseList.length; i++ ){
                     if ( typeof responseList[i] == "string"){
-                        responseList[i] = [ {   isValid: false,
-                                balance: 0 } ];
+                        responseList[i] = [ {   isValid: false } ];
                     }
                 }
                 return responseList;
             });
     }
 
-
     static _sumCollecting ( data, list ) {
         for (let i = 0; i < data.accountList.length; i++) {
-            if (data.currentSum + data.addend[i] < data.amount) {
-                data.currentSum += data.addend[i];
+            if (data.currentSum.plus(data.balance[i]).lessThan(data.amount) ) {
+                data.currentSum = data.currentSum.plus(data.balance[i]);
                 list.push({
                     key: data.accountList[i],
-                    amount: data.addend[i]
+                    amount: data.balance[i]
                 });
             }
-            else if (data.currentSum + data.addend[i] >= data.amount) {
-                let delta = data.amount - data.currentSum;
-                data.currentSum += delta;
+            else if (data.currentSum.plus(data.balance[i]).gte(data.amount)) {
+                let delta = data.amount.minus(data.currentSum);
+                data.currentSum = data.currentSum.plus(delta);
                 list.push({
                     key: data.accountList[i],
                     amount: delta
@@ -662,67 +660,23 @@ export class HDWallet {
         return false;
     }
 
-    static _makePaymentList(invoice, withdrawal){
-        let opList = [],
-            sentAmount = 0,
-            receivedAmount = 0,
-            sourceRest = 0,
-            destRest = 0;
-
-        for (let wI = 0, iI = 0; wI < withdrawal.length;) {
-            let toSend;
-            if (sourceRest === 0)
-                sourceRest = withdrawal[wI].amount;
-
-            if (destRest === 0)
-                toSend = sourceRest;
-            else if (destRest > sourceRest)
-                toSend = sourceRest;
-            else if (destRest <= sourceRest)
-                toSend = destRest;
-
-            sentAmount += toSend;
-            opList.push({ dest: invoice[iI].key,
-                source: withdrawal[wI].key,
-                amount: toSend });
-
-            destRest = invoice[iI].amount - (toSend + receivedAmount);
-            receivedAmount += toSend;
-
-            if (sentAmount == withdrawal[wI].amount) {
-                sentAmount = 0;
-                sourceRest = 0;
-                wI++;
-            } else
-                sourceRest = withdrawal[wI].amount - sentAmount;
-
-            if (receivedAmount == invoice[iI].amount) {
-                receivedAmount = 0;
-                destRest = 0;
-                iI++;
-            } else
-                destRest = invoice[iI].amount - receivedAmount;
-        }
-        return opList;
-    }
-
-    static _makePaymentListOpt(invoice, withdrawal) {
+    static _makePaymentList(invoice, withdrawal) {
         let opList = [];
 
         for (let wI = 0, iI = 0; wI < withdrawal.length;) {
-            let op_amount = this._min(withdrawal[wI].amount, invoice[iI].amount);
+            let op_amount = this._minAmount(withdrawal[wI].amount, invoice[iI].amount);
 
             opList.push({ dest: invoice[iI].key,
                 source: withdrawal[wI].key,
                 amount: op_amount });
 
-            withdrawal[wI].amount -= op_amount;
-            invoice[iI].amount -= op_amount;
+            withdrawal[wI].amount = withdrawal[wI].amount.minus(op_amount);
+            invoice[iI].amount = invoice[iI].amount.minus(op_amount);
 
-            if (withdrawal[wI].amount === 0 )
+            if (withdrawal[wI].amount.isZero() )
                 wI++;
 
-            if (invoice[iI].amount === 0)
+            if (invoice[iI].amount.isZero())
                 iI++;
         }
 
@@ -736,4 +690,61 @@ export class HDWallet {
             return b;
     }
 
+    static _minAmount(a, b) {
+        if (a.lessThan(b))
+            return a;
+        else
+            return b;
+    }
+
+    static _isValidAmount(value) {
+        if (!isString(value)) {
+            return false;
+        }
+
+        let amount;
+        try {
+            amount = new BigNumber(value);
+        } catch (e) {
+            return false;
+        }
+
+        // < 0
+        if (amount.isNegative()) {
+            return false;
+        }
+
+        // > Max value
+        if (amount.times(ONE).greaterThan(new BigNumber(MAX_INT64).toString())) {
+            return false;
+        }
+
+        // Decimal places (max 7)
+        if (amount.decimalPlaces() > 7) {
+            return false;
+        }
+
+        // Infinity
+        if (!amount.isFinite()) {
+            return false;
+        }
+
+        // NaN
+        if (amount.isNaN()) {
+            return false;
+        }
+
+        return true;
+    }
+
+    static _toAmount(value) {
+        if (this._isValidAmount(value))
+            return new BigNumber(value).mul(ONE);
+        throw new Error("Invalid amount - " + value + "!");
+    }
+
+    static _fromAmount(value) {
+        return new BigNumber(value).div(ONE).toString();
+    }
+    
 }
