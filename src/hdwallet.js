@@ -390,54 +390,44 @@ export class HDWallet {
 
     /**
      * Makes a list for getting amount.
-     * @param amount {string} Amount.
+     * @param strAmount {string} Amount.
      * @returns {*[]} Array of pair {accountID, amount}.
      */
-    makeInvoiceList(amount){
-        let path, self = this,
-            data = {},
+    makeInvoiceList(strAmount){
+        let path,
             invoiceList = [],
-            _index = this.firstUnused,
-            _stopIndex = HDWallet._lookAhead() + this.firstUnused;
-        data.amount = HDWallet._toAmount(amount);
-        data.currentSum = new BigNumber(0);
+            amount = HDWallet._toAmount(strAmount),
+            index = this.firstUnused;
 
-        if (self.ver == HDWallet._version().mpriv.byte){
+        let numberOfAddresses = amount.divToInt(HDWallet._accountBalanceLimit()).toNumber();
+        let piece = amount.mod(HDWallet._accountBalanceLimit());
+        let stopIndex = numberOfAddresses + index;
+
+        if (this.ver == HDWallet._version().mpriv.byte)
             path = "M/1/";
-        } else if (self.ver == HDWallet._version().mpub.byte) {
+        else if (this.ver == HDWallet._version().mpub.byte)
             path = "M/";
-        } else
+        else
             throw new Error("Version of HDWallet mismatch");
 
-        function makingList(index, stopIndex) {
-            let accountList = [];
-
-            data.balance = [];
-            for (let i = index, l = 0; i < stopIndex; i++, l++){
-                let derivedKey = self.hdk.derive(path + i);
-                accountList[l]  = derivedKey.accountId();
-                data.balance.push(HDWallet._accountBalanceLimit());
-            }
-
-            return HDWallet._checkAccounts(accountList, self._serverURL)
-                .then(respList => {
-                    data.accountList = [];
-
-                    for (let i = 0; i < respList.length; i++) {
-                        if (respList[i][0].isValid === false) {
-                            data.accountList.push(accountList[i]);
-                        }
-                    }
-                    
-                    if (HDWallet._sumCollecting(data, invoiceList) === true)
-                        return invoiceList;
-                    
-                    _index += HDWallet._lookAhead();
-                    _stopIndex = HDWallet._min(_index + HDWallet._lookAhead(), HDWallet._maxIndex());
-                    return makingList(_index, _stopIndex);
-                });
+        while (index < stopIndex) {
+            let derivedKey = this.hdk.derive(path + index);
+            invoiceList.push({
+                key: derivedKey.accountId(),
+                amount: HDWallet._accountBalanceLimit()
+            });
+            index++;
         }
-        return makingList(_index, _stopIndex);
+
+        if(!(piece.isZero())) {
+            let derivedKey = this.hdk.derive(path + index);
+            invoiceList.push({
+                key: derivedKey.accountId(),
+                amount: piece
+            });
+        }
+
+        return invoiceList;
     }
 
     /**
