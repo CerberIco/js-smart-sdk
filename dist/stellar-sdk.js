@@ -59858,7 +59858,7 @@ var StellarSdk =
 
 	        /**
 	         * Makes a list from all branches to make a payment of a given amount.
-	         * @param amount {Big}
+	         * @param amount {BigNumber}
 	         * @param asset {Asset}
 	         * @returns {*[]} Array of pair {accountID, amount}.
 	         */
@@ -59867,7 +59867,7 @@ var StellarSdk =
 	        value: function makeWithdrawalList(amount, asset) {
 	            if (this.ver !== HDWallet._version().mpriv.byte) return toBluebirdRej(new Error("Version of HDWallet mismatch"));
 
-	            var path = [HDWallet._path().owh["private"], HDWallet._path().others["private"]],
+	            var path = [HDWallet._path().own["private"], HDWallet._path().others["private"]],
 	                withdrawalList = [],
 	                self = this,
 	                data = {},

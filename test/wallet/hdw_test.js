@@ -33,13 +33,12 @@ var constSeed = [
         'despair lady remain chin shine tangle soldier today bliss weave mother pure witch attempt powerful master run honest drift struggle rose buy tell pack',
         'desert glance mock throne just await social warn sob fault stomach friend kingdom metal clear curve scale stole too tremble bee center moon lip' ],
     constSerWallet = [
-        "WDYATL2QUTE7PNY6RAVT3SNFTUT7ZWSFXDKHNGPWFWLXJ5NCMV5W5ZO3W44MV4ZCGWZBKTDP7Q6G4ZIXMFNQTCJT5GH3OYDTRZ6H2ZGTAAAAAAAAAAAAAAAAAABAAAAAFMAAAAAAAAAAAGR3",
-        "WCA2IS36YWTAGG47T42UDWT3MNSBCFTCSJQTQSK2EK66SJVC2UG24VNIBSRS6UIN2CPFRFXMSKO3SSJBRYPNBDLYZM4QYN4XFT7MV3V3AAAAAAYAAAABUAAAAAAAA6HY",
-        "WC76UOC3QDBUVEWHPTQILGGETWKZJ3SYNS243LX6ODHC2C5GWNWDKU5XLAXOGGJV3TR63VG2DW4WULFYKTEPAJPA6ZANMI6W6TK6SXJZAAAAAAAAAAAAAAAAAAWQAAAAAAAAAAAGAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAIAAAAAAAAAAAA4AAAAAAAAAAACIAAAAAAAAAAAAAAAAAAEAAAAAHAAAAADEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAOAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABEAAAAAAAAAAAAAAAAAAAAAAAAIQAAAAAAAAAAAAAAAAAAAAAAAB2AAAAAAABZDR",
-        "WCCHU46KLOBVDDKPF3RRZZJ47DYF7SALZG5C2KKMG7NBPZDDN62RONM5P6XZI33IKKZ4AL3TTXZYVPBKXITVXSJLH4G6OWVWKVRERKOBAAAAACQAAAACGAAAAANQAAAAAAAAAAANAAAAAAAAAAAAAAAAAAOAAAAAEAAAAAAGAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAEQAAAAAAAAAAAGAAAAAAAAAAAAJAAAAABQAAAAA2AAAAAQQAAAAAAAAAAAAAAAAAAAAAAAACAAAAAHAAAAAAAAAAABDAAAABNZT",
-        "WDMW72Y3SO2NXI43UFNRCMHAMDVBWNNAWWFRQLZSY4GQDALXV7TJ6OZGSRLOPM6VJ3AHXBESOS6DQBLBF6BPHAEC2W4KUNTTJCPCNLX4AAAAADIAAAAD2AAAAADAAAAAAAAAAAAHAAAAAAAAAAAAAAAAAAYQAAAAAEAAACCL",
-        "WBYZC43MT6RPQZJQFYEXFMRYIA64N4TM3TDETQH3GONXF37QNNJPWZKWUTZHVG3RCW5QSTVCXYR6UX3HI3V3R37CWIQIUYHTK62Q7B5LAAAAAAAAAAAAAAAAAAGAAAAABAAAAAAFAAAAAAAAAAABKAAAAAAAAAAAAYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAXAAAABGKJ"
-
+        "WDYATL2QUTE7PNY6RAVT3SNFTUT7ZWSFXDKHNGPWFWLXJ5NCMV5W5ZO3W44MV4ZCGWZBKTDP7Q6G4ZIXMFNQTCJT5GH3OYDTRZ6H2ZGTAAAAAAAAAAAAAAAAAABAAAAAAIAAAABLAAAAAAAAAAAAAC2T",
+        "WCA2IS36YWTAGG47T42UDWT3MNSBCFTCSJQTQSK2EK66SJVC2UG24VNIBSRS6UIN2CPFRFXMSKO3SSJBRYPNBDLYZM4QYN4XFT7MV3V3AAAAAAYAAAABUAAAAAAAAAAAAAAABTP2",
+        "WC76UOC3QDBUVEWHPTQILGGETWKZJ3SYNS243LX6ODHC2C5GWNWDKU5XLAXOGGJV3TR63VG2DW4WULFYKTEPAJPA6ZANMI6W6TK6SXJZAAAAAAAAAAAAAAAAAAWQAAAAFUAAAAAAAAAAABQAAAAAAAAAAAAAAAAAAAAAAAAEAAAAACAAAAAAAAAAAAHAAAAAAAAAAAASAAAAAAAAAAAAAAAAAABAAAAABYAAAAAZAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAADQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJAAAAAAAAAAAAAAAAAAAAAAAACEAAAAAAAAAAAAAAAAAAAAAAAAOQAAAAAAAABJCJ",
+        "WCCHU46KLOBVDDKPF3RRZZJ47DYF7SALZG5C2KKMG7NBPZDDN62RONM5P6XZI33IKKZ4AL3TTXZYVPBKXITVXSJLH4G6OWVWKVRERKOBAAAAACQAAAACGAAAAANQAAAADMAAAAAAAAAAADIAAAAAAAAAAAAAAAAADQAAAABAAAAAABQAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAABEAAAAAAAAAAABQAAAAAAAAAAACIAAAAAMAAAAAGQAAAAEEAAAAAAAAAAAAAAAAAAAAAAAAAQAAAABYAAAAAAAAAAAIYAAAAAB7RS",
+        "WDMW72Y3SO2NXI43UFNRCMHAMDVBWNNAWWFRQLZSY4GQDALXV7TJ6OZGSRLOPM6VJ3AHXBESOS6DQBLBF6BPHAEC2W4KUNTTJCPCNLX4AAAAADIAAAAD2AAAAADAAAAAAYAAAAAAAAAAABYAAAAAAAAAAAAAAAAAGEAAAAABAAAABUOE",
+        "WBYZC43MT6RPQZJQFYEXFMRYIA64N4TM3TDETQH3GONXF37QNNJPWZKWUTZHVG3RCW5QSTVCXYR6UX3HI3V3R37CWIQIUYHTK62Q7B5LAAAAAAAAAAAAAAAAAAGAAAAABQAAAAAIAAAAABIAAAAAAAAAAAKQAAAAAAAAAAAGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFYAAAAABRMP"
     ];
 
 function bufferCompare(buf1, buf2) {
@@ -106,7 +105,7 @@ describe("HDWallet Test. ", function () {
 
     describe('Set by Mnemonic: ', function () {
         let phrase = [];
-        for (let i = 0; i < 2; i++)
+        for (let i = 0; i < 6; i++)
             phrase[i] = constPhrase[i];
             // phrase[i] = HDKey.getMnemonic();
     
@@ -169,307 +168,330 @@ describe("HDWallet Test. ", function () {
         
         });
     
-    //     it("Setting indexes and refresh of HDWallet", function (done) {
-    //         this.timeout(300000);
-    //         let promise = Promise.resolve();
-    //         phrase.forEach(function (mnemonic, i) {
-    //             let p = () => {
-    //                 return HDWallet.setByPhrase(mnemonic, url)
-    //                     .then(hdw => {
-    //                         let serWallet = hdw.serialize();
-    //                         console.log("ser wallet", serWallet);
-    //                         expect(serWallet).to.equal(constSerWallet[i]);
-    //                         return hdw.refresh();
-    //                     })
-    //                     .then(hdw => {
-    //                         let serWallet = hdw.serialize();
-    //                         expect(serWallet).to.equal(constSerWallet[i]);
-    //                         return Promise.resolve();
-    //                     });
-    //             };
-    //             promise = promise.then(p)
-    //         });
-    //
-    //         promise.then(() => {
-    //             StellarSdk.Server.prototype.getBalances.restore();
-    //             done()
-    //         }).catch(err => {
-    //             StellarSdk.Server.prototype.getBalances.restore();
-    //             done(err)
-    //         });
-    //     });
-    //
-    // });
-
-    // describe('HDWallet. SetByStrKey', function () {
-    //     let seed = [],
-    //         mpub = [];
-    //     for (let i = 0; i < 3; i++) {
-    //         seed[i] = new Buffer(constSeed[i], "hex");
-    //         let hdk = HDKey.fromMasterSeed(seed[i]);
-    //         mpub[i] = hdk.getMasterPub("_");
-    //     }
-    //
-    //     beforeEach(function (done) {
-    //         this.timeout(300000);
-    //         // console.log('Before called');
-    //         sinon.stub(StellarSdk.Server.prototype, "getBalances", makeResponseList);
-    //         done();
-    //     });
-    //
-    //
-    //     it("create HDWallet by seed correctly", function (done) {
-    //
-    //         this.timeout(300000);
-    //         let promises = [];
-    //
-    //         seed.forEach((currentSeed) => {
-    //             let p =  HDWallet.setByRawSeed(currentSeed, url)
-    //                 .then(hdw => {
-    //                     expect(bufferCompare(hdw.seed, currentSeed)).to.equal(true);
-    //                     return Promise.resolve(true);
-    //                 });
-    //             promises.push(p)
-    //         });
-    //
-    //         Promise.all(promises)
-    //             .then(result => {
-    //                 result.forEach(function (value) {
-    //                     if (value !== true)
-    //                         return false;
-    //                 });
-    //                 return true;
-    //
-    //             })
-    //             .then(res => {
-    //                 expect(res).to.equal(true);
-    //                 StellarSdk.Server.prototype.getBalances.restore();
-    //                 done();
-    //             })
-    //             .catch(err => {
-    //                 StellarSdk.Server.prototype.getBalances.restore();
-    //                 done(err)
-    //             });
-    //     });
-    //
-    //     it("create HDWallet by mpub correctly", function (done) {
-    //         this.timeout(300000);
-    //         let promises = [];
-    //
-    //         mpub.forEach(function (mPublic, i) {
-    //             let p = HDWallet.setByStrKey(mPublic, url)
-    //                 .then(hdw => {
-    //                     let pub = hdw.hdk.getMasterPub("_");
-    //                     expect(pub).to.equal(mpub[i]);
-    //                     return Promise.resolve(true);
-    //                 });
-    //
-    //             promises.push(p);
-    //
-    //         });
-    //
-    //         Promise.all(promises)
-    //             .then(result => {
-    //                 result.forEach(function (value) {
-    //                     expect(value).to.equal(true);
-    //                 });
-    //                 StellarSdk.Server.prototype.getBalances.restore();
-    //                 done();
-    //             })
-    //             .catch(err => {
-    //                 StellarSdk.Server.prototype.getBalances.restore();
-    //                 done(err)
-    //             });
-    //     });
-    //
-    //
+        it("Setting indexes and refresh of HDWallet", function (done) {
+            this.timeout(300000);
+            let promise = Promise.resolve();
+            phrase.forEach(function (mnemonic, i) {
+                let p = () => {
+                    return HDWallet.setByPhrase(mnemonic, url)
+                        .then(hdw => {
+                            let serWallet = hdw.serialize();
+                            // console.log("ser wallet", serWallet);
+                            expect(serWallet).to.equal(constSerWallet[i]);
+                            return hdw.refresh();
+                        })
+                        .then(hdw => {
+                            let serWallet = hdw.serialize();
+                            expect(serWallet).to.equal(constSerWallet[i]);
+                            return Promise.resolve();
+                        });
+                };
+                promise = promise.then(p)
+            });
+    
+            promise.then(() => {
+                StellarSdk.Server.prototype.getBalances.restore();
+                done()
+            }).catch(err => {
+                StellarSdk.Server.prototype.getBalances.restore();
+                done(err)
+            });
+        });
+    
     });
 
-    // describe("Tx Test. ", function () {
-    //     let testPhrase = [
-    //         'answer possess fix slowly happy hum character simply country suddenly grand teach hurt dim too concern ring cigarette score deep awaken thought stab save',
-    //         'steel practice erase gentle mutter entire final demon unseen cell beyond bright music exist patient storm whole river bullet fact find buy catch history',
-    //         'paper master apologize fantasy treasure open mold bite fix dim dim innocence chest broken peer stand drove tremble replace mourn blink milk check sorry',
-    //         'present movement creature deal crush pay creek surely chase shadow angry sorry wipe dress bottle bench couch job then goose blood horizon sister climb'
-    //     ];
-    //     let amount = ["2248", "939", "642", "1190" ];
-    //
-    //     let listConst = {
-    //         invoice: [
-    //             [ { key: 'GDWZL6NAURO35JIDF7G776F74AX6LNGKVJKXF6IGQV6RNXE3TBDU4ZVG',
-    //                 amount: "500" },
-    //                 { key: 'GBL3YOG3RZ4JGFWN6ZFRTVKJ3WFRI4NWWVMFNEJF3SYD322SXY4KB6FE',
-    //                     amount: "500" },
-    //                 { key: 'GAE4SZVZWBN4S4JI4XDMBKNDLWTQCG55C7YZRJGU5LM4XH4RR3FINFZN',
-    //                     amount: "500" },
-    //                 { key: 'GDLB735ID7XY6BMH5K3U5KX5IBKGCKMDZIZEC2FGPAJMGAXTZNYFUKPE',
-    //                     amount: "500" },
-    //                 { key: 'GAP53X4AK7X5TH66QJM5KBLGJ7N3HLBQMRTF3TO3VZX5HCSNGQQBAPTL',
-    //                     amount: "248" } ],
-    //
-    //             [ { key: 'GBU3NSGDRNKMDE37F4MNJKCF2ZJGY3B4KOXQ5RGPEKFDLZT3CLLZ572P',
-    //                 amount: "500" },
-    //                 { key: 'GCP2KNDM4RZA4UVYEDEHMZCGIRNGOCFXSOD2DNQNZLF6HS6OMX4K4I4L',
-    //                     amount: "439" } ],
-    //
-    //             [ { key: 'GDKSLFNNNHIKZOP42S2Y5I2KYCRMVAG7DDM67NFME6POL5OJFQQ5XH25',
-    //                 amount: "500" },
-    //                 { key: 'GAVNIXWJTD3U6IOFPWUK6YMAHHYAR3HUSXDBKFDE6WQTZHXRB4HAFDC5',
-    //                     amount: "142" } ],
-    //
-    //             [ { key: 'GCB6BC3ZL4ZYOU6KVAP5ZZGP3N4QOLQDCX5LSKYCVQDDBP32XC335RSP',
-    //                 amount: "500" },
-    //                 { key: 'GBA7WEHQUAI75VO6I42QJDBL6UY2MV2HUTLFD5BZVREVSQDGBE4FZWVX',
-    //                     amount: "500" },
-    //                 { key: 'GBRQF3JLVRPUVYF22P27U6RLGYSGAHOKISJ75FWKZR3AVZHW3GRDA5UY',
-    //                     amount: "190" } ]
-    //         ],
-    //
-    //         withdrawal: [
-    //             [ { key: 'MA4HB457YJAXC7GVJUA3RB65LK66SOD43VNVDEH2XU5KLEQVFL5F332D',
-    //                 amount: "105" },
-    //                 { key: 'MDYJWRE7UXT7QUHXXA7BHEPPJ2TGRVNIDWRIFMLH22ODIFEKIWCGBUAQ',
-    //                     amount: "81" },
-    //                 { key: 'MDEGLHC56OREPCABXTMSWX4MT6ZLHPPGHEPRNEXMMVNKIMOFWHTWHB26',
-    //                     amount: "65" },
-    //                 { key: 'MC4IVGK5K6FNPE474GMDTJXLAXPMSO2IKYWEBY74SMJU2NPR7OIWGFD7',
-    //                     amount: "37" },
-    //                 { key: 'MD4GDLS2LANRYTPCHLQ2CBVTCO4GP6MGEVXLT34G24SF77ES3PRWIJKK',
-    //                     amount: "17" },
-    //                 { key: 'MDELA7LTE56MEOCZIOZEXWYMMUAXMHOSPJEY2QQ66EU77VENCYHGES4E',
-    //                     amount: "177" },
-    //                 { key: 'MB4CW6VDVTFMWNY6T5HWW2YCFM6LG237BGJBCR4LLFOORBWJLREGJEOU',
-    //                     amount: "53" },
-    //                 { key: 'MAQIHOI5JK2OXV2F24IZ23GLACHY4UHGIZKRCVL5MSRBM5URGUBV5OKK',
-    //                     amount: "109" },
-    //                 { key: 'MCMNB5UOGOCUKLINPQDXPWX7DHBBBJZTBJZYLBOTVE36MZQFTRRWHPZ6',
-    //                     amount: "109" },
-    //                 { key: 'MBIN4IYDPRJFHVKINOCWIS5NNCISAQFPRDYJDDIMI4JGRYKP5SGGDRKW',
-    //                     amount: "85" },
-    //                 { key: 'MDQOX4YUQEFCXXVYXBKM37ADXZJPWJNR2W3Z3NTAX7FEX2HTKE3WB33C',
-    //                     amount: "93" },
-    //                 { key: 'MA4ODK2JBDDQN227C7WDW6PJNGDUU37HNY2WJKUNHE52VQZ6VHVWFS3F',
-    //                     amount: "69" },
-    //                 { key: 'MCAPNXOZTMT77TOIQ4PKDYPFTNTZRYLJNT4SCU4FHWFCZJL7O4ZF4LGP',
-    //                     amount: "165" },
-    //                 { key: 'MAQDAIVXGULTLJF4UXWCPZKCGOUSHCWRPE6MRWMFJ7WRNAU57IVGH2FO',
-    //                     amount: "177" },
-    //                 { key: 'MDEAXVJANSE65XKCVYHRQG2NNXONZGAB62N2QEE6XSRJDMMDVLMGC6X6',
-    //                     amount: "185" },
-    //                 { key: 'MAUF6ZOBV7SQYSYCZGVHNALSO6YP3XVEO32UPJWE6VN3XDHYBOHF5I3D',
-    //                     amount: "249" },
-    //                 { key: 'MBMPMUACWESITXICY2BUSK3NIIMAPCG3JUIK2D4PA4CWYZXHYMVWBDCY',
-    //                     amount: "181" },
-    //                 { key: 'MDICMYBSWF22OEUBGMW3GMIDFHIMEXVUSZ7HH55QCG5O35GGNYOV4R3K',
-    //                     amount: "189" },
-    //                 { key: 'MBUNTWKTOFFGAQNGNOBFJ6LTXLFHZV7JCYRRF2S5FKV5LCRFIJAWE6T7',
-    //                     amount: "102" } ],
-    //
-    //             [ { key: 'MCYO2WK2HZNK6OQB4FA47F7OC2L5JGIN34DID6RFWPC4TOTX23BGTCW5',
-    //                 amount: "93" },
-    //                 { key: 'MAENCPLTW5VQWXWUDBTARDT6IQQBC65OZMV2THU5DRYYR6EJF7IGUW4H',
-    //                     amount: "101" },
-    //                 { key: 'MBUM732XISICORUD3Z6JRGZ5CBHNXHUMS4VMKOE2AQRZVBXE7KJWWGZF',
-    //                     amount: "205" },
-    //                 { key: 'MCUB7FLQ42YAQS757WIZMMDP3WLHQ6AFRAKNES2KQEWMK4XQUEKG4NJY',
-    //                     amount: "133" },
-    //                 { key: 'MDUC7SIIUXO3LDQLU3GTOFRZPYD62LJ4ROV5A3KB3Z3VLGX6EGRGWU3P',
-    //                     amount: "77" },
-    //                 { key: 'MCEIEM6IG25L3MXP4OPWSI6VLFQJUE7RLA5RDNIU2AWIKMPXCNGWRTH2',
-    //                     amount: "137" },
-    //                 { key: 'MDAJCROHVOAKWYSQD2FOKEF75VZSZCXMYYR4KVGGPPC7F2BTJWWG4NUY',
-    //                     amount: "101" },
-    //                 { key: 'MAEM4HBJFB3J4632GF2NU4GSMM4UJ33UC3QE4ZBZZZJRHFZZM7RWP6Q3',
-    //                     amount: "92" } ],
-    //
-    //
-    //             [ { key: 'MAQH6QZIJ46IRCHWKOM5QJAWM7BF2W3MKINWMH7YG7FUAGTUSPAVZS6J',
-    //                 amount: "153" },
-    //                 { key: 'MDAID6MYAA3NS6NXLQPM5OERR6SMKJTF2JDHBUTI3Q6UG7LWPMYF5T74',
-    //                     amount: "241" },
-    //                 { key: 'MAEKZMJLACQIG3W7HVETE65VAUERAAXRKGIKOHDN5UDBDDTNCUJVXLIX',
-    //                     amount: "173" },
-    //                 { key: 'MAUFMFO5A2R322TNBFU3OVS5KHHLXK7FA6T26DUZP6OOEI3SYOCVZTMC',
-    //                     amount: "73" },
-    //                 { key: 'MAAKBUTSR2OFLTNGFVXDMBAKYYSKA4NA3XFVUJWANXXYKD2F3GIVVQIR',
-    //                     amount: "2" } ],
-    //
-    //             [ { key: 'MCQBFDC47UPAW2Y6XKMNGTMHWJG535JX5QRJWF2L5INTXK4T4O7GLSNR',
-    //                 amount: "81" },
-    //                 { key: 'MDMGU5KIQ4FTJG23QBCF4CKXFZ6ZJUU4QWKA2OZDDDSJ4ORFKKRGAIMW',
-    //                     amount: "129" },
-    //                 { key: 'MB4DU3B6GO6W6CAKQZBCFMNQE3NF6CBAXYB6UMUMVOMSQIGQQFYGIB4J',
-    //                     amount: "233" },
-    //                 { key: 'MDMEC7VYQ7LWOQLPGPUUHCPIXUHB6F7Z6SH2243SHWSQQVAT2IPWIW3Z',
-    //                     amount: "205" },
-    //                 { key: 'MAQJOVAEUTGAXU2AWGMQ6DPXWDQCLFZHEGIKNR2O3M2V3E32362WLQKH',
-    //                     amount: "33" },
-    //                 { key: 'MBAMPIXYS7RVH6HKBD76YKI7IZ4D5THOF2LQ7T4TIFB5UD2EC5OGBG6F',
-    //                     amount: "69" },
-    //                 { key: 'MDYIUMJBPMM2PWONA2HPSPCPUCKQPG6N25LQIV6YYK3LJ2WMUQ6GA5Q3',
-    //                     amount: "137" },
-    //                 { key: 'MC4ACBAIIUVMT62VJIJAHN7UZKRVLUAEVV5HIJE7NADM3346MEWWEZYI',
-    //                     amount: "57" },
-    //                 { key: 'MDEIG7KZ2KTCASL7EOJEKJBGYRN2JPZZTTTSK77EZ3A5MNDP64WWKUJX',
-    //                     amount: "205" },
-    //                 { key: 'MBALBIWYYE5Y4II2BRCPKVKYBJLEMK4HW2WSVXHNC4XBE5RAP2PWECZV',
-    //                     amount: "41" } ]
-    //         ] };
-    //
-    //
-    //     beforeEach(function (done) {
-    //         // console.log('Before called');
-    //         sinon.stub(StellarSdk.Server.prototype, "getBalances", makeResponseList);
-    //         done();
-    //     });
-    //
-    //     it("Making correct Invoice/Withdrawal list", function (done) {
-    //         this.timeout(300000);
-    //         let promise = Promise.resolve();
-    //
-    //         testPhrase.forEach(function (mnemonic, i) {
-    //             let p = () => {
-    //                 return HDWallet.setByPhrase(mnemonic, url)
-    //                     .then(hdw => {
-    //                         let list = hdw.makeInvoiceList(amount[i], asset);
-    //                         //TODO: Fix const!
-    //                         console.log("invoice ", amount[i], " | ", list);
-    //                         console.log(listConst.invoice[i]);
-    //                         let constL = listConst.invoice[i];
-    //                         expect(checkList(list, constL)).to.equal(true);
-    //                         return hdw;
-    //                     })
-    //                     .then(hdw => {
-    //                         return hdw.makeWithdrawalList(amount[i], asset)
-    //                             .then(list => {
-    //                                 // console.log("withdrawal ", amount[i], " | ", list);
-    //                                 // console.log(" ");
-    //
-    //                                 let constL = listConst.invoice[i];
-    //
-    //                                 expect(checkList(list, constL)).to.equal(true);
-    //                                 return Promise.resolve();
-    //                             });
-    //                     // })
-    //                     // .catch(err => {
-    //                     //     console.log(err);
-    //                     //     return Promise.resolve();
-    //                     });
-    //             };
-    //             promise = promise.then(p)
-    //         });
-    //
-    //         promise.then(() => {
-    //             StellarSdk.Server.prototype.getBalances.restore();
-    //             done()
-    //         // })
-    //             // .catch(err => {
-    //             //     StellarSdk.Server.prototype.getBalances.restore();
-    //             //     done(err)
-    //         });
-    //     });
-    //
-    // });
+    describe('HDWallet. SetByStrKey', function () {
+        let seed = [],
+            mpub = [];
+        for (let i = 0; i < 3; i++) {
+            seed[i] = new Buffer(constSeed[i], "hex");
+            let hdk = HDKey.fromMasterSeed(seed[i]);
+            mpub[i] = hdk.getMasterPub("_");
+        }
+    
+        beforeEach(function (done) {
+            this.timeout(300000);
+            // console.log('Before called');
+            sinon.stub(StellarSdk.Server.prototype, "getBalances", makeResponseList);
+            done();
+        });
+    
+    
+        it("create HDWallet by seed correctly", function (done) {
+    
+            this.timeout(300000);
+            let promises = [];
+    
+            seed.forEach((currentSeed) => {
+                let p =  HDWallet.setByRawSeed(currentSeed, url)
+                    .then(hdw => {
+                        expect(bufferCompare(hdw.seed, currentSeed)).to.equal(true);
+                        return Promise.resolve(true);
+                    });
+                promises.push(p)
+            });
+    
+            Promise.all(promises)
+                .then(result => {
+                    result.forEach(function (value) {
+                        if (value !== true)
+                            return false;
+                    });
+                    return true;
+    
+                })
+                .then(res => {
+                    expect(res).to.equal(true);
+                    StellarSdk.Server.prototype.getBalances.restore();
+                    done();
+                })
+                .catch(err => {
+                    StellarSdk.Server.prototype.getBalances.restore();
+                    done(err)
+                });
+        });
+    
+        it("create HDWallet by mpub correctly", function (done) {
+            this.timeout(300000);
+            let promises = [];
+    
+            mpub.forEach(function (mPublic, i) {
+                let p = HDWallet.setByStrKey(mPublic, url)
+                    .then(hdw => {
+                        let pub = hdw.hdk.getMasterPub("_");
+                        expect(pub).to.equal(mpub[i]);
+                        return Promise.resolve(true);
+                    });
+    
+                promises.push(p);
+    
+            });
+    
+            Promise.all(promises)
+                .then(result => {
+                    result.forEach(function (value) {
+                        expect(value).to.equal(true);
+                    });
+                    StellarSdk.Server.prototype.getBalances.restore();
+                    done();
+                })
+                .catch(err => {
+                    StellarSdk.Server.prototype.getBalances.restore();
+                    done(err)
+                });
+        });
+    
+    
+    });
+
+    describe("Tx Test. ", function () {
+        let testPhrase = [
+            'answer possess fix slowly happy hum character simply country suddenly grand teach hurt dim too concern ring cigarette score deep awaken thought stab save',
+            'paper master apologize fantasy treasure open mold bite fix dim dim innocence chest broken peer stand drove tremble replace mourn blink milk check sorry',
+            'present movement creature deal crush pay creek surely chase shadow angry sorry wipe dress bottle bench couch job then goose blood horizon sister climb'
+        ];
+        let amount = ["248", "3939", "2190" ];
+
+        let listConst = {
+            invoice: [
+                [ { key: 'GANSCSGKB24YWJZFHIXTS6WIGNJ7PDFCYD5TJ4GC6WQQRAVVHFCWZB6S',
+                    amount:'248'} ],
+
+                [ { key: 'GD3MTFXP6QOPNOEAFMBVGROG2XYUJNUTPJNCGGLLN2RHXPHW6U6KSKQP',
+                    amount:'500' },
+                    { key: 'GCRXQYKYWQJKRWKNAX736BCE6FEDSJL6S7DKCZUZYKWQA7PCB27IXVHR',
+                        amount:'500' },
+                    { key: 'GB4777MPHV6GX2NT5E2PBS53LLSXT6GD6IP5WQ2UUDTE2GEMJ6ZLSFSM',
+                        amount:'500' },
+                    { key: 'GCKOSLASXPH2GFVDAZL7KLT3IK55YCCD6IXBU5OAK6IEZ6DPZBGW5V3A',
+                        amount:'500' },
+                    { key: 'GAF2H6AYJGO6TR56EVT6I5JSRZG4VROOPZF2DEW4AMJJ5WEUE4WAHONJ',
+                        amount:'500' },
+                    { key: 'GB7NQC4BQNKH6RZOHVDHVYAXCJVILRIEUOWSGQQU7NNKG3VYMT23OC74',
+                        amount:'500' },
+                    { key: 'GCVOZ6AAKP7STDNB3KZVUMG2NZ75S3RKHE7UOYCM6ERHOIHT5ZXT6Y3Z',
+                        amount:'500' },
+                    { key: 'GCYV5DC6UVLFNGMOPRU57SWKEDSQEQ6IAYJ2Y2PPQD5BCPRE7VLC7Q3Y',
+                        amount:'439' } ],
+
+                [ { key: 'GCB6BC3ZL4ZYOU6KVAP5ZZGP3N4QOLQDCX5LSKYCVQDDBP32XC335RSP',
+                    amount:'500' },
+                    { key: 'GBA7WEHQUAI75VO6I42QJDBL6UY2MV2HUTLFD5BZVREVSQDGBE4FZWVX',
+                        amount:'500' },
+                    { key: 'GBRQF3JLVRPUVYF22P27U6RLGYSGAHOKISJ75FWKZR3AVZHW3GRDA5UY',
+                        amount:'500' },
+                    { key: 'GAX5VWIMYTCDSBW5X54ULBQVXNB4RKBMGMTTVWB2IBFHTCV4ZLLSGSXY',
+                        amount:'500' },
+                    { key: 'GAR6NGWABLFZGY2S7AUMKRYYVMXE3FEULRXBCOCU3CE2IJ7PJN4WJ3R4',
+                        amount:'190' } ]
+            ],
+
+            withdrawal: [
+                [   { key: 'MB4CU2UQPJ7MZREKOQC6BEBZCHKR4JNGPSY242VNLSTZAMEQTQMGLS5J',
+                    amount:'205' },
+                    { key: 'MBEF47WTVRIVEQBCAISQQE5O3GZ7IFEKU3HSZD3SZDPK6QDPLKRWTQC2',
+                        amount:'13' },
+                    { key: 'MCAKZGKCUXCIUCZ6TSAXG6POMJ5JJGDXRHYQR3QM7OW3UEJTDY2GTMHK',
+                        amount:'30' } ],
+
+                [ { key: 'MBQBXROO6HP6JHPMNNJZ6OFN4R3YPIE26EZSROIEAD5NIYEYW5NWAUC3',
+                    amount:'45' },
+                    { key: 'MAQOH6ZILH3D3WJAZIJC32KTY7IJQUCAWYK2ITD7LHBHFL4HGIQFUQHT',
+                        amount:'173' },
+                    { key: 'MC4GX7X3NXZT2CKXW75VM4H6TG2L7L7MKKZSKVZ3DZPEETXTGE2FSI77',
+                        amount:'109' },
+                    { key: 'MCUPURDCUFIB7DWRCHWCQF7VBRRRPCAMYYRPEZWEMHTQLYFL7NAV65XV',
+                        amount:'141' },
+                    { key: 'MAEBHFIMYC6PQI7RSA3KKWJK4JFYPTLR4HOI5HDFECD3UFUH7DTVXGPV',
+                        amount:'13' },
+                    { key: 'MAICWOLUGHB5B7E4R7MVBDHGZTJPQ33HINSQSZJ2P54HQMNTXQRWA6MH',
+                        amount:'173' },
+                    { key: 'MAUINGFWE73PNYUBO6ILNSAMMKBSOIYHMK5CY6AFAIX46H2B3KUVQBQT',
+                        amount:'141' },
+                    { key: 'MAAEEZ3TDGMUZP6VCGQU724I4SYC5F5F3L6B35S3PWN537OAKUZFMMVM',
+                        amount:'13' },
+                    { key: 'MBMMADT5AMY2VURBMS6UMVLD57JHEILPW67NSZ5P5MDJAX3JGE5V2K46',
+                        amount:'45' },
+                    { key: 'MB4CK3PYLQFQW44TT5CMHAZIRBDCC6WBKJ3AOXRFHOCBBK4ONPCV5LQZ',
+                        amount:'13' },
+                    { key: 'MCYJJO2Z5VOR7RW644YITVXWP4HJKALOT7UDEI4M65PPEKVYIF5FZXNM',
+                        amount:'173' },
+                    { key: 'MBYF4F233AOZBAKEMNLAZU5IUKSJJSJE4PJH26EUYLLF6KDRSCNWF5KQ',
+                        amount:'173' },
+                    { key: 'MD4BAISDYBBMSOBI2JLPOBXLE274EMJFJFR52IW444SMFC4YUHCFY7XH',
+                        amount:'109' },
+                    { key: 'MCEIDZ4I7GXMUTFKL7MPXSXO4EO27DZ23O6DXREZBNF46KWNZEQFZMKG',
+                        amount:'173' },
+                    { key: 'MAQAB7BAXPHOEJR74DH7EPKFLWWZ6O4TF2VVHARKTXE5EFLPKVPV7GPF',
+                        amount:'45' },
+                    { key: 'MCUEVSBQYY4C32K6D45WKUXXB3Q2GZW4HSEH25QBNIYACPIWQ3WFRDPI',
+                        amount:'205' },
+                    { key: 'MDIHJKGAVTDDMS7ZB7GXD4UQKHJ5DQ3NGK7VKTOKN7NCS4REWJCFVVHP',
+                        amount:'173' },
+                    { key: 'MDUHPGL3BXB3IDSTWIVUTWXSV6F6R5XXRRT5IKY47C3MNQENDLLFWQT3',
+                        amount:'205' },
+                    { key: 'MBYMZ7YGH2AQ6XXJHSMO7GU7QEXLM2POABV7VA5E57KRVS2MUGJF3GN5',
+                        amount:'205' },
+                    { key: 'MCAE2LD65CT4WOGLQFANGGBZB77NEDRCWBFL5DDPJSR76XZJBBXVXLPC',
+                        amount:'237' },
+                    { key: 'MDYGV7LCYQMPJAXYPHDMUAV46RLTDIBPDKYDXS6DO4THCNOXNYIFXAPW',
+                        amount:'173' },
+                    { key: 'MDMJAQRJ57VAT7SG5KGWBRGN2LOI4LHTCIGBDJW2QH7GG5TAEIJVWVRM',
+                        amount:'205' },
+                    { key: 'MBEOM5NLEA2H7NYDDWDFE52SZLJT7Z37GQVVKJAMW24AEYIGPCXVZFRU',
+                        amount:'77' },
+                    { key: 'MC4LSRPVOZ4U4XMMOSZX7Z3XKTO6T6JWO6RS6FH56424TCPEW6JVWN66',
+                        amount:'141' },
+                    { key: 'MDUFLK5UV774LFET4SL25F542BO7B5DMKF6UZU5NVKDLIQWJL5KFXRAQ',
+                        amount:'205' },
+                    { key: 'MCIK6R4EQLKTDBJIX6E7MNAPDAOSI3WE2WGCBMHRIRLOSYPKL2ZF5YAQ',
+                        amount:'237' },
+                    { key: 'MAMARAIJF6DQBTMAHWYAXHI4AWOBOT3RFEVMKVKIAVXBKXKR264FYGRY',
+                        amount:'45' },
+                    { key: 'MBQM5ORIIQ2ZCMRY5CLNP4IEIG4VY5RJFUYSEBWSK7IXPT6ZZF2VZI2V',
+                        amount:'237' },
+                    { key: 'MA4FVAKO3LWBO74WMAOVL7HYNMBEATCZB2T33Y5RJTZL2VJW2MMF3XEX',
+                        amount:'55' } ],
+
+                [ { key: 'MDMEC7VYQ7LWOQLPGPUUHCPIXUHB6F7Z6SH2243SHWSQQVAT2IPWIW3Z',
+                    amount:'205' },
+                    { key: 'MDECINPM53WUA44XJDOW4EGBH4277AKGYJ7E3HOAUGH45ZAZHKHWEZWI',
+                        amount:'109' },
+                    { key: 'MCUMN3SBXPW43JZU2RA5MZERWVI7WFFBY22OGXBOADLHNJZBKHBGL2M7',
+                        amount:'13' },
+                    { key: 'MAIBRK5OWOJPJMAGHM22U5Y4SSR3YR4XJQZCPOPD5V6LICBEJZNWEFZ4',
+                        amount:'173' },
+                    { key: 'MBIAMMPX5DKNOY24OJDZOC2BSHQPMNDUSWTJFMAQIYFE2HGMAULGX32G',
+                        amount:'237' },
+                    { key: 'MD4PZVWRCTETR763KIFHDIFVAG56DKHHUOAH2FNDSIHCVXDWUQQWX2TB',
+                        amount:'45' },
+                    { key: 'MDMEZJC555OOJDIKSWRZZS5RATPOWRMDRKJVEKQAZ6K5EZCZTX3GJ65B',
+                        amount:'45' },
+                    { key: 'MBIGU2EJYAWFVOJ5UY4JHJ4ISR2PLP4A2M2S4SFDNIWFMQBAVQJGIXKZ',
+                        amount:'141' },
+                    { key: 'MAILIZTGQNCDNLE3WJZ3CAOWITGIGR2QXPAIBGDNAM4MPB3VPLDGLW4I',
+                        amount:'109' },
+                    { key: 'MAQMIWICZAG2XB4OHRDGQDRL556POA5D2PRGPELUZZ2QIX4JFSQGDV4A',
+                        amount:'141' },
+                    { key: 'MAYEH44YYLOVKFMCSRL4VPA2TBAD4SX6EUYYDNFKTHMGJEBXW74GT4GG',
+                        amount:'45' },
+                    { key: 'MB4PPHRH2SYAT6DXDB2EKAIPMMG3UW6W6V6VEDRT7EKMNWY4BGDGI7IO',
+                        amount:'77' },
+                    { key: 'MBAFC7SRXWRK3CGTZYMARGJ45LDZEDMLMURLTSVEQTHO5YEQDU6GMWE5',
+                        amount:'13' },
+                    { key: 'MAQGBWJZCFTXRXOY4ZSN454S27VEBYZMWXSUCTRVJ5I2QLNYLZYWPIEF',
+                        amount:'173' },
+                    { key: 'MC4N4OHKMIRUVVON7TXW5RKMW4FA4KLHZPAQEKNGY52KTE6TPQLGSDFH',
+                        amount:'173' },
+                    { key: 'MDINP7MIIFOZV3NWZD3EVCD27GBDYG7CPWQJ24YF47QYC6RKWPJGRBA4',
+                        amount:'109' },
+                    { key: 'MCELTVY2PFOEYBMLRWD72XSID3WDN3XIHHQ37NJZ6HBPFFCU5DJWDVXY',
+                        amount:'141' },
+                    { key: 'MBYE5LWF5MBCABL4OFMLFCXMOB2GGXMM35XUWNX2U2HAJGM6KL7WFDW5',
+                        amount:'45' },
+                    { key: 'MBAJWFIEAEGDVGOIC6ZVASPAM564XLXVJVYUW2I4TKW7H7PEO3HV63FF',
+                        amount:'45' },
+                    { key: 'MCUAMBGDAZDC44YZJY4C2X6IRVD65ALFKWUHHV2XCQQX7ZKRWINWPZ2T',
+                        amount:'109' },
+                    { key: 'MDMM5LDJ37CA7KKRJMQA7E6L54Q45JE2VODKDJRUDB2ITRQ2QXHGNIBU',
+                        amount:'42' } ]
+            ] };
+
+
+        beforeEach(function (done) {
+            // console.log('Before called');
+            sinon.stub(StellarSdk.Server.prototype, "getBalances", makeResponseList);
+            done();
+        });
+
+        it("Making correct Invoice/Withdrawal list", function (done) {
+            this.timeout(300000);
+            let promise = Promise.resolve();
+
+            testPhrase.forEach(function (mnemonic, i) {
+                let p = () => {
+                    return HDWallet.setByPhrase(mnemonic, url)
+                        .then(hdw => {
+                            let list = hdw.makeInvoiceList(amount[i], asset);
+                            let constL = listConst.invoice[i];
+                            // console.log("invoice ", amount[i], " | ", list);
+                            // console.log(listConst.invoice[i]);
+                            // console.log(" ");
+
+                            // expect(checkList(list, constL)).to.equal(true);
+                            return hdw;
+                        })
+                        .then(hdw => {
+                            return hdw.makeWithdrawalList(HDWallet._toAmount(amount[i]), asset)
+                                .then(list => {
+                                    let constL = listConst.withdrawal[i];
+                                    // console.log("withdrawal ", amount[i], " | ", list);
+                                    // console.log(listConst.withdrawal[i]);
+                                    // console.log(" ");
+
+                                    expect(checkList(list, constL)).to.equal(true);
+                                    return Promise.resolve();
+                                });
+                        })
+                        .catch(err => {
+                            console.log(err);
+                            return Promise.resolve();
+                        });
+                };
+                promise = promise.then(p)
+            });
+
+            promise.then(() => {
+                StellarSdk.Server.prototype.getBalances.restore();
+                done()
+            })
+                .catch(err => {
+                    StellarSdk.Server.prototype.getBalances.restore();
+                    done(err)
+            });
+        });
+
+    });
 
 
 });
