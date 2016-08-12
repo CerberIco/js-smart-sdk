@@ -194,16 +194,11 @@ export class Server {
             });
     }
 
-    loadHDWallet(key) {
-        let hdw;
-        if (key.indexOf(' ') + 1) {
-            hdw = HDWallet.setByPhrase(key, this.serverURL);
-        } else
-            hdw = HDWallet.setByStrKey(key, this.serverURL);
-        return hdw;
-    }
-
-
+    /**
+     * Get balances for given accounts sorted by asset
+     * @param accountList {Array} Array of AccountId
+     * @returns {Promise}
+     */
     getBalances(accountList) {
         var response = axios.post(
               URI(this.serverURL).path('balances').toString(),
