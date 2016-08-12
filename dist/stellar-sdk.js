@@ -59399,7 +59399,7 @@ var StellarSdk =
 	var CHAINCODE_LENGTH = 32;
 	var SEED_LENGTH = 32;
 	var MASTERPUBLIC_LENGTH = 64;
-	var SERIALIZE_LENGTH = 76; //Length of serialized wallet without index list
+	var SERIALIZE_LENGTH = 80; //Length of serialized wallet without index list
 
 	var decodeMnemo = _stellarBase.HDKey.getSeedFromMnemonic,
 	    strDecode = StellarBase.decodeCheck,
@@ -59425,6 +59425,7 @@ var StellarSdk =
 	        this.ver = null;
 	        this.firstWithMoney = null;
 	        this.firstUnused = null;
+	        this.mpubCounter = 0;
 	        this.indexList = null;
 	        this.seed = null;
 	        this.hdk = null;
@@ -59464,6 +59465,7 @@ var StellarSdk =
 
 	                return HDWallet._updateIndexesInOtherBranches(HDWallet._path().others["public"], this, this.indexList).then(function (list) {
 	                    _this.indexList = list.slice();
+	                    if (_this.mpubCounter < _this.indexList.length) _this.mpubCounter = _this.indexList.length;
 
 	                    return HDWallet._updateIndexesInOwnBranch(path, _this, indexPair).then(function (resultPair) {
 	                        _this.firstWithMoney = resultPair.f_w_m;
@@ -59505,7 +59507,9 @@ var StellarSdk =
 	        key: "getMPublicNew",
 	        value: function getMPublicNew() {
 	            if (this.ver !== HDWallet._version().mpriv.byte) throw new Error("Version of HDWallet mismatch");
-	            return this.getMPub(this.indexList.length);
+	            var index = this.mpubCounter;
+	            this.mpubCounter += 1;
+	            return this.getMPub(index);
 	        }
 
 	        /**
@@ -59577,7 +59581,7 @@ var StellarSdk =
 
 	        /**
 	         * Serialize HDWallet into Base32-encoded string.
-	         * < Key[32]||Chain[32]||1stWithMoney[4]||1stUnused[4]||listLen[4]||list[4*listLen]>
+	         * < Key[32]||Chain[32]||1stWithMoney[4]||1stUnused[4]||mpubCounter[4]||listLen[4]||list[4*listLen]>
 	         * @returns {string} For example: WADDF3F6LSTEJ5PSQONOQ76G...
 	         */
 	    }, {
@@ -59604,6 +59608,8 @@ var StellarSdk =
 	            buffer.writeUInt32BE(this.firstWithMoney, offset);
 	            offset += 4;
 	            buffer.writeUInt32BE(this.firstUnused, offset);
+	            offset += 4;
+	            buffer.writeUInt32BE(this.mpubCounter, offset);
 	            offset += 4;
 	            buffer.writeUInt32BE(listLen, offset);
 
@@ -60033,7 +60039,7 @@ var StellarSdk =
 	         * @param ver {number} version of HDWallet
 	         * @param wallet {object} ByteArray
 	         * Data Structure of serialized wallet
-	         * < Key[32]||Chain[32]||1stWithMoney[4]||1stUnused[4]||listLen[4]||list[4*listLen]>
+	         * < Key[32]||Chain[32]||1stWithMoney[4]||1stUnused[4]||mpubCounter[4]||listLen[4]||list[4*listLen]>
 	         * @param url {string} server url
 	         * @returns {HDWallet}
 	         */
@@ -60062,6 +60068,8 @@ var StellarSdk =
 	            hdw.firstWithMoney = wallet.readUInt32BE(offset, offset + 4);
 	            offset += 4;
 	            hdw.firstUnused = wallet.readUInt32BE(offset, offset + 4);
+	            offset += 4;
+	            hdw.mpubCounter = wallet.readUInt32BE(offset, offset + 4);
 	            offset += 4;
 	            listLen = wallet.readUInt32BE(offset, offset + 4);
 	            offset += 4;

@@ -16,7 +16,7 @@ const PUBLICKEY_LENGTH = 32;
 const CHAINCODE_LENGTH = 32;
 const SEED_LENGTH = 32;
 const MASTERPUBLIC_LENGTH = 64;
-const SERIALIZE_LENGTH = 76; //Length of serialized wallet without index list
+const SERIALIZE_LENGTH = 80; //Length of serialized wallet without index list
 
 let decodeMnemo = HDKey.getSeedFromMnemonic,
     strDecode   = StellarBase.decodeCheck,
@@ -39,6 +39,7 @@ export class HDWallet {
         this.ver = null;
         this.firstWithMoney = null;
         this.firstUnused = null;
+        this.mpubCounter = 0;
         this.indexList = null;
         this.seed = null;
         this.hdk = null;
@@ -114,7 +115,7 @@ export class HDWallet {
      * @param ver {number} version of HDWallet
      * @param wallet {object} ByteArray
      * Data Structure of serialized wallet
-     * < Key[32]||Chain[32]||1stWithMoney[4]||1stUnused[4]||listLen[4]||list[4*listLen]>
+     * < Key[32]||Chain[32]||1stWithMoney[4]||1stUnused[4]||mpubCounter[4]||listLen[4]||list[4*listLen]>
      * @param url {string} server url
      * @returns {HDWallet}
      */
@@ -141,6 +142,8 @@ export class HDWallet {
         hdw.firstWithMoney = wallet.readUInt32BE(offset, offset + 4);
         offset += 4;
         hdw.firstUnused = wallet.readUInt32BE(offset, offset + 4);
+        offset += 4;
+        hdw.mpubCounter = wallet.readUInt32BE(offset, offset + 4);
         offset += 4;
         listLen = wallet.readUInt32BE(offset, offset + 4);
         offset += 4;
@@ -217,6 +220,8 @@ export class HDWallet {
             return HDWallet._updateIndexesInOtherBranches(HDWallet._path().others.public, this, this.indexList)
                 .then(list => {
                     this.indexList = list.slice();
+                    if(this.mpubCounter < this.indexList.length)
+                        this.mpubCounter = this.indexList.length;
                     
                     return HDWallet._updateIndexesInOwnBranch(path, this, indexPair)
                         .then(resultPair => {
@@ -264,7 +269,9 @@ export class HDWallet {
     getMPublicNew() {
         if (this.ver !== HDWallet._version().mpriv.byte)
             throw new Error("Version of HDWallet mismatch");
-        return this.getMPub(this.indexList.length);
+        let index = this.mpubCounter;
+        this.mpubCounter +=1;
+        return this.getMPub(index);
     }
 
     /**
@@ -341,7 +348,7 @@ export class HDWallet {
 
     /**
      * Serialize HDWallet into Base32-encoded string.
-     * < Key[32]||Chain[32]||1stWithMoney[4]||1stUnused[4]||listLen[4]||list[4*listLen]>
+     * < Key[32]||Chain[32]||1stWithMoney[4]||1stUnused[4]||mpubCounter[4]||listLen[4]||list[4*listLen]>
      * @returns {string} For example: WADDF3F6LSTEJ5PSQONOQ76G...
      */
     serialize() {
@@ -365,6 +372,8 @@ export class HDWallet {
         buffer.writeUInt32BE(this.firstWithMoney, offset);
         offset += 4;
         buffer.writeUInt32BE(this.firstUnused, offset);
+        offset += 4;
+        buffer.writeUInt32BE(this.mpubCounter, offset);
         offset += 4;
         buffer.writeUInt32BE(listLen, offset);
 
