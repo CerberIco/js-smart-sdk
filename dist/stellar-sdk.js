@@ -59460,7 +59460,7 @@ var StellarSdk =
 	            indexPair.indexingF_u = true;
 
 	            if (this.ver == HDWallet._version().mpriv.byte) {
-	                path = HDWallet._path().owh["public"];
+	                path = HDWallet._path().own["public"];
 
 	                return HDWallet._updateIndexesInOtherBranches(HDWallet._path().others["public"], this, this.indexList).then(function (list) {
 	                    _this.indexList = list.slice();
@@ -59491,6 +59491,8 @@ var StellarSdk =
 	    }, {
 	        key: "getMPub",
 	        value: function getMPub(path) {
+	            if (this.ver !== HDWallet._version().mpriv.byte) throw new Error("Version of HDWallet mismatch");
+
 	            if (typeof path == "number") return this.hdk.getMasterPub(HDWallet._path().others["public"] + path);
 	            if (typeof path == "string") return this.hdk.getMasterPub(path);else throw new Error("Invalid argument! Must be index (type = number) or path (type = string).");
 	        }
@@ -59502,6 +59504,7 @@ var StellarSdk =
 	    }, {
 	        key: "getMPublicNew",
 	        value: function getMPublicNew() {
+	            if (this.ver !== HDWallet._version().mpriv.byte) throw new Error("Version of HDWallet mismatch");
 	            return this.getMPub(this.indexList.length);
 	        }
 
@@ -59513,15 +59516,20 @@ var StellarSdk =
 	    }, {
 	        key: "getBalance",
 	        value: function getBalance(asset) {
-	            var path = [HDWallet._path().owh["public"], HDWallet._path().others["public"]],
+	            var path = [],
 	                self = this,
 	                data = {},
+	                isPublic = false,
 	                otherBranchIndex = 0;
+
+	            if (this.ver == HDWallet._version().mpriv.byte) path = [HDWallet._path().own["public"], HDWallet._path().others["public"]];else if (this.ver == HDWallet._version().mpub.byte) {
+	                path = [HDWallet._path().self];
+	                isPublic = true;
+	            }
 
 	            data.asset = asset.code;
 	            data.balance = new _bignumberJs2["default"](0);
 	            data.path = path[0];
-
 	            var _index = this.firstWithMoney,
 	                _stopIndex = _index + HDWallet._lookAhead();
 
@@ -59539,12 +59547,13 @@ var StellarSdk =
 	                        if (respList[i][0].isValid === false) continue;
 
 	                        for (var j = 0; j < respList[i].length; j++) {
-	                            if (respList[i][j].asset == data.asset) currentBalance = currentBalance.plus(respList[i][j].balance);
-	                            // console.log(accountList[i], "==", HDWallet._fromAmount(respList[i][j].balance));
+	                            if (respList[i][j].asset.asset_code == data.asset) currentBalance = currentBalance.plus(respList[i][j].balance);
 	                        }
 	                    }
 
 	                    if (currentBalance.equals(data.balance)) {
+	                        if (isPublic === true) return HDWallet._fromAmount(currentBalance);
+
 	                        if (otherBranchIndex < self.indexList.length) {
 	                            _index = self.indexList[otherBranchIndex];
 	                            _stopIndex = HDWallet._min(_index + HDWallet._lookAhead(), HDWallet._maxIndex());
@@ -59613,6 +59622,8 @@ var StellarSdk =
 	    }, {
 	        key: "doPayment",
 	        value: function doPayment(invoice, asset) {
+	            if (this.ver !== HDWallet._version().mpriv.byte) return toBluebirdRej(new Error("Version of HDWallet mismatch"));
+
 	            var server = new _server.Server(this._serverURL);
 	            return this.createTx(invoice, asset).then(function (txEnvelope) {
 	                return server.submitTransaction(txEnvelope);
@@ -59628,10 +59639,12 @@ var StellarSdk =
 	    }, {
 	        key: "createTx",
 	        value: function createTx(invoice, asset) {
+	            if (this.ver !== HDWallet._version().mpriv.byte) return toBluebirdRej(new Error("Version of HDWallet mismatch"));
+
 	            var amount = new _bignumberJs2["default"](0);
 	            var self = this;
 	            for (var i = 0; i < invoice.length; i++) {
-	                if (StellarBase.Keypair.isValidPublicKey(invoice[i].key) === false) throw new Error("Invalid public key in invoice list");
+	                if (StellarBase.Keypair.isValidPublicKey(invoice[i].key) === false) return toBluebirdRej(new Error("Invalid invoice"));
 	                amount = amount.plus(invoice[i].amount);
 	            }
 
@@ -59673,11 +59686,11 @@ var StellarSdk =
 	                amount = HDWallet._toAmount(strAmount),
 	                index = this.firstUnused;
 
+	            if (this.ver == HDWallet._version().mpriv.byte) path = HDWallet._path().own["public"];else if (this.ver == HDWallet._version().mpub.byte) path = HDWallet._path().self;else throw new Error("Version of HDWallet mismatch");
+
 	            var numberOfAddresses = amount.divToInt(HDWallet._accountBalanceLimit()).toNumber();
 	            var piece = amount.mod(HDWallet._accountBalanceLimit());
 	            var stopIndex = numberOfAddresses + index;
-
-	            if (this.ver == HDWallet._version().mpriv.byte) path = HDWallet._path().owh["public"];else if (this.ver == HDWallet._version().mpub.byte) path = HDWallet._path().self;else throw new Error("Version of HDWallet mismatch");
 
 	            while (index < stopIndex) {
 	                var derivedKey = this.hdk.derive(path + index);
@@ -59698,10 +59711,18 @@ var StellarSdk =
 
 	            return invoiceList;
 	        }
+
+	        /**
+	        * Create list of pair private keys
+	        * and balances, for all accounts with money.
+	        * @returns {*[]} Array of pair {key, balances}
+	        */
 	    }, {
 	        key: "getKeysForAccountsWithMoney",
 	        value: function getKeysForAccountsWithMoney() {
-	            var path = [HDWallet._path().owh["private"], HDWallet._path().others["private"]],
+	            if (this.ver !== HDWallet._version().mpriv.byte) return toBluebirdRej(new Error("Version of HDWallet mismatch"));
+
+	            var path = [HDWallet._path().own["private"], HDWallet._path().others["private"]],
 	                self = this,
 	                otherBranchIndex = 0;
 	            var currentPath = path[0];
@@ -59756,9 +59777,15 @@ var StellarSdk =
 
 	            return findMoney(_index, _stopIndex);
 	        }
+
+	        /**
+	        * Create list of accountId and balances,
+	        * for all accounts with money.
+	        * @returns {*[]} Array of pair {account_id, balances}
+	        */
 	    }, {
-	        key: "getIdOfAccountsWithMoney",
-	        value: function getIdOfAccountsWithMoney() {
+	        key: "getAccountIdsWithMoney",
+	        value: function getAccountIdsWithMoney() {
 	            var path = [],
 	                self = this,
 	                isPublic = false,
@@ -59766,7 +59793,7 @@ var StellarSdk =
 
 	            var resultList = [];
 
-	            if (this.ver == HDWallet._version().mpriv.byte) path = [HDWallet._path().owh["public"], HDWallet._path().others["public"]];else if (this.ver == HDWallet._version().mpub.byte) {
+	            if (this.ver == HDWallet._version().mpriv.byte) path = [HDWallet._path().own["public"], HDWallet._path().others["public"]];else if (this.ver == HDWallet._version().mpub.byte) {
 	                path = [HDWallet._path().self];
 	                isPublic = true;
 	            }
@@ -59797,11 +59824,12 @@ var StellarSdk =
 	                                balance: HDWallet._fromAmount(respList[i][j].balance) });
 	                        }
 
-	                        if (balances.length !== 0) resultList.push({ key: accountList[i], balances: balances });
+	                        if (balances.length !== 0) resultList.push({ account_id: accountList[i], balances: balances });
 	                    }
-	                    if (isPublic === true) return resultList;
 
 	                    if (isEmpty === true) {
+	                        if (isPublic === true) return resultList;
+
 	                        if (otherBranchIndex < self.indexList.length) {
 	                            _index = self.indexList[otherBranchIndex];
 	                            _stopIndex = HDWallet._min(_index + HDWallet._lookAhead(), HDWallet._maxIndex());
@@ -59824,13 +59852,15 @@ var StellarSdk =
 
 	        /**
 	         * Makes a list from all branches to make a payment of a given amount.
-	         * @param amount {number}
+	         * @param amount {Big}
 	         * @param asset {Asset}
 	         * @returns {*[]} Array of pair {accountID, amount}.
 	         */
 	    }, {
 	        key: "makeWithdrawalList",
 	        value: function makeWithdrawalList(amount, asset) {
+	            if (this.ver !== HDWallet._version().mpriv.byte) return toBluebirdRej(new Error("Version of HDWallet mismatch"));
+
 	            var path = [HDWallet._path().owh["private"], HDWallet._path().others["private"]],
 	                withdrawalList = [],
 	                self = this,
@@ -59884,7 +59914,7 @@ var StellarSdk =
 	                        if (respList[i][0].isValid === false) continue;
 
 	                        for (var j = 0; j < respList[i].length; j++) {
-	                            if (respList[i][j].asset == data.asset && !respList[i][j].balance.isZero()) {
+	                            if (respList[i][j].asset.asset_code == data.asset && !respList[i][j].balance.isZero()) {
 	                                data.accountList.push(privateKeyList[i]);
 	                                if (respList[i][j].balance.gt(HDWallet._accountBalanceLimit())) data.balance.push(HDWallet._accountBalanceLimit());else data.balance.push(respList[i][j].balance);
 	                            }
@@ -59918,7 +59948,7 @@ var StellarSdk =
 	        key: "_path",
 	        value: function _path() {
 	            return {
-	                owh: { "private": "m/1/", "public": "M/1/" },
+	                own: { "private": "m/1/", "public": "M/1/" },
 	                others: { "private": "m/2/", "public": "M/2/" },
 	                self: "M/" };
 	        }
@@ -60036,7 +60066,7 @@ var StellarSdk =
 	            listLen = wallet.readUInt32BE(offset, offset + 4);
 	            offset += 4;
 
-	            if (listLen > this._maxListLen() || listLen * 4 + offset > wallet.length + 5) throw new Error("Invalid serialized wallet");
+	            if (listLen > this._maxListLen() || listLen * 4 + offset > wallet.length + 5) return toBluebirdRej(new Error("Invalid serialized wallet"));
 	            for (var i = 0, j = 0; i < listLen; i++, j += 4) {
 	                hdw.indexList[i] = wallet.readUInt32BE(offset + j, offset + 4 + j);
 	            }
@@ -60174,7 +60204,7 @@ var StellarSdk =
 	                        if (typeof responseList[pos] == "string") responseList[pos] = [];
 	                        responseList[pos].push({
 	                            isValid: true,
-	                            asset: data.asset.asset_code,
+	                            asset: data.asset,
 	                            balance: HDWallet._toAmount(account.balance) });
 	                    });
 	                });

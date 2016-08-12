@@ -146,7 +146,7 @@ export class HDWallet {
         offset += 4;
         
         if ((listLen > this._maxListLen()) || (listLen * 4 + offset > wallet.length + 5))
-            throw new Error("Invalid serialized wallet");
+            return toBluebirdRej(new Error("Invalid serialized wallet"));
         for (let i = 0, j =0; i < listLen; i++, j += 4) {
             hdw.indexList[i] = wallet.readUInt32BE(offset + j, offset + 4 + j);
         }
@@ -382,7 +382,7 @@ export class HDWallet {
      */
     doPayment(invoice, asset) {
         if (this.ver !== HDWallet._version().mpriv.byte)
-            throw new Error("Version of HDWallet mismatch");
+            return toBluebirdRej(new Error("Version of HDWallet mismatch"));
 
         let server = new Server(this._serverURL);
         return this.createTx(invoice, asset)
@@ -399,13 +399,13 @@ export class HDWallet {
      */
     createTx(invoice, asset) {
         if (this.ver !== HDWallet._version().mpriv.byte)
-            throw new Error("Version of HDWallet mismatch");
+            return toBluebirdRej(new Error("Version of HDWallet mismatch"));
 
         let amount = new BigNumber(0);
         let self = this;
         for (let i = 0; i < invoice.length; i++) {
             if (StellarBase.Keypair.isValidPublicKey(invoice[i].key) === false)
-                throw new Error("Invalid public key in invoice list");
+                return toBluebirdRej(new Error("Invalid invoice"));
             amount = amount.plus(invoice[i].amount);
         }
 
@@ -447,16 +447,16 @@ export class HDWallet {
             amount = HDWallet._toAmount(strAmount),
             index = this.firstUnused;
 
-        let numberOfAddresses = amount.divToInt(HDWallet._accountBalanceLimit()).toNumber();
-        let piece = amount.mod(HDWallet._accountBalanceLimit());
-        let stopIndex = numberOfAddresses + index;
-
         if (this.ver == HDWallet._version().mpriv.byte)
             path = HDWallet._path().own.public;
         else if (this.ver == HDWallet._version().mpub.byte)
             path = HDWallet._path().self;
         else
             throw new Error("Version of HDWallet mismatch");
+
+        let numberOfAddresses = amount.divToInt(HDWallet._accountBalanceLimit()).toNumber();
+        let piece = amount.mod(HDWallet._accountBalanceLimit());
+        let stopIndex = numberOfAddresses + index;
 
         while (index < stopIndex) {
             let derivedKey = this.hdk.derive(path + index);
@@ -479,13 +479,13 @@ export class HDWallet {
     }
 
     /**
-    * Create list of base32-encoded private keys for all
-    * accouts with money with grouped by asset balances
+    * Create list of pair private keys
+    * and balances, for all accounts with money.
     * @returns {*[]} Array of pair {key, balances}
     */
     getKeysForAccountsWithMoney() {
         if (this.ver !== HDWallet._version().mpriv.byte)
-            throw new Error("Version of HDWallet mismatch");
+            return toBluebirdRej(new Error("Version of HDWallet mismatch"));
 
         let path = [HDWallet._path().own.private, HDWallet._path().others.private],
             self = this,
@@ -547,8 +547,8 @@ export class HDWallet {
     }
     
     /**
-    * Create list of accountId for all accouts 
-    * with money with grouped by asset balances
+    * Create list of accountId and balances,
+    * for all accounts with money.
     * @returns {*[]} Array of pair {account_id, balances}
     */
     getAccountIdsWithMoney() {
@@ -624,13 +624,14 @@ export class HDWallet {
 
     /**
      * Makes a list from all branches to make a payment of a given amount.
-     * @param amount {number}
+     * @param amount {Big}
      * @param asset {Asset}
      * @returns {*[]} Array of pair {accountID, amount}.
      */
     makeWithdrawalList(amount, asset) {
         if (this.ver !== HDWallet._version().mpriv.byte)
-            throw new Error("Version of HDWallet mismatch");
+            return toBluebirdRej(new Error("Version of HDWallet mismatch"));
+
         let path = [HDWallet._path().owh.private, HDWallet._path().others.private],
             withdrawalList = [], self = this,
             data = {}, otherBranchIndex = 0;
