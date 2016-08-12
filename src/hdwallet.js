@@ -57,11 +57,11 @@ export class HDWallet {
 
     static _path() {
         return {
-            owh:    {private: "m/1/", public: "M/1/"},
+            own:    {private: "m/1/", public: "M/1/"},
             others: {private: "m/2/", public: "M/2/"},
             self:             "M/" };
     }
-    
+
     static _accountBalanceLimit() { return new BigNumber("500").mul(ONE); }
     static _branchAhead() { return 5; }
     static _lookAhead() { return 20; }
@@ -212,7 +212,7 @@ export class HDWallet {
         indexPair.indexingF_u = true;
 
         if (this.ver == HDWallet._version().mpriv.byte){
-            path = HDWallet._path().owh.public;
+            path = HDWallet._path().own.public;
 
             return HDWallet._updateIndexesInOtherBranches(HDWallet._path().others.public, this, this.indexList)
                 .then(list => {
@@ -246,6 +246,9 @@ export class HDWallet {
      * @return {string}
      */
     getMPub(path) {
+        if (this.ver !== HDWallet._version().mpriv.byte)
+            throw new Error("Version of HDWallet mismatch");
+
         if (typeof path == "number")
             return this.hdk.getMasterPub(HDWallet._path().others.public + path);
         if (typeof path == "string")
@@ -259,6 +262,8 @@ export class HDWallet {
      * @return {string}
      */
     getMPublicNew() {
+        if (this.ver !== HDWallet._version().mpriv.byte)
+            throw new Error("Version of HDWallet mismatch");
         return this.getMPub(this.indexList.length);
     }
 
@@ -268,15 +273,22 @@ export class HDWallet {
      * @returns {string} balance
      */
     getBalance(asset) {
-        let path = [HDWallet._path().owh.public, HDWallet._path().others.public],
+        let path = [],
             self = this,
             data = {},
+            isPublic = false,
             otherBranchIndex = 0;
+
+        if (this.ver == HDWallet._version().mpriv.byte)
+            path = [HDWallet._path().own.public, HDWallet._path().others.public];
+        else if (this.ver == HDWallet._version().mpub.byte) {
+            path = [HDWallet._path().self];
+            isPublic = true;
+        }
 
         data.asset = asset.code;
         data.balance = new BigNumber(0);
         data.path = path[0];
-
         let _index = this.firstWithMoney,
             _stopIndex = _index + HDWallet._lookAhead();
 
@@ -296,13 +308,15 @@ export class HDWallet {
                             continue;
                         
                         for (let j = 0; j < respList[i].length; j++) {
-                            if (respList[i][j].asset == data.asset)
+                            if (respList[i][j].asset.asset_code == data.asset)
                                 currentBalance = currentBalance.plus(respList[i][j].balance);
-                            // console.log(accountList[i], "==", HDWallet._fromAmount(respList[i][j].balance));
                         }
                     }
 
                     if (currentBalance.equals(data.balance)) {
+                        if (isPublic === true)
+                            return HDWallet._fromAmount(currentBalance);
+
                         if(otherBranchIndex < self.indexList.length) {
                             _index = self.indexList[otherBranchIndex];
                             _stopIndex = HDWallet._min(_index + HDWallet._lookAhead(), HDWallet._maxIndex());
@@ -367,6 +381,9 @@ export class HDWallet {
      * @returns {Promise.<TResult>|*}
      */
     doPayment(invoice, asset) {
+        if (this.ver !== HDWallet._version().mpriv.byte)
+            throw new Error("Version of HDWallet mismatch");
+
         let server = new Server(this._serverURL);
         return this.createTx(invoice, asset)
             .then(txEnvelope => {
@@ -381,6 +398,9 @@ export class HDWallet {
      * @returns {Promise.<TResult>|*} txEnvelope
      */
     createTx(invoice, asset) {
+        if (this.ver !== HDWallet._version().mpriv.byte)
+            throw new Error("Version of HDWallet mismatch");
+
         let amount = new BigNumber(0);
         let self = this;
         for (let i = 0; i < invoice.length; i++) {
@@ -432,7 +452,7 @@ export class HDWallet {
         let stopIndex = numberOfAddresses + index;
 
         if (this.ver == HDWallet._version().mpriv.byte)
-            path = HDWallet._path().owh.public;
+            path = HDWallet._path().own.public;
         else if (this.ver == HDWallet._version().mpub.byte)
             path = HDWallet._path().self;
         else
@@ -458,8 +478,16 @@ export class HDWallet {
         return invoiceList;
     }
 
+    /**
+    * Create list of base32-encoded private keys for all
+    * accouts with money with grouped by asset balances
+    * @returns {*[]} Array of pair {key, balances}
+    */
     getKeysForAccountsWithMoney() {
-        let path = [HDWallet._path().owh.private, HDWallet._path().others.private],
+        if (this.ver !== HDWallet._version().mpriv.byte)
+            throw new Error("Version of HDWallet mismatch");
+
+        let path = [HDWallet._path().own.private, HDWallet._path().others.private],
             self = this,
             otherBranchIndex = 0;
         let currentPath = path[0];
@@ -517,8 +545,13 @@ export class HDWallet {
 
         return findMoney(_index, _stopIndex);
     }
-
-    getIdOfAccountsWithMoney() {
+    
+    /**
+    * Create list of accountId for all accouts 
+    * with money with grouped by asset balances
+    * @returns {*[]} Array of pair {account_id, balances}
+    */
+    getAccountIdsWithMoney() {
         let path = [],
             self = this,
             isPublic = false,
@@ -527,7 +560,7 @@ export class HDWallet {
         let resultList = [];
 
         if (this.ver == HDWallet._version().mpriv.byte)
-            path = [HDWallet._path().owh.public, HDWallet._path().others.public];
+            path = [HDWallet._path().own.public, HDWallet._path().others.public];
         else if (this.ver == HDWallet._version().mpub.byte) {
             path = [HDWallet._path().self];
             isPublic = true;
@@ -561,12 +594,13 @@ export class HDWallet {
                         }
 
                         if (balances.length !== 0)
-                            resultList.push({key: accountList[i], balances: balances});
+                            resultList.push({account_id: accountList[i], balances: balances});
                     }
-                    if (isPublic === true)
-                        return resultList;
 
                     if (isEmpty === true) {
+                        if (isPublic === true)
+                        return resultList;
+
                         if(otherBranchIndex < self.indexList.length) {
                             _index = self.indexList[otherBranchIndex];
                             _stopIndex = HDWallet._min(_index + HDWallet._lookAhead(), HDWallet._maxIndex());
@@ -595,6 +629,8 @@ export class HDWallet {
      * @returns {*[]} Array of pair {accountID, amount}.
      */
     makeWithdrawalList(amount, asset) {
+        if (this.ver !== HDWallet._version().mpriv.byte)
+            throw new Error("Version of HDWallet mismatch");
         let path = [HDWallet._path().owh.private, HDWallet._path().others.private],
             withdrawalList = [], self = this,
             data = {}, otherBranchIndex = 0;
@@ -650,7 +686,7 @@ export class HDWallet {
                             continue;
                         
                         for (let j = 0; j < respList[i].length; j++) {
-                            if ((respList[i][j].asset == data.asset) && !(respList[i][j].balance.isZero())) {
+                            if ((respList[i][j].asset.asset_code == data.asset) && !(respList[i][j].balance.isZero())) {
                                 data.accountList.push(privateKeyList[i]);
                                 if(respList[i][j].balance.gt(HDWallet._accountBalanceLimit()))
                                     data.balance.push(HDWallet._accountBalanceLimit());
@@ -772,7 +808,7 @@ export class HDWallet {
                             responseList[pos] = [];
                         responseList[pos].push({
                             isValid: true,
-                            asset: data.asset.asset_code,
+                            asset: data.asset,
                             balance: HDWallet._toAmount(account.balance) });
                     });
                 });

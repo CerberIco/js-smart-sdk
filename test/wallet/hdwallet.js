@@ -259,7 +259,7 @@ describe("Workflow Test. ", function () {
                     .then(balance => {
                         console.log ("Alice Balance = ", balance);
                         alice.getKeysForAccountsWithMoney().then(list => {console.log ("Priv Keys ", JSON.stringify(list, null, 2));});
-                        alice.getIdOfAccountsWithMoney().then(list => {console.log ("Pub Keys ", JSON.stringify(list, null, 2));});
+                        alice.getAccountIdsWithMoney().then(list => {console.log ("Pub Keys ", JSON.stringify(list, null, 2));});
                         // return StellarSdk.HDWallet.setByStrKey(aliceMpub, url);
                         done();
                     });
