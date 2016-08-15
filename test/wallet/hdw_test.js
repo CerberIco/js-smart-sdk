@@ -98,7 +98,7 @@ describe("HDWallet Test. ", function () {
         it("seed in HDW compare with const", function (done) {
             this.timeout(300000);
             let promise = Promise.resolve();
-
+        
             phrase.forEach(function (mnemonic, i) {
                 let p = () => {
                     return HDWallet.setByPhrase(mnemonic, url)
@@ -109,7 +109,7 @@ describe("HDWallet Test. ", function () {
                 };
                 promise = promise.then(p)
             });
-
+        
             promise.then(() => {
                 StellarSdk.Server.prototype.getBalances.restore();
                 done()
@@ -118,11 +118,11 @@ describe("HDWallet Test. ", function () {
                 done(err)
             });
         });
-
+        
         it("serialize/deserialize of HDWallet correctly", function (done) {
             this.timeout(300000);
             let promise = Promise.resolve();
-
+        
             phrase.forEach(function (mnemonic) {
                 let p = () => {
                     return HDWallet.setByPhrase(mnemonic, url)
@@ -145,7 +145,7 @@ describe("HDWallet Test. ", function () {
                 StellarSdk.Server.prototype.getBalances.restore();
                 done(err)
             });
-
+        
         });
 
         it("Setting indexes and refresh of HDWallet", function (done) {
@@ -208,7 +208,7 @@ describe("HDWallet Test. ", function () {
                 };
                 promise = promise.then(p)
             });
-
+        
             promise.then(() => {
                 StellarSdk.Server.prototype.getBalances.restore();
                 done()
@@ -217,7 +217,7 @@ describe("HDWallet Test. ", function () {
                 done(err)
             });
         });
-
+        
         it("make list of IDs of account with money", function (done) {
             this.timeout(400000);
             let promise = Promise.resolve();
@@ -243,7 +243,7 @@ describe("HDWallet Test. ", function () {
                 };
                 promise = promise.then(p)
             });
-
+        
             promise.then(() => {
                 StellarSdk.Server.prototype.getBalances.restore();
                 done()
@@ -252,7 +252,7 @@ describe("HDWallet Test. ", function () {
                 done(err)
             });
         });
-    
+        
     });
 
     describe('HDWallet. SetByStrKey', function () {
@@ -263,20 +263,20 @@ describe("HDWallet Test. ", function () {
             let hdk = HDKey.fromMasterSeed(seed[i]);
             mpub[i] = hdk.getMasterPub("_");
         }
-
+    
         beforeEach(function (done) {
             this.timeout(300000);
             // console.log('Before called');
             sinon.stub(StellarSdk.Server.prototype, "getBalances", makeResponseList);
             done();
         });
-
-
+    
+    
         it("create HDWallet by seed correctly", function (done) {
-
+    
             this.timeout(300000);
             let promises = [];
-
+    
             seed.forEach((currentSeed) => {
                 let p =  HDWallet.setByRawSeed(currentSeed, url)
                     .then(hdw => {
@@ -285,7 +285,7 @@ describe("HDWallet Test. ", function () {
                     });
                 promises.push(p)
             });
-
+    
             Promise.all(promises)
                 .then(result => {
                     result.forEach(function (value) {
@@ -293,7 +293,7 @@ describe("HDWallet Test. ", function () {
                             return false;
                     });
                     return true;
-
+    
                 })
                 .then(res => {
                     expect(res).to.equal(true);
@@ -305,11 +305,11 @@ describe("HDWallet Test. ", function () {
                     done(err)
                 });
         });
-
+    
         it("create HDWallet by mpub correctly", function (done) {
             this.timeout(300000);
             let promises = [];
-
+    
             mpub.forEach(function (mPublic, i) {
                 let p = HDWallet.setByStrKey(mPublic, url)
                     .then(hdw => {
@@ -317,11 +317,11 @@ describe("HDWallet Test. ", function () {
                         expect(pub).to.equal(mpub[i]);
                         return Promise.resolve(true);
                     });
-
+    
                 promises.push(p);
-
+    
             });
-
+    
             Promise.all(promises)
                 .then(result => {
                     result.forEach(function (value) {
@@ -335,22 +335,22 @@ describe("HDWallet Test. ", function () {
                     done(err)
                 });
         });
-
-
+    
+    
     });
 
     describe("Tx Test. ", function () {
-
+    
         beforeEach(function (done) {
             // console.log('Before called');
             sinon.stub(StellarSdk.Server.prototype, "getBalances", makeResponseList);
             done();
         });
-
+    
         it("Making correct Invoice/Withdrawal list", function (done) {
             this.timeout(300000);
             let promise = Promise.resolve();
-
+    
             testData.tx.phrase.forEach(function (mnemonic, i) {
                 let p = () => {
                     return HDWallet.setByPhrase(mnemonic, url)
@@ -360,7 +360,7 @@ describe("HDWallet Test. ", function () {
                             // console.log("invoice ", amount[i], " | ", list);
                             // console.log(listConst.invoice[i]);
                             // console.log(" ");
-
+    
                             // expect(checkList(list, constL)).to.equal(true);
                             return hdw;
                         })
@@ -371,7 +371,7 @@ describe("HDWallet Test. ", function () {
                                     // console.log("withdrawal ", amount[i], " | ", list);
                                     // console.log(listConst.withdrawal[i]);
                                     // console.log(" ");
-
+    
                                     expect(checkList(list, constL)).to.equal(true);
                                     return Promise.resolve();
                                 });
@@ -383,7 +383,7 @@ describe("HDWallet Test. ", function () {
                 };
                 promise = promise.then(p)
             });
-
+    
             promise.then(() => {
                 StellarSdk.Server.prototype.getBalances.restore();
                 done()
@@ -393,7 +393,7 @@ describe("HDWallet Test. ", function () {
                     done(err)
             });
         });
-
+    
     });
 
 });

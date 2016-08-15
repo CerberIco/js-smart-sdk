@@ -21,7 +21,8 @@ const SERIALIZE_LENGTH = 80; //Length of serialized wallet without index list
 let decodeMnemo = HDKey.getSeedFromMnemonic,
     strDecode   = StellarBase.decodeCheck,
     strEncode   = StellarBase.encodeCheck,
-    genMaster   = HDKey.fromMasterSeed;
+    genMaster   = HDKey.fromMasterSeed,
+    xdr         = StellarBase.xdr;
 
 export class HDWallet {
 
@@ -98,11 +99,11 @@ export class HDWallet {
             }
             case "W": {
                 let key = strDecode(this._version().privWallet.str, str);
-                return this._deserialize(this._version().mpriv.byte, key, url);
+                return this._xdrDeserialize(this._version().mpriv.byte, key, url);
             }
             case "Z": {
                 let key = strDecode(this._version().pubWallet.str, str);
-                return this._deserialize(this._version().mpub.byte, key, url);
+                return this._xdrDeserialize(this._version().mpub.byte, key, url);
             }
             default : {
                 toBluebirdRej(new Error ("Invalid version of StrKey"));
@@ -153,6 +154,40 @@ export class HDWallet {
         for (let i = 0, j =0; i < listLen; i++, j += 4) {
             hdw.indexList[i] = wallet.readUInt32BE(offset + j, offset + 4 + j);
         }
+        return toBluebirdRes(hdw);
+    }
+    
+    /**
+     * Deserialize HDWallet from serialized byteArray.
+     * @param ver {number} version of HDWallet
+     * @param rawWallet {object} xdr.HdWalletSerialization
+     * @param url {string} server url
+     * @returns {HDWallet}
+     */
+    static _xdrDeserialize(ver, rawWallet, url) {
+        let hdw = new HDWallet(url);
+        let xdrWallet = xdr.HdWalletSerialization.fromXDR(rawWallet);
+        hdw.ver = ver;
+        hdw.hdk = {};
+        hdw.indexList = [];
+        hdw.hdk.versions = ver;
+
+        if (ver == this._version().mpriv.byte) {
+            hdw.seed = new Buffer(xdrWallet.key());
+            hdw.hdk = hdw.hdk = genMaster(hdw.seed, this._version().mpriv.byte);
+
+        }
+        else if (ver == this._version().mpub.byte) {
+            hdw.hdk.publicKey = new Buffer(xdrWallet.key());
+
+        }
+
+        hdw.chainCode = new Buffer(xdrWallet.chainCode());
+        hdw.firstWithMoney = xdrWallet.firstWithMoney();
+        hdw.firstUnused = xdrWallet.firstUnused();
+        hdw.mpubCounter = xdrWallet.mpubCounter();
+        hdw.indexList = xdrWallet.indexList();
+
         return toBluebirdRes(hdw);
     }
 
@@ -351,7 +386,7 @@ export class HDWallet {
      * < Key[32]||Chain[32]||1stWithMoney[4]||1stUnused[4]||mpubCounter[4]||listLen[4]||list[4*listLen]>
      * @returns {string} For example: WADDF3F6LSTEJ5PSQONOQ76G...
      */
-    serialize() {
+    _serializeOld() {
         let ver, offset = 0,
             listLen = this.indexList.length,
             LEN = SERIALIZE_LENGTH + listLen * 4,
@@ -361,7 +396,7 @@ export class HDWallet {
             this.seed.copy(buffer, offset);
             ver = HDWallet._version().privWallet.str;
             offset += PRIVATEKEY_LENGTH;
-        } else if (this.verB == HDWallet._version().mpub.byte) {
+        } else if (this.ver == HDWallet._version().mpub.byte) {
             this.hdk.publicKey.copy(buffer, offset);
             ver = HDWallet._version().pubWallet.str;
             offset += PUBLICKEY_LENGTH;
@@ -381,6 +416,27 @@ export class HDWallet {
             buffer.writeUInt32BE(this.indexList[i], offset + 4 + j);
         }
         return StellarBase.encodeWithoutPad(ver, buffer);
+    }
+
+    serialize() {
+        let key, ver;
+        if (this.ver == HDWallet._version().mpriv.byte) {
+            key = this.seed;
+            ver = HDWallet._version().privWallet.str;
+        } 
+        else if (this.ver == HDWallet._version().mpub.byte) {
+            key = this.hdk.publicKey;
+            ver = HDWallet._version().pubWallet.str;
+        }
+        let xdrWallet = new xdr.HdWalletSerialization({
+            key:            key,
+            chainCode:      this.hdk.chainCode, 
+            firstWithMoney: this.firstWithMoney, 
+            firstUnused:    this.firstUnused, 
+            mpubCounter:    this.mpubCounter, 
+            indexList:      this.indexList  });
+        
+        return strEncode(ver, xdrWallet.toXDR());
     }
 
     /**

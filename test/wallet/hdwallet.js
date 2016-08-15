@@ -254,26 +254,27 @@ describe("Workflow Test. ", function () {
             .then(alice => {
                 console.log("Index pair: ", alice.firstWithMoney, " | ", alice.firstUnused);
                 console.log("Index list: ", alice.mpubCounter, alice.indexList);
-                console.log(" ");
+                console.log(alice);
                 let aliceMpub = alice.getMPublicNew();
-
-                return alice.getBalance(asset)
-                    .then(balance => {
-                        console.log ("Alice Balance = ", balance);
-                        // alice.getKeysForAccountsWithMoney().then(list => {console.log ("Priv Keys ", JSON.stringify(list, null, 2));});
-                        // alice.getAccountIdsWithMoney().then(list => {console.log ("Pub Keys ", JSON.stringify(list, null, 2));});
-
-                        return StellarSdk.HDWallet.setByStrKey(aliceMpub, url);
-
-                    });
+                let xdrSerialize = alice.xdrSerialize();
+                return StellarSdk.HDWallet.setByStrKey(xdrSerialize, url);
+                // return alice.getBalance(asset)
+                //     .then(balance => {
+                //         console.log ("Alice Balance = ", balance);
+                //         // alice.getKeysForAccountsWithMoney().then(list => {console.log ("Priv Keys ", JSON.stringify(list, null, 2));});
+                //         // alice.getAccountIdsWithMoney().then(list => {console.log ("Pub Keys ", JSON.stringify(list, null, 2));});
+                //
+                //         return StellarSdk.HDWallet.setByStrKey(aliceMpub, url);
+                //
+                //     });
             })
-            .then(alice => {
-                console.log("Index pair: ", alice.firstWithMoney, " | ", alice.firstUnused);
-                console.log("Index list: ", alice.indexList);
-                console.log(" ");
-
-                return alice.makeInvoiceList("124.339313")
-            })
+            // .then(alice => {
+            //     console.log("Index pair: ", alice.firstWithMoney, " | ", alice.firstUnused);
+            //     console.log("Index list: ", alice.indexList);
+            //     console.log(" ");
+            //
+            //     return alice.makeInvoiceList("124.339313")
+            // })
             // .then(invoice => {
             //     console.log("Invoice ");
             //     for (let i = 0; i < invoice.length; i++){
@@ -299,11 +300,12 @@ describe("Workflow Test. ", function () {
             .then(bob => {
                 // console.log("Index pair: ", bob.firstWithMoney, " | ", bob.firstUnused);
                 // console.log("Index list: ", bob.indexList);
+                console.log(bob);
                 done()
-            })
-            .catch(err => {
-                console.log("Result false = ", JSON.stringify(err, null, 2));
-                done(err)
+            // })
+            // .catch(err => {
+            //     console.log("Result false = ", JSON.stringify(err, null, 2));
+            //     done(err)
             });
     });
 
