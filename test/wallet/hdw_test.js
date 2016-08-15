@@ -85,7 +85,7 @@ describe("HDWallet Test. ", function () {
 
     describe('Set by Mnemonic: ', function () {
         let phrase = [];
-        for (let i = 0; i < 6; i++)
+        for (let i = 0; i < 5; i++)
             phrase[i] = testData.phrase[i];
             // phrase[i] = HDKey.getMnemonic();
     
@@ -156,13 +156,53 @@ describe("HDWallet Test. ", function () {
                     return HDWallet.setByPhrase(mnemonic, url)
                         .then(hdw => {
                             let serWallet = hdw.serialize();
-                            // console.log("ser wallet", serWallet);
+                            // console.log(" ");
+                            // console.log("before - ", hdw.firstWithMoney, hdw.firstUnused);
+                            // console.log("before - ", hdw.indexList);
+                            // console.log("before - ", serWallet);
+                            // console.log(" ");
                             expect(serWallet).to.equal(testData.serialization[i]);
                             return hdw.refresh();
                         })
                         .then(hdw => {
                             let serWallet = hdw.serialize();
+                            // console.log("after - ", hdw.firstWithMoney, hdw.firstUnused);
+                            // console.log("after - ", hdw.indexList);
+                            // console.log("after  - ", serWallet);
                             expect(serWallet).to.equal(testData.serialization[i]);
+                            return Promise.resolve();
+                        });
+                };
+                promise = promise.then(p);
+            });
+
+            promise.then(() => {
+                StellarSdk.Server.prototype.getBalances.restore();
+                done()
+            }).catch(err => {
+                StellarSdk.Server.prototype.getBalances.restore();
+                done(err)
+            });
+        });
+
+        it("make list of keys for account with money", function (done) {
+            this.timeout(400000);
+            let promise = Promise.resolve();
+            phrase.forEach(function (mnemonic, i) {
+                let p = () => {
+                    return HDWallet.setByPhrase(mnemonic, url)
+                        .then(hdw => {
+                            return hdw.getKeysForAccountsWithMoney() ;
+                        })
+                        .then(list => {
+                            let result = true;
+                            for (let l = 0; l < list.length; l++) {
+                                if ((list[l].key !== testData.keysList[i][l].key) || (list[l].balances[0].balance !== testData.keysList[i][l].balance)) {
+                                    result = false;
+                                    break;
+                                }
+                            }
+                            expect(result).to.equal(true);
                             return Promise.resolve();
                         });
                 };
@@ -178,59 +218,40 @@ describe("HDWallet Test. ", function () {
             });
         });
 
-        // it("make list of keys for account with money", function (done) {
-        //     this.timeout(300000);
-        //     let promise = Promise.resolve();
-        //     phrase.forEach(function (mnemonic, i) {
-        //         let p = () => {
-        //             return HDWallet.setByPhrase(mnemonic, url)
-        //                 .then(hdw => {
-        //                     return hdw.getKeysForAccountsWithMoney() ;
-        //                 })
-        //                 .then(list => {
-        //                     // console.log(JSON.stringify(list, null, 2));
-        //                     // console.log(" ");
-        //                     return Promise.resolve();
-        //                 });
-        //         };
-        //         promise = promise.then(p)
-        //     });
-        //
-        //     promise.then(() => {
-        //         StellarSdk.Server.prototype.getBalances.restore();
-        //         done()
-        //     }).catch(err => {
-        //         StellarSdk.Server.prototype.getBalances.restore();
-        //         done(err)
-        //     });
-        // });
-        //
-        // it("make list of IDs of account with money", function (done) {
-        //     this.timeout(300000);
-        //     let promise = Promise.resolve();
-        //     phrase.forEach(function (mnemonic, i) {
-        //         let p = () => {
-        //             return HDWallet.setByPhrase(mnemonic, url)
-        //                 .then(hdw => {
-        //                     return hdw.getAccountIdsWithMoney();
-        //                 })
-        //                 .then(list => {
-        //                     // console.log(JSON.stringify(list, null, 2));
-        //                     // console.log(" ");
-        //                     return Promise.resolve();
-        //                 });
-        //         };
-        //         promise = promise.then(p)
-        //     });
-        //
-        //     promise.then(() => {
-        //         StellarSdk.Server.prototype.getBalances.restore();
-        //         done()
-        //     }).catch(err => {
-        //         StellarSdk.Server.prototype.getBalances.restore();
-        //         done(err)
-        //     });
-        // });
+        it("make list of IDs of account with money", function (done) {
+            this.timeout(400000);
+            let promise = Promise.resolve();
+            phrase.forEach(function (mnemonic, i) {
+                let p = () => {
+                    return HDWallet.setByPhrase(mnemonic, url)
+                        .then(hdw => {
+                            return hdw.getAccountIdsWithMoney();
+                        })
+                        .then(list => {
+                            let result = true;
+                            // console.log(list, testData.idList[i]);
+                            for (let l = 0; l < list.length; l++) {
+                                if ((list[l].account_id !== testData.idList[i][l].account_id) || (list[l].balances[0].balance !== testData.idList[i][l].balance)) {
+                                    // console.log(list[l].account_id, testData.keysList[i][l].account_id);
+                                    result = false;
+                                    break;
+                                }
+                            }
+                            expect(result).to.equal(true);
+                            return Promise.resolve();
+                        });
+                };
+                promise = promise.then(p)
+            });
+
+            promise.then(() => {
+                StellarSdk.Server.prototype.getBalances.restore();
+                done()
+            }).catch(err => {
+                StellarSdk.Server.prototype.getBalances.restore();
+                done(err)
+            });
+        });
     
     });
 

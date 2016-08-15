@@ -1,20 +1,17 @@
 let constSeed = [
       'f009af50a4c9f7b71e882b3dc9a59d27fcda45b8d47699f62d9774f5a2657b6e',
-      '81a44b7ec5a6031b9f9f3541da7b6364111662926138495a22bde926a2d50dae',
       'bfea385b80c34a92c77ce08598c49d9594ee586cb5cdaefe70ce2d0ba6b36c35',
       '847a73ca5b83518d4f2ee31ce53cf8f05fc80bc9ba2d294c37da17e4636fb517',
       'd96feb1b93b4dba39ba15b1130e060ea1b35a0b58b182f32c70d018177afe69f',
       '7191736c9fa2f865302e0972b238403dc6f26cdcc649c0fb339b72eff06b52fb' ];
 let constPhrase = [
       'fact endless enjoy corner gas sink other bowl sport nobody agony uncle box everybody tool ahead illuminate weep study pulse stand pie cast land',
-      'bloom yeah process after bone once queen lonely aim into struggle suddenly hop music anger grip expect yearn loose petal made frost both bathroom',
       'clearly pink rock glide common conversation stone moon terrible chase indeed stuff spiral home lesson train truly dude grow terrible barely clutch further book',
       'grip under judge show howl guess idiot bother mourn hill still glorious orange weak adore anymore butterfly somehow parent burst expression completely lust stir',
       'despair lady remain chin shine tangle soldier today bliss weave mother pure witch attempt powerful master run honest drift struggle rose buy tell pack',
       'desert glance mock throne just await social warn sob fault stomach friend kingdom metal clear curve scale stole too tremble bee center moon lip' ];
 let constSerWallet = [
       "WDYATL2QUTE7PNY6RAVT3SNFTUT7ZWSFXDKHNGPWFWLXJ5NCMV5W5ZO3W44MV4ZCGWZBKTDP7Q6G4ZIXMFNQTCJT5GH3OYDTRZ6H2ZGTAAAAAAAAAAAAAAAAAABAAAAAAIAAAABLAAAAAAAAAAAAAC2T",
-      "WCA2IS36YWTAGG47T42UDWT3MNSBCFTCSJQTQSK2EK66SJVC2UG24VNIBSRS6UIN2CPFRFXMSKO3SSJBRYPNBDLYZM4QYN4XFT7MV3V3AAAAAAYAAAABUAAAAAAAAAAAAAAABTP2",
       "WC76UOC3QDBUVEWHPTQILGGETWKZJ3SYNS243LX6ODHC2C5GWNWDKU5XLAXOGGJV3TR63VG2DW4WULFYKTEPAJPA6ZANMI6W6TK6SXJZAAAAAAAAAAAAAAAAAAWQAAAAFUAAAAAAAAAAABQAAAAAAAAAAAAAAAAAAAAAAAAEAAAAACAAAAAAAAAAAAHAAAAAAAAAAAASAAAAAAAAAAAAAAAAAABAAAAABYAAAAAZAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAADQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJAAAAAAAAAAAAAAAAAAAAAAAACEAAAAAAAAAAAAAAAAAAAAAAAAOQAAAAAAAABJCJ",
       "WCCHU46KLOBVDDKPF3RRZZJ47DYF7SALZG5C2KKMG7NBPZDDN62RONM5P6XZI33IKKZ4AL3TTXZYVPBKXITVXSJLH4G6OWVWKVRERKOBAAAAACQAAAACGAAAAANQAAAADMAAAAAAAAAAADIAAAAAAAAAAAAAAAAADQAAAABAAAAAABQAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAABEAAAAAAAAAAABQAAAAAAAAAAACIAAAAAMAAAAAGQAAAAEEAAAAAAAAAAAAAAAAAAAAAAAAAQAAAABYAAAAAAAAAAAIYAAAAAB7RS",
       "WDMW72Y3SO2NXI43UFNRCMHAMDVBWNNAWWFRQLZSY4GQDALXV7TJ6OZGSRLOPM6VJ3AHXBESOS6DQBLBF6BPHAEC2W4KUNTTJCPCNLX4AAAAADIAAAAD2AAAAADAAAAAAYAAAAAAAAAAABYAAAAAAAAAAAAAAAAAGEAAAAABAAAABUOE",
@@ -25,33 +22,6 @@ let keysForAccountWithMoney = [
   {
     "key": "MAUAKDGPBG3UVYLIRZPWRWIFC2XKRYBG2DABQ6XDAEVYJHGVQ2QGKBBL",
     "balance": "205"
-  }
-],
- 
-[
-  {
-    "key": "MAUAUIHZTD7QSITKUZEYOZBCAXDK3VNY4IZVC353WEKGHPTF3GHUUEGQ",
-    "balance": "173"
-  },
-  {
-    "key": "MAYOYPQKDG7X2WE36IQBUIKOEYHDWPVRVLK76JMG34B2JQ4FSINE5O5Z",
-    "balance": "45"
-  },
-  {
-    "key": "MCADSHMVGZVRFINRT27FMKKTK4UAQY676C5Z55T76DZ2LHOCO3WEYYYW",
-    "balance": "13"
-  },
-  {
-    "key": "MCYHMQ5VZGA2XTK6GGWTYYVELCVV54RBARYXYSWWPOVNU3OCU6HU44RB",
-    "balance": "205"
-  },
-  {
-    "key": "MDAKL6AR5IZFSAWWF5ATHST6OQL7NDBGHP24U3U6VCASBHOWEAQEUV2M",
-    "balance": "45"
-  },
-  {
-    "key": "MA4DMOMK2JFNWFZ7ZKWL27PKCDCQEDMLFDDAPHJE5UTO2XTYWHOEORUD",
-    "balance": "77"
   }
 ],
  
@@ -383,34 +353,7 @@ let accountIdsWithMoney = [
     "balance": "205"
   }
 ],
- 
-[
-  {
-    "account_id": "GCQDOAB5EG2MFJRP4TRSNLZZTX5K6OIXTQCTEPDKENXE64CC2MUBRQLP",
-    "balance": "173"
-  },
-  {
-    "account_id": "GAQPGTSN2KLE66PQD6IP6POZLFB5N3ATBM6TA67OCSN7GJDLF6M5TFHG",
-    "balance": "45"
-  },
-  {
-    "account_id": "GAAPPC2RMBFD2VTGV6MKYMXTTNYQIYJ7542EBXYVIWKIVTYSGQ63KBQS",
-    "balance": "13"
-  },
-  {
-    "account_id": "GDAK7DMTJ7DNEAKVCZ6UI6YHXVWEBX42TYVLZQ5GZTCO6C4WF6WGTFFS",
-    "balance": "205"
-  },
-  {
-    "account_id": "GAQOXL4SO7OVID45GCLCEHYZ7T6SQMBIL2QBQBRUKYQIVVAHE26HBTJI",
-    "balance": "45"
-  },
-  {
-    "account_id": "GBAE7LIDAKGNFEDC7UVEQ5JG32UYLN7OSUELTHVQ4WVFYLVM3ANLCVAX",
-    "balance": "77"
-  }
-],
- 
+    
 [
   {
     "account_id": "GBQMOVMF6BJ2PQCEEKXLAKUZK2YQ6Y3XVYAYLOMAK3OR35ENYWXMCAY6",
@@ -890,6 +833,8 @@ export let testData = {
   phrase: constPhrase,
   seed: constSeed,
   serialization: constSerWallet,
-  tx: txData
+  tx: txData,
+  idList: accountIdsWithMoney,
+  keysList: keysForAccountWithMoney
 };
 
