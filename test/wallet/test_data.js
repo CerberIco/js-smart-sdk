@@ -829,6 +829,26 @@ let txData = {
         amount:'42' } ]
   ] };
 
+
+
+let wrongPhrase = [
+  'factendless enjoy corner gas sink other bowl sport nobody agony uncle box everybody tool ahead illuminate weep study pulse stand pie cast land',
+  'clearly  book',
+  's,da;fmalfma.sfal.sf,a;lwfm,sla lemflam aemfla.f',
+  ' despair lady remain chin shine tangle soldier today bliss weave mother pure witch attempt powerful master run honest drift struggle rose buy tell pack'
+  ];
+let wrongSerWallet = [
+  "ZDYATL2QUTE7PNY6RAVT3SNFTUT7ZWSFXDKHNGPWFWLXJ5NCMV5W5ZO3W44MV4ZCGWZBKTDP7Q6G4ZIXMFNQTCJT5GH3OYDTRZ6H2ZGTAAAAAAAAAAAAAAAAAABAAAAAAIAAAABLAAAAAACTDQ",
+  "WDYATL2QUTE7PNY6RAVT3SNFTUT7ZWSFXDKHNGPWFWLXJ5NCMV5W5ZO3W44MV4ZCGWZBKTDP7Q6G4ZIXMFNQTCJT5GH3OYDTRZ6H2ZGTAAAAAAAAAAAAAAAAAABAAAIBLCTDQ",
+  "WDYATL2QUTE7PNY6RAVT3SNFTUT7ZWSFXDKHNGPWFWLXJ5NCMV5W5ZO3W42MV4ZCGWZBKTDP7Q6G4ZIXMFNQTCJT5GH3OYDTRZ6H2ZGTAAAAAAAAAAAAAAAAAABAAAAAAIAAAABLAAAAAACTDQ"
+    ];
+
+let wrongStrKey = [
+  "MAUAKDGPBG3UVYLIRZPWRWIFC2XKRYBG2DABQ6XDAEVYJHGVQ2QGKBBL",
+  "SAUAKDGPBG3UVYLIRZPWRWIFC2XKRYBG2DABQ6XDAEVYJHGVQ2QGKBBL",
+  "FAUAKDGPBG3UVYLIRZPWRWIFC2XKRYBG2DABQ6XDAEVYJHGVQ2QGKBBL"
+];
+    
 export let testData = {
   phrase: constPhrase,
   seed: constSeed,
@@ -838,3 +858,8 @@ export let testData = {
   keysList: keysForAccountWithMoney
 };
 
+export let badData = {
+  phrase: wrongPhrase,
+  strKey: wrongStrKey,
+  wallet: wrongSerWallet
+};

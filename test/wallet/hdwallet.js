@@ -256,7 +256,8 @@ describe("Workflow Test. ", function () {
                 console.log("Index list: ", alice.mpubCounter, alice.indexList);
                 console.log(alice);
                 let aliceMpub = alice.getMPublicNew();
-                let xdrSerialize = alice.xdrSerialize();
+                console.log(aliceMpub);
+                let xdrSerialize = alice.serialize();
                 return StellarSdk.HDWallet.setByStrKey(xdrSerialize, url);
                 // return alice.getBalance(asset)
                 //     .then(balance => {
@@ -301,7 +302,7 @@ describe("Workflow Test. ", function () {
                 // console.log("Index pair: ", bob.firstWithMoney, " | ", bob.firstUnused);
                 // console.log("Index list: ", bob.indexList);
                 console.log(bob);
-                done()
+                done();
             // })
             // .catch(err => {
             //     console.log("Result false = ", JSON.stringify(err, null, 2));
