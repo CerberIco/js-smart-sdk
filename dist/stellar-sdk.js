@@ -62494,7 +62494,7 @@ var StellarSdk =
 	                    }
 	                default:
 	                    {
-	                        toBluebirdRej(new Error("Invalid version of StrKey"));
+	                        return toBluebirdRej(new Error("Invalid version of StrKey"));
 	                    }
 	            }
 	        }
@@ -62566,15 +62566,15 @@ var StellarSdk =
 	            if (ver == this._version().mpriv.byte) {
 	                hdw.seed = new Buffer(xdrWallet.key());
 	                hdw.hdk = hdw.hdk = genMaster(hdw.seed, this._version().mpriv.byte);
+	                hdw.indexList = xdrWallet.indexList();
+	                hdw.mpubCounter = xdrWallet.mpubCounter();
 	            } else if (ver == this._version().mpub.byte) {
 	                hdw.hdk.publicKey = new Buffer(xdrWallet.key());
+	                hdw.chainCode = new Buffer(xdrWallet.chainCode());
 	            }
 
-	            hdw.chainCode = new Buffer(xdrWallet.chainCode());
 	            hdw.firstWithMoney = xdrWallet.firstWithMoney();
 	            hdw.firstUnused = xdrWallet.firstUnused();
-	            hdw.mpubCounter = xdrWallet.mpubCounter();
-	            hdw.indexList = xdrWallet.indexList();
 
 	            return toBluebirdRes(hdw);
 	        }
@@ -62610,8 +62610,10 @@ var StellarSdk =
 	    }, {
 	        key: "setByMPublic",
 	        value: function setByMPublic(rawKey, url) {
+	            if (rawKey.length !== MASTERPUBLIC_LENGTH) return toBluebirdRej(new Error("Invalid MasterPublic!"));
 	            var hdw = new HDWallet(url);
 	            var mpub = new _stellarBase.HDKey();
+
 	            mpub.versions = this._version().mpub.byte;
 	            mpub.chainCode = rawKey.slice(0, CHAINCODE_LENGTH);
 	            mpub._setPublicKey(rawKey.slice(CHAINCODE_LENGTH, MASTERPUBLIC_LENGTH));
@@ -62697,7 +62699,7 @@ var StellarSdk =
 	    }, {
 	        key: "_checkAccounts",
 	        value: function _checkAccounts(request, url) {
-	            if (request.length === 0) toBluebirdRej("Invalid request");
+	            if (request.length === 0) return toBluebirdRej("Invalid request");
 	            var server = new _server.Server(url);
 	            return server.getBalances(request).then(function (response) {
 	                var assets = response.assets;

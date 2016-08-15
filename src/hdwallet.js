@@ -106,7 +106,7 @@ export class HDWallet {
                 return this._xdrDeserialize(this._version().mpub.byte, key, url);
             }
             default : {
-                toBluebirdRej(new Error ("Invalid version of StrKey"));
+                return toBluebirdRej(new Error ("Invalid version of StrKey"));
             }
         }
     }
@@ -175,19 +175,17 @@ export class HDWallet {
         if (ver == this._version().mpriv.byte) {
             hdw.seed = new Buffer(xdrWallet.key());
             hdw.hdk = hdw.hdk = genMaster(hdw.seed, this._version().mpriv.byte);
-
+            hdw.indexList = xdrWallet.indexList();
+            hdw.mpubCounter = xdrWallet.mpubCounter();
         }
         else if (ver == this._version().mpub.byte) {
             hdw.hdk.publicKey = new Buffer(xdrWallet.key());
-
+            hdw.chainCode = new Buffer(xdrWallet.chainCode());
         }
 
-        hdw.chainCode = new Buffer(xdrWallet.chainCode());
         hdw.firstWithMoney = xdrWallet.firstWithMoney();
         hdw.firstUnused = xdrWallet.firstUnused();
-        hdw.mpubCounter = xdrWallet.mpubCounter();
-        hdw.indexList = xdrWallet.indexList();
-
+        
         return toBluebirdRes(hdw);
     }
 
@@ -218,6 +216,8 @@ export class HDWallet {
      * @returns {HDWallet}
      */
     static setByMPublic(rawKey, url) {
+        if (rawKey.length !== MASTERPUBLIC_LENGTH)
+            return toBluebirdRej(new Error("Invalid MasterPublic!"));
         let hdw = new HDWallet(url);
         let mpub = new HDKey();
         mpub.versions  = this._version().mpub.byte;
@@ -859,7 +859,7 @@ export class HDWallet {
 
     static _checkAccounts(request, url) {
         if (request.length === 0)
-            toBluebirdRej("Invalid request");
+            return toBluebirdRej("Invalid request");
         let server = new Server(url);
         return server.getBalances(request)
             .then(response => {
