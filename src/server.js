@@ -14,7 +14,7 @@ import {FriendbotBuilder} from "./friendbot_builder";
 import {xdr, Account, hash} from "stellar-base";
 import isString from "lodash/isString";
 import {AssetsCallBuilder} from "./assets_call_builder";
-
+import {AccountTraitsCallBuilder} from "./account_traits_call_builder";
 let querystring = require('querystring');
 let axios = require("axios");
 let toBluebird = require("bluebird").resolve;
@@ -177,6 +177,14 @@ export class Server {
      */
     assets() {
         return new AssetsCallBuilder(URI(this.serverURL));
+    }
+
+    /**
+     * Returns new {@link AccountTraitsCallBuilder} object configured by a current Horizon server configuration.
+     * @returns {AccountTraitsCallBuilder}
+     */
+    accountTraits() {
+        return new AccountTraitsCallBuilder(URI(this.serverURL));
     }
 
 

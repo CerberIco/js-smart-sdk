@@ -1130,5 +1130,71 @@ describe("server.js tests", function () {
           })
       });
     });
+
+    describe("AccountTraitsCallBuilder.Filter", function () {
+      let traitsResponse = {
+        _links: {
+          self: {
+            href: "http://localhost:8000/traits?order=asc&limit=1&cursor="
+          },
+          next: {
+            href: "http://localhost:8000/traits?order=asc&limit=1&cursor=1"
+          },
+          prev: {
+            href: "http://localhost:8000/traits?order=desc&limit=1&cursor=1"
+          }
+        },
+        _embedded: {
+          records: [
+            {
+              _links: {
+                self: {
+                  href: "http://localhost:8000/accounts/GAJLXJ6AJBYG5IDQZQ45CTDYHJRZ6DI4H4IRJA6CD3W6IIJIKLPAS33R/traits"
+                },
+                account: {
+                  href: "http://localhost:8000/accounts/GAJLXJ6AJBYG5IDQZQ45CTDYHJRZ6DI4H4IRJA6CD3W6IIJIKLPAS33R"
+                }
+              },
+              paging_token: "1",
+              account_id: "GAJLXJ6AJBYG5IDQZQ45CTDYHJRZ6DI4H4IRJA6CD3W6IIJIKLPAS33R",
+              block_incoming_payments: false,
+              block_outcoming_payments: false
+            }
+          ]
+        }
+      };
+
+      it("requests the correct endpoint", function (done) {
+        this.axiosMock.expects('get')
+          .withArgs(sinon.match('https://horizon-live.stellar.org:1337/traits'))
+          .returns(Promise.resolve({ data: traitsResponse }));
+
+        this.server.accountTraits()
+          .call()
+          .then(function (response) {
+            expect(response.records).to.be.deep.equal(traitsResponse._embedded.records);
+            done();
+          })
+          .catch(function (err) {
+            done(err);
+          })
+      });
+
+      it("requests the correct endpoint for account", function (done) {
+        this.axiosMock.expects('get')
+          .withArgs(sinon.match('https://horizon-live.stellar.org:1337/accounts/GAJLXJ6AJBYG5IDQZQ45CTDYHJRZ6DI4H4IRJA6CD3W6IIJIKLPAS33R/traits'))
+          .returns(Promise.resolve({ data: traitsResponse }));
+
+        this.server.accountTraits().forAccount("GAJLXJ6AJBYG5IDQZQ45CTDYHJRZ6DI4H4IRJA6CD3W6IIJIKLPAS33R")
+          .call()
+          .then(function (response) {
+            expect(response.records).to.be.deep.equal(traitsResponse._embedded.records);
+            done();
+          })
+          .catch(function (err) {
+            done(err);
+          })
+      });
+    });
   })
 });
