@@ -289,11 +289,13 @@ describe("server.js tests", function () {
       describe("without options", function () {
         it("requests the correct endpoint", function (done) {
           this.axiosMock.expects('get')
-            .withArgs(sinon.match('https://horizon-live.stellar.org:1337/ledgers/1/transactions'))
+            .withArgs(sinon.match('https://horizon-live.stellar.org:1337/ledgers/1/transactions?before=2016-08-08T08%3A34%3A54Z&after=2016-08-08T08%3A34%3A54Z'))
             .returns(Promise.resolve({ data: transactionsResponse }));
 
           this.server.transactions()
             .forLedger("1")
+            .before("2016-08-08T08:34:54Z")
+            .after("2016-08-08T08:34:54Z")
             .call()
             .then(function (response) {
               expect(response.records).to.be.deep.equal(transactionsResponse._embedded.records);
@@ -856,11 +858,13 @@ describe("server.js tests", function () {
 
       it("forTransaction() requests the correct endpoint", function (done) {
         this.axiosMock.expects('get')
-          .withArgs(sinon.match('https://horizon-live.stellar.org:1337/transactions/blah/operations'))
+          .withArgs(sinon.match('https://horizon-live.stellar.org:1337/transactions/blah/operations?before=2016-08-08T08%3A34%3A54Z&after=2016-08-08T08%3A34%3A54Z'))
           .returns(Promise.resolve({ data: operationsResponse }));
 
         this.server.operations()
           .forTransaction("blah")
+          .before("2016-08-08T08:34:54Z")
+          .after("2016-08-08T08:34:54Z")
           .call()
           .then(function (response) {
             expect(response.records).to.be.deep.equal(operationsResponse._embedded.records);
@@ -922,11 +926,13 @@ describe("server.js tests", function () {
 
       it("forAccount() requests the correct endpoint", function (done) {
         this.axiosMock.expects('get')
-          .withArgs(sinon.match('https://horizon-live.stellar.org:1337/accounts/GBS43BF24ENNS3KPACUZVKK2VYPOZVBQO2CISGZ777RYGOPYC2FT6S3K/payments'))
+          .withArgs(sinon.match('https://horizon-live.stellar.org:1337/accounts/GBS43BF24ENNS3KPACUZVKK2VYPOZVBQO2CISGZ777RYGOPYC2FT6S3K/payments?before=2016-08-08T08%3A34%3A54Z&after=2016-08-08T08%3A34%3A54Z'))
           .returns(Promise.resolve({ data: paymentsResponse }));
 
         this.server.payments()
           .forAccount("GBS43BF24ENNS3KPACUZVKK2VYPOZVBQO2CISGZ777RYGOPYC2FT6S3K")
+          .before("2016-08-08T08:34:54Z")
+          .after("2016-08-08T08:34:54Z")
           .call()
           .then(function (response) {
             expect(response.records).to.be.deep.equal(paymentsResponse._embedded.records);

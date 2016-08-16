@@ -1,6 +1,6 @@
-import {CallBuilder} from "./call_builder";
+import {TimeFilterCallBuilder} from "./time_filter_call_builder";
 
-export class OperationCallBuilder extends CallBuilder {
+export class OperationCallBuilder extends TimeFilterCallBuilder {
     /**
      * Creates a new {@link OperationCallBuilder} pointed to server defined by serverUrl.
      *
