@@ -35,8 +35,7 @@ let seed = [
     asset = new StellarSdk.Asset('EUAH', bankPublicKey),
     url = "http://dev.stellar.attic.pw:8010",
 
-    rootMnemonic = "belief mere bone careful small chair awake meant wrap mutter " +
-        "goose belly men perhaps waste carefully sadness taste rant grab thread garden bliss misery",
+    rootMnemonic = "medal rack uncle minute father advice figure squirrel scorpion pill elder copper copy twice spread worry sleep prosper duck pledge example cook lab recall",
     rootSeed = StellarBase.HDKey.getSeedFromMnemonic(rootMnemonic); //Alice
 
 

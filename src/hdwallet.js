@@ -76,10 +76,12 @@ export class HDWallet {
      * @param str {string} Mnemonic phrase for example:
      *       "fix forget despair friendship blue grip ..."
      * @param url {string} server url
+     * @param {string} [lang] "eng" 
      * @returns {*}
      */
-    static setByPhrase(str, url) {
-        return this.setByRawSeed(decodeMnemo(str), url);
+    static setByPhrase(str, url, lang) {
+        lang = lang || "eng";
+        return this.setByRawSeed(decodeMnemo(str, lang), url);
     }
 
     /**
@@ -149,21 +151,17 @@ export class HDWallet {
 
     /**
      * Create HDWallet from Seed
-     * @param seed {object} Buffer or hexString
+     * @param seed {object} Buffer
      * @param url {string} server url
      * @returns {HDWallet}
      */
     static setByRawSeed(seed, url) {
         let hdw = new HDWallet(url);
-        if (typeof seed == "string"){
-            hdw.hdk = genMaster(new Buffer(seed, "hex"), this._version().mpriv.byte);
-            hdw.seed = new Buffer(seed, "hex");
-        } else{
-            hdw.hdk = genMaster(seed, this._version().mpriv.byte);
-            hdw.seed = seed;
-        }
-
+        
         hdw.ver = this._version().mpriv.byte;
+        hdw.hdk = genMaster(seed, this._version().mpriv.byte);
+        hdw.seed = seed;
+        
         return hdw.totalRefresh();
     }
 
