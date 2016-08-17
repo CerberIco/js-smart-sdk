@@ -15,8 +15,8 @@ const PRIVATEKEY_LENGTH = 32;
 const PUBLICKEY_LENGTH = 32;
 const CHAINCODE_LENGTH = 32;
 const SEED_LENGTH = 32;
+const BASE_PAD = 3;
 const MASTERPUBLIC_LENGTH = 64;
-const SERIALIZE_LENGTH = 80; //Length of serialized wallet without index list
 
 let decodeMnemo = HDKey.getSeedFromMnemonic,
     strDecode   = StellarBase.decodeCheck,
@@ -45,6 +45,7 @@ export class HDWallet {
         this.seed = null;
         this.hdk = null;
         this._serverURL = url;
+        this.__derivedKeys = {};
     }
 
     static _version() {
@@ -59,8 +60,8 @@ export class HDWallet {
 
     static _path() {
         return {
-            own:    {private: "m/1/", public: "M/1/"},
-            others: {private: "m/2/", public: "M/2/"},
+            own:    {private: "m/1", public: "M/1"},
+            others: {private: "m/2", public: "M/2"},
             self:             "M/" };
     }
 
@@ -99,62 +100,16 @@ export class HDWallet {
             }
             case "W": {
                 let key = strDecode(this._version().privWallet.str, str);
-                return this._xdrDeserialize(this._version().mpriv.byte, key, url);
+                return this._deserialize(this._version().mpriv.byte, key, url);
             }
             case "Z": {
                 let key = strDecode(this._version().pubWallet.str, str);
-                return this._xdrDeserialize(this._version().mpub.byte, key, url);
+                return this._deserialize(this._version().mpub.byte, key, url);
             }
             default : {
                 return toBluebirdRej(new Error ("Invalid version of StrKey"));
             }
         }
-    }
-
-    /**
-     * Deserialize HDWallet from serialized byteArray.
-     * @param ver {number} version of HDWallet
-     * @param wallet {object} ByteArray
-     * Data Structure of serialized wallet
-     * < Key[32]||Chain[32]||1stWithMoney[4]||1stUnused[4]||mpubCounter[4]||listLen[4]||list[4*listLen]>
-     * @param url {string} server url
-     * @returns {HDWallet}
-     */
-    static _deserialize(ver, wallet, url) {
-        let hdw = new HDWallet(url),
-            listLen, offset = 0;
-        hdw.ver = ver;
-        hdw.hdk = {};
-        hdw.indexList = [];
-        hdw.hdk.versions = ver;
-        
-        if (ver == this._version().mpriv.byte) {
-            hdw.seed = wallet.slice(offset, SEED_LENGTH);
-            hdw.hdk = hdw.hdk = genMaster(hdw.seed, this._version().mpriv.byte);
-            offset += SEED_LENGTH;
-        }
-        else if (ver == this._version().mpub.byte) {
-            hdw.hdk.publicKey = wallet.slice(offset, PUBLICKEY_LENGTH);
-            offset += PUBLICKEY_LENGTH;
-        }
-
-        hdw.hdk.chainCode = wallet.slice(offset, offset + CHAINCODE_LENGTH);
-        offset += CHAINCODE_LENGTH;
-        hdw.firstWithMoney = wallet.readUInt32BE(offset, offset + 4);
-        offset += 4;
-        hdw.firstUnused = wallet.readUInt32BE(offset, offset + 4);
-        offset += 4;
-        hdw.mpubCounter = wallet.readUInt32BE(offset, offset + 4);
-        offset += 4;
-        listLen = wallet.readUInt32BE(offset, offset + 4);
-        offset += 4;
-        
-        if ((listLen > this._maxListLen()) || (listLen * 4 + offset > wallet.length + 5))
-            return toBluebirdRej(new Error("Invalid serialized wallet"));
-        for (let i = 0, j =0; i < listLen; i++, j += 4) {
-            hdw.indexList[i] = wallet.readUInt32BE(offset + j, offset + 4 + j);
-        }
-        return toBluebirdRes(hdw);
     }
     
     /**
@@ -164,29 +119,32 @@ export class HDWallet {
      * @param url {string} server url
      * @returns {HDWallet}
      */
-    static _xdrDeserialize(ver, rawWallet, url) {
+    static _deserialize(ver, rawWallet, url) {
+        let xdrWallet;
         let hdw = new HDWallet(url);
-        let xdrWallet = xdr.HdWalletSerialization.fromXDR(rawWallet);
         hdw.ver = ver;
         hdw.hdk = {};
         hdw.indexList = [];
         hdw.hdk.versions = ver;
 
         if (ver == this._version().mpriv.byte) {
-            hdw.seed = new Buffer(xdrWallet.key());
+            xdrWallet = xdr.PrivHdwSerialization.fromXDR(rawWallet);
+            hdw.seed = new Buffer(xdrWallet.seed());
             hdw.hdk = hdw.hdk = genMaster(hdw.seed, this._version().mpriv.byte);
             hdw.indexList = xdrWallet.indexList();
             hdw.mpubCounter = xdrWallet.mpubCounter();
         }
         else if (ver == this._version().mpub.byte) {
-            hdw.hdk.publicKey = new Buffer(xdrWallet.key());
+            xdrWallet = xdr.PubHdwSerialization.fromXDR(rawWallet);
+            hdw.hdk.publicKey = new Buffer(xdrWallet.publicKey());
             hdw.chainCode = new Buffer(xdrWallet.chainCode());
         }
 
         hdw.firstWithMoney = xdrWallet.firstWithMoney();
         hdw.firstUnused = xdrWallet.firstUnused();
-        
+
         return toBluebirdRes(hdw);
+
     }
 
     /**
@@ -216,7 +174,7 @@ export class HDWallet {
      * @returns {HDWallet}
      */
     static setByMPublic(rawKey, url) {
-        if (rawKey.length !== MASTERPUBLIC_LENGTH)
+        if (rawKey.length !== MASTERPUBLIC_LENGTH + BASE_PAD)
             return toBluebirdRej(new Error("Invalid MasterPublic!"));
         let hdw = new HDWallet(url);
         let mpub = new HDKey();
@@ -337,7 +295,7 @@ export class HDWallet {
         function findMoney(index, stopIndex) {
             let accountList = [];
             for (let i = index, l = 0; i < stopIndex; i++, l++) {
-                let derivedKey = self.hdk.derive(data.path + i);
+                let derivedKey = self.__getDerivedKey(data.path, i);
                 accountList[l] = strEncode(HDWallet._version().accountId.str, derivedKey.publicKey);
             }
 
@@ -362,7 +320,7 @@ export class HDWallet {
                         if(otherBranchIndex < self.indexList.length) {
                             _index = self.indexList[otherBranchIndex];
                             _stopIndex = HDWallet._min(_index + HDWallet._lookAhead(), HDWallet._maxIndex());
-                            data.path = path[1] + otherBranchIndex + "/";
+                            data.path = path[1] + "/" + otherBranchIndex;
                             otherBranchIndex++;
                             
                             return findMoney(_index, _stopIndex);
@@ -383,59 +341,30 @@ export class HDWallet {
 
     /**
      * Serialize HDWallet into Base32-encoded string.
-     * < Key[32]||Chain[32]||1stWithMoney[4]||1stUnused[4]||mpubCounter[4]||listLen[4]||list[4*listLen]>
+     * xdr.PrivHDWSerialization struct is used for private wallet,
+     * xdr.PubHDWSerialization struct is used for public wallet,
      * @returns {string} For example: WADDF3F6LSTEJ5PSQONOQ76G...
      */
-    _serializeOld() {
-        let ver, offset = 0,
-            listLen = this.indexList.length,
-            LEN = SERIALIZE_LENGTH + listLen * 4,
-            buffer = new Buffer(LEN);
-
-        if (this.ver == HDWallet._version().mpriv.byte) {
-            this.seed.copy(buffer, offset);
-            ver = HDWallet._version().privWallet.str;
-            offset += PRIVATEKEY_LENGTH;
-        } else if (this.ver == HDWallet._version().mpub.byte) {
-            this.hdk.publicKey.copy(buffer, offset);
-            ver = HDWallet._version().pubWallet.str;
-            offset += PUBLICKEY_LENGTH;
-        }
-
-        this.hdk.chainCode.copy(buffer, offset);
-        offset += CHAINCODE_LENGTH;
-        buffer.writeUInt32BE(this.firstWithMoney, offset);
-        offset += 4;
-        buffer.writeUInt32BE(this.firstUnused, offset);
-        offset += 4;
-        buffer.writeUInt32BE(this.mpubCounter, offset);
-        offset += 4;
-        buffer.writeUInt32BE(listLen, offset);
-
-        for (let i = 0, j = 0; i < listLen; i++, j += 4) {
-            buffer.writeUInt32BE(this.indexList[i], offset + 4 + j);
-        }
-        return StellarBase.encodeWithoutPad(ver, buffer);
-    }
-
     serialize() {
-        let key, ver;
+        let ver, xdrWallet;
         if (this.ver == HDWallet._version().mpriv.byte) {
-            key = this.seed;
             ver = HDWallet._version().privWallet.str;
-        } 
-        else if (this.ver == HDWallet._version().mpub.byte) {
-            key = this.hdk.publicKey;
-            ver = HDWallet._version().pubWallet.str;
+            xdrWallet = new xdr.PrivHdwSerialization({
+                seed:           this.seed,
+                firstWithMoney: this.firstWithMoney,
+                firstUnused:    this.firstUnused,
+                mpubCounter:    this.mpubCounter,
+                indexList:      this.indexList  });
         }
-        let xdrWallet = new xdr.HdWalletSerialization({
-            key:            key,
-            chainCode:      this.hdk.chainCode, 
-            firstWithMoney: this.firstWithMoney, 
-            firstUnused:    this.firstUnused, 
-            mpubCounter:    this.mpubCounter, 
-            indexList:      this.indexList  });
-        
+        else if (this.ver == HDWallet._version().mpub.byte) {
+            ver = HDWallet._version().pubWallet.str;
+            xdrWallet = new xdr.PubHdwSerialization({
+                publicKey:      this.hdk.publicKey,
+                chainCode:      this.hdk.chainCode,
+                firstWithMoney: this.firstWithMoney,
+                firstUnused:    this.firstUnused
+            });
+        }
         return strEncode(ver, xdrWallet.toXDR());
     }
 
@@ -524,18 +453,18 @@ export class HDWallet {
         let stopIndex = numberOfAddresses + index;
 
         while (index < stopIndex) {
-            let derivedKey = this.hdk.derive(path + index);
+            let derivedKey = this.__getDerivedKey(path, index);
             invoiceList.push({
-                key: derivedKey.accountId(),
+                key: strEncode(HDWallet._version().accountId.str, derivedKey.publicKey),
                 amount: HDWallet._accountBalanceLimit()
             });
             index++;
         }
 
         if(!(piece.isZero())) {
-            let derivedKey = this.hdk.derive(path + index);
+            let derivedKey = this.__getDerivedKey(path, index);
             invoiceList.push({
-                key: derivedKey.accountId(),
+                key: strEncode(HDWallet._version().accountId.str, derivedKey.publicKey),
                 amount: piece
             });
         }
@@ -566,7 +495,7 @@ export class HDWallet {
             let privateKeyList = [];
 
             for (let i = index, l = 0; i < stopIndex; i++, l++) {
-                let derivedKey = self.hdk.derive(currentPath + i);
+                let derivedKey = self.__getDerivedKey(currentPath, i);
                 accountList[l] = strEncode(HDWallet._version().accountId.str, derivedKey.publicKey);
                 privateKeyList[l] =  strEncode(HDWallet._version().mpriv.str, derivedKey.privateKey);
             }
@@ -593,7 +522,7 @@ export class HDWallet {
                         if(otherBranchIndex < self.indexList.length) {
                             _index = self.indexList[otherBranchIndex];
                             _stopIndex = HDWallet._min(_index + HDWallet._lookAhead(), HDWallet._maxIndex());
-                            currentPath = path[1] + otherBranchIndex + "/";
+                            currentPath = path[1] + "/" + otherBranchIndex;
                             otherBranchIndex++;
 
                             return findMoney(_index, _stopIndex);
@@ -639,7 +568,7 @@ export class HDWallet {
             let accountList = [];
 
             for (let i = index, l = 0; i < stopIndex; i++, l++) {
-                let derivedKey = self.hdk.derive(currentPath + i);
+                let derivedKey = self.__getDerivedKey(currentPath, i);
                 accountList[l] = strEncode(HDWallet._version().accountId.str, derivedKey.publicKey);
             }
 
@@ -669,7 +598,7 @@ export class HDWallet {
                         if(otherBranchIndex < self.indexList.length) {
                             _index = self.indexList[otherBranchIndex];
                             _stopIndex = HDWallet._min(_index + HDWallet._lookAhead(), HDWallet._maxIndex());
-                            currentPath = path[1] + otherBranchIndex + "/";
+                            currentPath = path[1] + "/" + otherBranchIndex;
                             otherBranchIndex++;
 
                             return findMoney(_index, _stopIndex);
@@ -717,7 +646,7 @@ export class HDWallet {
                         return withdrawalList;
 
                     data.f_w_m = self.indexList[otherBranchIndex];
-                    data.path = path[1] + otherBranchIndex + "/";
+                    data.path = path[1] + "/" + otherBranchIndex;
                     otherBranchIndex++;
 
                     return completeList(data);
@@ -737,7 +666,7 @@ export class HDWallet {
                 privateKeyList = [];
             
             for (let i = index, l = 0; i < stopIndex; i++, l++) {
-                let derivedKey = self.hdk.derive(data.path + i);
+                let derivedKey = self.__getDerivedKey(data.path, i);
                 accountList[l] = strEncode(HDWallet._version().accountId.str, derivedKey.publicKey);
                 privateKeyList[l] = strEncode(HDWallet._version().mpriv.str, derivedKey.privateKey);
             }
@@ -789,7 +718,7 @@ export class HDWallet {
 
             let indexPair = {f_w_m: indexList[index], f_u: indexList[index], indexingF_u: false};
 
-            return self._updateIndexesInOwnBranch(path + index + "/", hdw, indexPair)
+            return self._updateIndexesInOwnBranch(path  + "/" + index, hdw, indexPair)
                 .then(resultIndexPair => {
                     _index += 1;
 
@@ -824,7 +753,7 @@ export class HDWallet {
         function request() {
             let accountList = [];
             for (let i = _index, l = 0; i < _stopIndex; i++, l++) {
-                let derivedKey = hdw.hdk.derive(branchPath + i);
+                let derivedKey = hdw.__getDerivedKey(branchPath, i);
                 accountList[l] = strEncode(self._version().accountId.str, derivedKey.publicKey);
             }
 
@@ -996,5 +925,24 @@ export class HDWallet {
     static _fromAmount(value) {
         return new BigNumber(value).div(ONE).toString();
     }
-    
+
+    __getDerivedKey(branchPath, index) {
+    // console.log(branchPath, index);
+        if (typeof(this.__derivedKeys[branchPath]) == "undefined") {
+            this.__derivedKeys[branchPath] = {keys: []};
+            this.__derivedKeys[branchPath].hdk = this.hdk.derive(branchPath);
+            // console.log("no hdk", this.__derivedKeys[branchPath]);
+        } 
+        if (typeof(this.__derivedKeys[branchPath].keys[index]) == "undefined") {
+            let derived = this.__derivedKeys[branchPath].hdk.derive(branchPath[0] + "/" + index);
+            this.__derivedKeys[branchPath].keys[index] = {
+                privateKey: derived.privateKey,
+                publicKey: derived.publicKey };
+            // console.log("has hdk", this.__derivedKeys[branchPath]);
+            return this.__derivedKeys[branchPath].keys[index];
+        }
+        // console.log("not empty", this.__derivedKeys[branchPath]);
+        return this.__derivedKeys[branchPath].keys[index];
+
+    }
 }
