@@ -11,10 +11,7 @@ let toBluebirdRej = require("bluebird").reject;
 
 const ONE = 10000000;
 const MAX_INT64 = '9223372036854775807';
-const PRIVATEKEY_LENGTH = 32;
-const PUBLICKEY_LENGTH = 32;
 const CHAINCODE_LENGTH = 32;
-const SEED_LENGTH = 32;
 const BASE_PAD = 3;
 const MASTERPUBLIC_LENGTH = 64;
 
@@ -237,60 +234,6 @@ export class HDWallet {
     }
 
     /**
-     * Return Base32 encoded MasterPublicKey
-     * @param path {number} or {string}
-     * @return {string}
-     */
-    getMPub(path) {
-        if (this.ver !== HDWallet._version().mpriv.byte)
-            throw new Error("Version of HDWallet mismatch");
-
-        if (typeof path == "number")
-            return this.hdk.getMasterPub(HDWallet._path().others.public + path);
-        if (typeof path == "string")
-            return this.hdk.getMasterPub(path);
-        else
-            throw new Error("Invalid argument! Must be index (type = number) or path (type = string).");
-    }
-
-    /**
-     * Return Base32 encoded MasterPublicKey for unused branch
-     * @return {string}
-     */
-    getMPublicNew() {
-        if (this.ver !== HDWallet._version().mpriv.byte)
-            throw new Error("Version of HDWallet mismatch");
-        let index = this.mpubCounter;
-        this.mpubCounter += 1;
-        return this.getMPub(index);
-    }
-
-    /**
-     * Calculate total balance of wallet for getting asset.
-     * @param asset {Asset}
-     * @returns {string} balance
-     */
-    getBalance(asset) {
-        let data = {};
-        data.isPublic = false;
-        data.asset = asset.code;
-        data.balance = new BigNumber(0);
-
-        if (this.ver == HDWallet._version().mpriv.byte)
-            data.path = [HDWallet._path().own.public, HDWallet._path().others.public];
-        else if (this.ver == HDWallet._version().mpub.byte) {
-            data.path = [HDWallet._path().self];
-            data.isPublic = true;
-        }
-
-        return this.__collect(data, "balance")
-            .then(() => {
-                return HDWallet._fromAmount(data.balance);
-            });
-
-    }
-
-    /**
      * Serialize HDWallet into Base32-encoded string.
      * xdr.PrivHDWSerialization struct is used for private wallet,
      * xdr.PubHDWSerialization struct is used for public wallet,
@@ -382,6 +325,102 @@ export class HDWallet {
     }
 
     /**
+     * Return Base32 encoded MasterPublicKey for unused branch
+     * @return {string}
+     */
+    getMPublicNew() {
+        if (this.ver !== HDWallet._version().mpriv.byte)
+            throw new Error("Version of HDWallet mismatch");
+        let index = this.mpubCounter;
+        this.mpubCounter += 1;
+        return this.getMPub(index);
+    }
+
+    /**
+     * Return Base32 encoded MasterPublicKey
+     * @param path {number} or {string}
+     * @return {string}
+     */
+    getMPub(path) {
+        if (this.ver !== HDWallet._version().mpriv.byte)
+            throw new Error("Version of HDWallet mismatch");
+
+        if (typeof path == "number")
+            return this.hdk.getMasterPub(HDWallet._path().others.public + path);
+        if (typeof path == "string")
+            return this.hdk.getMasterPub(path);
+        else
+            throw new Error("Invalid argument! Must be index (type = number) or path (type = string).");
+    }
+
+    /**
+     * Calculate total balance of wallet for getting asset.
+     * @param asset {Asset}
+     * @returns {string} balance
+     */
+    getBalance(asset) {
+        let data = {};
+        data.isPublic = false;
+        data.asset = asset.code;
+        data.balance = new BigNumber(0);
+
+        if (this.ver == HDWallet._version().mpriv.byte)
+            data.path = [HDWallet._path().own.public, HDWallet._path().others.public];
+        else if (this.ver == HDWallet._version().mpub.byte) {
+            data.path = [HDWallet._path().self];
+            data.isPublic = true;
+        }
+
+        return this.__collect(data, "balance")
+            .then(() => {
+                return HDWallet._fromAmount(data.balance);
+            });
+
+    }
+
+    /**
+     * Create list of accountId and balances,
+     * for all accounts with money.
+     * @returns {*[]} Array of pair {account_id, balances}
+     */
+    getAccountIdsWithMoney() {
+        let data = {};
+        data.isPublic = false;
+        data.resultList = [];
+
+        if (this.ver == HDWallet._version().mpriv.byte)
+            data.path = [HDWallet._path().own.public, HDWallet._path().others.public];
+        else if (this.ver == HDWallet._version().mpub.byte) {
+            data.path = [HDWallet._path().self];
+            data.isPublic = true;
+        }
+        return this.__collect(data, "ids")
+            .then(() => {
+                return data.resultList;
+            });
+
+    }
+
+    /**
+    * Create list of pair private keys
+    * and balances, for all accounts with money.
+    * @returns {*[]} Array of pair {key, balances}
+    */
+    getKeysForAccountsWithMoney() {
+        if (this.ver !== HDWallet._version().mpriv.byte)
+            return toBluebirdRej(new Error("Version of HDWallet mismatch"));
+        let data = {};
+        data.isPublic = false;
+        data.resultList = [];
+        data.path = [HDWallet._path().own.private, HDWallet._path().others.private];
+
+        return this.__collect(data, "keys")
+            .then(() => {
+                return data.resultList;
+            });
+    }
+
+    /**
      * Makes a list for getting amount.
      * @param strAmount {string} Amount.
      * @returns {*[]} Array of pair {accountID, amount}.
@@ -421,48 +460,6 @@ export class HDWallet {
         }
 
         return invoiceList;
-    }
-
-    /**
-    * Create list of pair private keys
-    * and balances, for all accounts with money.
-    * @returns {*[]} Array of pair {key, balances}
-    */
-    getKeysForAccountsWithMoney() {
-        if (this.ver !== HDWallet._version().mpriv.byte)
-            return toBluebirdRej(new Error("Version of HDWallet mismatch"));
-        let data = {};
-        data.isPublic = false;
-        data.resultList = [];
-        data.path = [HDWallet._path().own.private, HDWallet._path().others.private];
-
-        return this.__collect(data, "keys")
-            .then(() => {
-                return data.resultList;
-            });
-    }
-    
-    /**
-    * Create list of accountId and balances,
-    * for all accounts with money.
-    * @returns {*[]} Array of pair {account_id, balances}
-    */
-    getAccountIdsWithMoney() {
-        let data = {};
-        data.isPublic = false;
-        data.resultList = [];
-
-        if (this.ver == HDWallet._version().mpriv.byte)
-            data.path = [HDWallet._path().own.public, HDWallet._path().others.public];
-        else if (this.ver == HDWallet._version().mpub.byte) {
-            data.path = [HDWallet._path().self];
-            data.isPublic = true;
-        }
-        return this.__collect(data, "ids")
-            .then(() => {
-                return data.resultList;
-            });
-
     }
 
     /**
@@ -622,7 +619,23 @@ export class HDWallet {
 
         return findMoney(_index, _stopIndex);
     }
-    
+
+    __getDerivedKey(branchPath, index) {
+        if (typeof(this.__derivedKeys[branchPath]) == "undefined") {
+            this.__derivedKeys[branchPath] = {keys: []};
+            this.__derivedKeys[branchPath].hdk = this.hdk.derive(branchPath);
+        }
+        if (typeof(this.__derivedKeys[branchPath].keys[index]) == "undefined") {
+            let derived = this.__derivedKeys[branchPath].hdk.derive(branchPath[0] + "/" + index);
+            this.__derivedKeys[branchPath].keys[index] = {
+                privateKey: derived.privateKey,
+                publicKey: derived.publicKey };
+        }
+
+        return this.__derivedKeys[branchPath].keys[index];
+
+    }
+
     static _updateIndexesInOtherBranches(path, hdw, indexList){
         let self = this;
         let _index = 0;
@@ -794,9 +807,8 @@ export class HDWallet {
     }
 
     static _isValidAmount(value) {
-        if (!isString(value)) {
+        if (!isString(value))
             return false;
-        }
 
         let amount;
         try {
@@ -806,29 +818,24 @@ export class HDWallet {
         }
 
         // < 0
-        if (amount.isNegative()) {
+        if (amount.isNegative())
             return false;
-        }
 
         // > Max value
-        if (amount.times(ONE).greaterThan(new BigNumber(MAX_INT64).toString())) {
+        if (amount.times(ONE).greaterThan(new BigNumber(MAX_INT64).toString()))
             return false;
-        }
 
         // Decimal places (max 7)
-        if (amount.decimalPlaces() > 7) {
+        if (amount.decimalPlaces() > 7)
             return false;
-        }
 
         // Infinity
-        if (!amount.isFinite()) {
+        if (!amount.isFinite())
             return false;
-        }
 
         // NaN
-        if (amount.isNaN()) {
+        if (amount.isNaN())
             return false;
-        }
 
         return true;
     }
@@ -841,21 +848,5 @@ export class HDWallet {
 
     static _fromAmount(value) {
         return new BigNumber(value).div(ONE).toString();
-    }
-
-    __getDerivedKey(branchPath, index) {
-        if (typeof(this.__derivedKeys[branchPath]) == "undefined") {
-            this.__derivedKeys[branchPath] = {keys: []};
-            this.__derivedKeys[branchPath].hdk = this.hdk.derive(branchPath);
-        } 
-        if (typeof(this.__derivedKeys[branchPath].keys[index]) == "undefined") {
-            let derived = this.__derivedKeys[branchPath].hdk.derive(branchPath[0] + "/" + index);
-            this.__derivedKeys[branchPath].keys[index] = {
-                privateKey: derived.privateKey,
-                publicKey: derived.publicKey };
-        }
-
-        return this.__derivedKeys[branchPath].keys[index];
-
     }
 }

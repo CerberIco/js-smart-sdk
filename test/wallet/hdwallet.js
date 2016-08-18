@@ -48,33 +48,33 @@ describe("Workflow Test. ", function () {
         done();
     });
 
-    // it("Create empty Wallet. ", function (done) {
-    //     this.timeout(300000);
-    //     StellarSdk.HDWallet
-    //         .setByStrKey(seed[0], url)
-    //         .then(hdw => {
-    //
-    //             done()
-    //         })
-    //         .catch(err => {
-    //             console.log(err);
-    //             done(err)
-    //         });
-    // });
+    it("Create empty Wallet. ", function (done) {
+        this.timeout(300000);
+        StellarSdk.HDWallet
+            .setByStrKey(seed[0], url)
+            .then(hdw => {
 
-    // it("Create not-empty Wallet. ", function (done) {
-    //     this.timeout(300000);
-    //     StellarSdk.HDWallet
-    //         .setByRawSeed(rootSeed, url)
-    //         .then(hdw => {
-    //
-    //             done()
-    //         })
-    //         .catch(err => {
-    //             console.log(err);
-    //             done(err)
-    //         });
-    // });
+                done()
+            })
+            .catch(err => {
+                console.log(err);
+                done(err)
+            });
+    });
+
+    it("Create not-empty Wallet. ", function (done) {
+        this.timeout(300000);
+        StellarSdk.HDWallet
+            .setByRawSeed(rootSeed, url)
+            .then(hdw => {
+
+                done()
+            })
+            .catch(err => {
+                console.log(err);
+                done(err)
+            });
+    });
 
     it("Get balance. ", function (done) {
         this.timeout(300000);
@@ -96,31 +96,31 @@ describe("Workflow Test. ", function () {
             });
     });
 
-    // it("Refresh/TotalRefresh. ", function (done) {
-    //     this.timeout(300000);
-    //     StellarSdk.HDWallet
-    //         .setByRawSeed(rootSeed, url)
-    //         .then(alice => {
-    //             console.log("Index pair: ", alice.firstWithMoney, " | ", alice.firstUnused);
-    //             console.log("Index list: ", alice.mpubCounter, alice.indexList);
-    //             return alice.refresh()
-    //         })
-    //         .then(alice => {
-    //             console.log("Index pair: ", alice.firstWithMoney, " | ", alice.firstUnused);
-    //             console.log("Index list: ", alice.mpubCounter, alice.indexList);
-    //             return alice.totalRefresh()
-    //         })
-    //         .then(alice => {
-    //             console.log("Index pair: ", alice.firstWithMoney, " | ", alice.firstUnused);
-    //             console.log("Index list: ", alice.mpubCounter, alice.indexList);
-    //             done()
-    //         })
-    //         .catch(err => {
-    //             console.log(err);
-    //             done(err)
-    //         });
-    // });
-    //
+    it("Refresh/TotalRefresh. ", function (done) {
+        this.timeout(300000);
+        StellarSdk.HDWallet
+            .setByRawSeed(rootSeed, url)
+            .then(alice => {
+                console.log("Index pair: ", alice.firstWithMoney, " | ", alice.firstUnused);
+                console.log("Index list: ", alice.mpubCounter, alice.indexList);
+                return alice.refresh()
+            })
+            .then(alice => {
+                console.log("Index pair: ", alice.firstWithMoney, " | ", alice.firstUnused);
+                console.log("Index list: ", alice.mpubCounter, alice.indexList);
+                return alice.totalRefresh()
+            })
+            .then(alice => {
+                console.log("Index pair: ", alice.firstWithMoney, " | ", alice.firstUnused);
+                console.log("Index list: ", alice.mpubCounter, alice.indexList);
+                done()
+            })
+            .catch(err => {
+                console.log(err);
+                done(err)
+            });
+    });
+
     it("Get keys with money. ", function (done) {
         this.timeout(300000);
         StellarSdk.HDWallet
@@ -129,7 +129,7 @@ describe("Workflow Test. ", function () {
                 return hdw.getKeysForAccountsWithMoney()
             })
             .then(list => {
-                console.log("keys", JSON.stringify(list, null, 2));
+                // console.log("keys", list);
                 done()
             })
             .catch(err => {
@@ -146,7 +146,7 @@ describe("Workflow Test. ", function () {
                 return hdw.getAccountIdsWithMoney()
             })
             .then(list => {
-                console.log("ids",  JSON.stringify(list, null, 2));
+                // console.log("ids",list);
                 done()
             })
             .catch(err => {
