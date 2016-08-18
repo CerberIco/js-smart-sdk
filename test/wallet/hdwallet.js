@@ -48,33 +48,33 @@ describe("Workflow Test. ", function () {
         done();
     });
 
-    it("Create empty Wallet. ", function (done) {
-        this.timeout(300000);
-        StellarSdk.HDWallet
-            .setByStrKey(seed[0], url)
-            .then(hdw => {
+    // it("Create empty Wallet. ", function (done) {
+    //     this.timeout(300000);
+    //     StellarSdk.HDWallet
+    //         .setByStrKey(seed[0], url)
+    //         .then(hdw => {
+    //
+    //             done()
+    //         })
+    //         .catch(err => {
+    //             console.log(err);
+    //             done(err)
+    //         });
+    // });
 
-                done()
-            })
-            .catch(err => {
-                console.log(err);
-                done(err)
-            });
-    });
-
-    it("Create not-empty Wallet. ", function (done) {
-        this.timeout(300000);
-        StellarSdk.HDWallet
-            .setByRawSeed(rootSeed, url)
-            .then(hdw => {
-
-                done()
-            })
-            .catch(err => {
-                console.log(err);
-                done(err)
-            });
-    });
+    // it("Create not-empty Wallet. ", function (done) {
+    //     this.timeout(300000);
+    //     StellarSdk.HDWallet
+    //         .setByRawSeed(rootSeed, url)
+    //         .then(hdw => {
+    //
+    //             done()
+    //         })
+    //         .catch(err => {
+    //             console.log(err);
+    //             done(err)
+    //         });
+    // });
 
     it("Get balance. ", function (done) {
         this.timeout(300000);
@@ -96,31 +96,31 @@ describe("Workflow Test. ", function () {
             });
     });
 
-    it("Refresh/TotalRefresh. ", function (done) {
-        this.timeout(300000);
-        StellarSdk.HDWallet
-            .setByRawSeed(rootSeed, url)
-            .then(alice => {
-                console.log("Index pair: ", alice.firstWithMoney, " | ", alice.firstUnused);
-                console.log("Index list: ", alice.mpubCounter, alice.indexList);
-                return alice.refresh()
-            })
-            .then(alice => {
-                console.log("Index pair: ", alice.firstWithMoney, " | ", alice.firstUnused);
-                console.log("Index list: ", alice.mpubCounter, alice.indexList);
-                return alice.totalRefresh()
-            })
-            .then(alice => {
-                console.log("Index pair: ", alice.firstWithMoney, " | ", alice.firstUnused);
-                console.log("Index list: ", alice.mpubCounter, alice.indexList);
-                done()
-            })
-            .catch(err => {
-                console.log(err);
-                done(err)
-            });
-    });
-
+    // it("Refresh/TotalRefresh. ", function (done) {
+    //     this.timeout(300000);
+    //     StellarSdk.HDWallet
+    //         .setByRawSeed(rootSeed, url)
+    //         .then(alice => {
+    //             console.log("Index pair: ", alice.firstWithMoney, " | ", alice.firstUnused);
+    //             console.log("Index list: ", alice.mpubCounter, alice.indexList);
+    //             return alice.refresh()
+    //         })
+    //         .then(alice => {
+    //             console.log("Index pair: ", alice.firstWithMoney, " | ", alice.firstUnused);
+    //             console.log("Index list: ", alice.mpubCounter, alice.indexList);
+    //             return alice.totalRefresh()
+    //         })
+    //         .then(alice => {
+    //             console.log("Index pair: ", alice.firstWithMoney, " | ", alice.firstUnused);
+    //             console.log("Index list: ", alice.mpubCounter, alice.indexList);
+    //             done()
+    //         })
+    //         .catch(err => {
+    //             console.log(err);
+    //             done(err)
+    //         });
+    // });
+    //
     it("Get keys with money. ", function (done) {
         this.timeout(300000);
         StellarSdk.HDWallet
@@ -129,7 +129,7 @@ describe("Workflow Test. ", function () {
                 return hdw.getKeysForAccountsWithMoney()
             })
             .then(list => {
-                // console.log("keys", list);
+                console.log("keys", JSON.stringify(list, null, 2));
                 done()
             })
             .catch(err => {
@@ -146,7 +146,7 @@ describe("Workflow Test. ", function () {
                 return hdw.getAccountIdsWithMoney()
             })
             .then(list => {
-                // console.log("ids", list);
+                console.log("ids",  JSON.stringify(list, null, 2));
                 done()
             })
             .catch(err => {
@@ -276,62 +276,67 @@ describe("Workflow Test. ", function () {
     //     this.timeout(300000);
     //     StellarSdk.HDWallet.setByRawSeed(aliceSeed, url)
     //         .then(alice => {
+    //         //     console.log("Index pair: ", alice.firstWithMoney, " | ", alice.firstUnused);
+    //         //     console.log("Index list: ", alice.mpubCounter, alice.indexList);
+    //         //     console.log(alice);
+    //         //     let aliceMpub = alice.getMPublicNew();
+    //         //     console.log(aliceMpub);
+    //         //     // let xdrSerialize = alice.serialize();
+    //         //     // return StellarSdk.HDWallet.setByStrKey(xdrSerialize, url);
+    //         //     return alice.getBalance(asset)
+    //         //         .then(balance => {
+    //         //             console.log ("Alice Balance = ", balance);
+    //         //             // alice.getKeysForAccountsWithMoney().then(list => {console.log ("Priv Keys ", JSON.stringify(list, null, 2));});
+    //         //             // alice.getAccountIdsWithMoney().then(list => {console.log ("Pub Keys ", JSON.stringify(list, null, 2));});
+    //         //
+    //         //             // return StellarSdk.HDWallet.setByStrKey(aliceMpub, url);
+    //         //
+    //         //         });
+    //         // })
+    //         // .then(alice => {
     //             console.log("Index pair: ", alice.firstWithMoney, " | ", alice.firstUnused);
-    //             console.log("Index list: ", alice.mpubCounter, alice.indexList);
-    //             console.log(alice);
-    //             let aliceMpub = alice.getMPublicNew();
-    //             console.log(aliceMpub);
-    //             let xdrSerialize = alice.serialize();
-    //             return StellarSdk.HDWallet.setByStrKey(xdrSerialize, url);
-    //             return alice.getBalance(asset)
-                //     .then(balance => {
-                //         console.log ("Alice Balance = ", balance);
-                //         // alice.getKeysForAccountsWithMoney().then(list => {console.log ("Priv Keys ", JSON.stringify(list, null, 2));});
-                //         // alice.getAccountIdsWithMoney().then(list => {console.log ("Pub Keys ", JSON.stringify(list, null, 2));});
-                //
-                //         return StellarSdk.HDWallet.setByStrKey(aliceMpub, url);
-                //
-                //     });
-            // })
-            // .then(alice => {
-            //     console.log("Index pair: ", alice.firstWithMoney, " | ", alice.firstUnused);
-            //     console.log("Index list: ", alice.indexList);
-            //     console.log(" ");
-            //
-            //     return alice.makeInvoiceList("124.339313")
-            // })
-            // .then(invoice => {
-            //     console.log("Invoice ");
-            //     for (let i = 0; i < invoice.length; i++){
-            //         console.log(invoice[i].key, "--", StellarSdk.HDWallet._fromAmount(invoice[i].amount));
-            //     }
-            //     console.log(" ");
-            //     return StellarSdk.HDWallet.setByStrKey(bobSeed, url)
-            //         // .then(bob => {
-                    //     console.log("Index pair: ", bob.firstWithMoney, " | ", bob.firstUnused);
-                    //     console.log("Index list: ", bob.indexList);
-                    //
-                    //     return bob.doPayment(invoice, asset)
-                    //         .then(result => {
-                    //             console.log("Result success = ", result);
-                    //             return bob.getBalance(asset)
-                    //                 .then(balance => {
-                    //                     console.log("Bob new balance = ", balance );
-                    //                     return bob.refresh();
-                    //                 });
-                    //         })
-                    // });
-            // })
-            // .then(bob => {
-                // console.log("Index pair: ", bob.firstWithMoney, " | ", bob.firstUnused);
-                // console.log("Index list: ", bob.indexList);
-                // console.log(bob);
-                // done();
-            // })
-            // .catch(err => {
-            //     console.log("Result false = ", JSON.stringify(err, null, 2));
-            //     done(err)
-            // });
+    //             console.log("Index list: ", alice.indexList);
+    //             console.log(" ");
+    //
+    //             return alice.makeInvoiceList("1224.339313")
+    //         })
+    //         .then(invoice => {
+    //             console.log("Invoice ");
+    //             for (let i = 0; i < invoice.length; i++){
+    //                 console.log(invoice[i].key, "--", StellarSdk.HDWallet._fromAmount(invoice[i].amount));
+    //             }
+    //             console.log(" ");
+    //             return StellarSdk.HDWallet.setByStrKey(bobSeed, url)
+    //                 .then(bob => {
+    //                     console.log("Index pair: ", bob.firstWithMoney, " | ", bob.firstUnused);
+    //                     console.log("Index list: ", bob.indexList);
+    //
+    //                     return bob.getBalance(asset)
+    //                         .then(balance => {
+    //                             console.log("Bob new balance = ", balance );
+    //                             return bob.doPayment(invoice, asset)
+    //                         })
+    //                         .then(result => {
+    //                             console.log("Result success = ", result);
+    //                             return bob.getBalance(asset)
+    //                                 .then(balance => {
+    //                                     console.log("Bob new balance = ", balance );
+    //                                     return bob.refresh();
+    //                                 });
+    //
+    //                         });
+    //                 });
+    //         })
+    //         .then(bob => {
+    //             console.log("Index pair: ", bob.firstWithMoney, " | ", bob.firstUnused);
+    //             console.log("Index list: ", bob.indexList);
+    //             console.log(bob);
+    //             done();
+    //         })
+    //         .catch(err => {
+    //             console.log("Result false = ", JSON.stringify(err, null, 2));
+    //             done(err)
+    //         });
     // });
 
     let reqList = [];

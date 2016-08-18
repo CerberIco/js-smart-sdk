@@ -682,7 +682,7 @@ let txData = {
   phrase: [
     "say fade black account cruise enact bulb orchard machine shiver cherry clinic exclude club ready rifle puzzle vicious crime foam risk fluid radio proud",
     "love squeeze verb require crush shop device symbol brother clarify dilemma thing wish album cheap east citizen giant walk cool economy result stairs zone",
-    "sunny leg shoulder cherry ethics spike hub clock bachelor mandate blouse stage rebuild space stomach glide connect normal select adapt blast subject omit van",
+    "sunny leg shoulder cherry ethics spike hub clock bachelor mandate blouse stage rebuild space stomach glide connect normal select adapt blast subject omit van"
     ],
   amount: ["3439", "2190", "248" ],
   
