@@ -57,7 +57,7 @@
     "gulp-istanbul": "^0.10.1",
     "gulp-jshint": "^1.10.0",
     "gulp-load-plugins": "^0.9.0",
-    "gulp-mocha": "^2.0.1",
+    "gulp-mocha": "^3.0.0",
     "gulp-plumber": "^1.0.0",
     "gulp-rename": "~1.2.0",
     "gulp-rimraf": "~0.1.0",
@@ -85,7 +85,7 @@
     "lodash.template": "^4.2.2",
     "minami": "^1.1.1",
     "mkdirp": "^0.5.1",
-    "mocha": "~1.17.1",
+    "mocha": "^3.0.0",
     "multipipe": "^0.3.0",
     "object-assign": "^4.0.1",
     "replace-ext": "0.0.1",
@@ -103,16 +103,18 @@
   },
   "dependencies": {
     "axios": "^0.9.1",
+    "bignumber.js": "^2.0.7",
     "bluebird": "^3.1.5",
     "es6-promise": "^3.0.2",
     "event-source-polyfill": "0.0.7",
     "eventsource": "^0.1.6",
+    "js-xdr": "^1.0.0",
     "jsdoc": "jsdoc3/jsdoc#master",
     "lodash": "^4.0.1",
-    "stellar-base": "git+https://atticlab:Iy0qoqIbLDYgUop0Pegcxpl0MNQbtxXv@bitbucket.org/atticlab/js-smart-base.git#feature/pass_amount_as_int64",
+    "stellar-base": "git+https://atticlab:Iy0qoqIbLDYgUop0Pegcxpl0MNQbtxXv@bitbucket.org/atticlab/js-smart-base.git#feature/dev",
     "superagent": "^1.1.0",
     "toml": "^2.3.0",
     "urijs": "^1.16.0",
-    "stellar-wallet-js-sdk" : ">=0.0.0"
+    "stellar-wallet-js-sdk": ">=0.0.0"
   }
 }

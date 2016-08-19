@@ -7,11 +7,11 @@ import {OperationCallBuilder} from "./operation_call_builder";
 import {OfferCallBuilder} from "./offer_call_builder";
 import {OrderbookCallBuilder} from "./orderbook_call_builder";
 import {PathCallBuilder} from "./path_call_builder";
-import {CommissionCallBuilder} from "./commission_call_builder";
 import {PaymentCallBuilder} from "./payment_call_builder";
 import {EffectCallBuilder} from "./effect_call_builder";
 import {FriendbotBuilder} from "./friendbot_builder";
-import {xdr, Account, hash} from "stellar-base";
+import {xdr, Account} from "stellar-base";
+import {HDWallet} from "./hdwallet";
 import isString from "lodash/isString";
 import {AssetsCallBuilder} from "./assets_call_builder";
 import {AccountTraitsCallBuilder} from "./account_traits_call_builder";
@@ -52,7 +52,7 @@ export class Server {
      * @returns {Promise} Promise that resolves or rejects with response from horizon.
      */
     submitTransaction(transaction) {
-        let tx = encodeURIComponent(isString(transaction) ? transaction : transaction.toEnvelope().toXDR().toString("base64"));
+        let tx = encodeURIComponent(transaction.toEnvelope().toXDR().toString("base64"));
         var promise = axios.post(
               URI(this.serverURL).path('transactions').toString(),
               `tx=${tx}`,
@@ -61,7 +61,13 @@ export class Server {
             .then(function(response) {
                 return response.data;
             })
-            .catch(this._handleError);
+            .catch(function (response) {
+                if (response instanceof Error) {
+                    return Promise.reject(response);
+                } else {
+                    return Promise.reject(response.data);
+                }
+            });
         return toBluebird(promise);
     }
 
@@ -351,6 +357,28 @@ export class Server {
             });
     }
 
+    /**
+     * Get balances for given accounts sorted by asset
+     * @param accountList {Array} Array of AccountId
+     * @returns {Promise}
+     */
+    getBalances(accountList) {
+        var response = axios.post(
+              URI(this.serverURL).path('balances').toString(),
+              accountList
+            )
+            .then(function(response) {
+                return response.data;
+            })
+            .catch(function (response) {
+                if (response instanceof Error) {
+                    return Promise.reject(response);
+                } else {
+                    return Promise.reject(response.data);
+                }
+            });
+        return toBluebird(response);
+    }
 }
 
  
