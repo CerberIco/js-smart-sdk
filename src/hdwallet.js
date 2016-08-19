@@ -338,17 +338,17 @@ export class HDWallet {
 
     /**
      * Return Base32 encoded MasterPublicKey
-     * @param path {number} or {string}
+     * @param arg {number} or {string}
      * @return {string}
      */
-    getMPub(path) {
+    getMPub(arg) {
         if (this.ver !== HDWallet._version().mpriv.byte)
             throw new Error("Version of HDWallet mismatch");
 
-        if (typeof path == "number")
-            return this.hdk.getMasterPub(HDWallet._path().others.public + path);
-        if (typeof path == "string")
-            return this.hdk.getMasterPub(path);
+        if (typeof arg == "number")
+            return this.hdk.getMasterPub(HDWallet._path().others.public + "/" + arg);
+        if (typeof arg == "string")
+            return this.hdk.getMasterPub(arg);
         else
             throw new Error("Invalid argument! Must be index (type = number) or path (type = string).");
     }
