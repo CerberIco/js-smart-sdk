@@ -1,25 +1,13 @@
 import * as StellarBase from "stellar-base";
 import {testData, badData} from "./test_data";
-StellarSdk.Network.use(new StellarSdk.Network("Smart Money Dev ; March 2016"));
-
 
 let HDWallet = StellarSdk.HDWallet;
 let HDKey = StellarBase.HDKey;
-let toBluebirdRes = require("bluebird").resolve;
 let Promise = require("bluebird");
 
-
-let accountWithMoney = {
-        seed:       "SDRHAQQNAK7HPMP24254PTAVSLWNH7M345A5KESPQYKVT5JBBWCQ6E7H",
-        accountId:  "GDDP7EL6EOTER4E4CVCT4IHKQKVHC5PPE7OONTGS5TLCGIFPYAOCDMO3" },
-
-    bankPublicKey = "GAWIB7ETYGSWULO4VB7D6S42YLPGIC7TY7Y2SSJKVOTMQXV5TILYWBUA",
+let bankPublicKey = "GAWIB7ETYGSWULO4VB7D6S42YLPGIC7TY7Y2SSJKVOTMQXV5TILYWBUA",
     asset = new StellarSdk.Asset('EUAH', bankPublicKey),
-    url = "http://dev.stellar.attic.pw:8010",
-
-    rootMnemonic = "belief mere bone careful small chair awake meant wrap mutter " +
-        "goose belly men perhaps waste carefully sadness taste rant grab thread garden bliss misery",
-    rootSeed = StellarBase.HDKey.getSeedFromMnemonic(rootMnemonic);
+    url = "http://dev.stellar.attic.pw:8010";
 
 function bufferCompare(buf1, buf2) {
     for (let l = 0; l < 31; l++)
@@ -78,8 +66,6 @@ function makeResponseList(request) {
     
     return Promise.resolve(response);
 }
-//
-
 
 describe("HDWallet Positive Test. ", function () {
 
@@ -88,7 +74,7 @@ describe("HDWallet Positive Test. ", function () {
         for (let i = 0; i < 5; i++)
             phrase[i] = testData.phrase[i];
             // phrase[i] = HDKey.getMnemonic();
-   
+
         beforeEach(function (done) {
             // console.log('Before called');
             sinon.stub(StellarSdk.Server.prototype, "getBalances", makeResponseList);
@@ -252,7 +238,7 @@ describe("HDWallet Positive Test. ", function () {
                 done(err)
             });
         });
-       
+
     });
 
     describe('HDWallet. SetByStrKey', function () {
@@ -350,6 +336,9 @@ describe("HDWallet Positive Test. ", function () {
         it("Making correct Invoice/Withdrawal list", function (done) {
             this.timeout(300000);
             let promise = Promise.resolve();
+            let phrase = [];
+            for (let i = 0; i < 3; i++)
+                phrase[i] = testData.phrase[i + 2];
 
             testData.tx.phrase.forEach(function (mnemonic, i) {
                 let p = () => {
@@ -357,18 +346,19 @@ describe("HDWallet Positive Test. ", function () {
                         .then(hdw => {
                             let list = hdw.makeInvoiceList(testData.tx.amount[i], asset);
                             let constL = testData.tx.invoice[i];
-                            // console.log("invoice ", amount[i], " | ", list);
+                            // console.log("invoice ", list);
                             // console.log(listConst.invoice[i]);
                             // console.log(" ");
-
-                            // expect(checkList(list, constL)).to.equal(true);
+                            //
+                            expect(checkList(list, constL)).to.equal(true);
                             return hdw;
                         })
                         .then(hdw => {
+                            // console.log(hdw);
                             return hdw.makeWithdrawalList(HDWallet._toAmount(testData.tx.amount[i]), asset)
                                 .then(list => {
                                     let constL = testData.tx.withdrawal[i];
-                                    // console.log("withdrawal ", amount[i], " | ", list);
+                                    // console.log("withdrawal ", list);
                                     // console.log(listConst.withdrawal[i]);
                                     // console.log(" ");
 
@@ -400,11 +390,6 @@ describe("HDWallet Positive Test. ", function () {
 
 describe("HDWallet. Error handling test. ", function () {
 
-    // beforeEach(function (done) {
-    //     sinon.stub(StellarSdk.Server.prototype, "getBalances", makeResponseList);
-    //     done();
-    // });
-
     describe("Invalid mnemonic: ", function () {
         it("wrong words in phrase", function (done) {
             this.timeout(20000);
@@ -412,10 +397,9 @@ describe("HDWallet. Error handling test. ", function () {
             let promise = Promise.resolve();
             promise.then(() => {
                 return HDWallet.setByPhrase(badData.phrase[0], url)
-            })
-                .catch(error => {
+            }).catch(error => {
                     // console.log(error.message);
-                    expect(error.message).to.equal("Wrong mnemonic phrase!");
+                    expect(error.message).to.equal("Invalid mnemonic phrase");
                     done()
                 });
         });
@@ -426,10 +410,9 @@ describe("HDWallet. Error handling test. ", function () {
             let promise = Promise.resolve();
             promise.then(() => {
                 return HDWallet.setByPhrase(badData.phrase[2], url)
-            })
-                .catch(error => {
+            }).catch(error => {
                     // console.log(error.message);
-                    expect(error.message).to.equal("Wrong mnemonic phrase!");
+                    expect(error.message).to.equal("Invalid mnemonic phrase");
                     done()
                 });
         });
