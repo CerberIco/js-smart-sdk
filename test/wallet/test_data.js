@@ -18,6 +18,9 @@ let constSerWallet = [
       "WDMW72Y3SO2NXI43UFNRCMHAMDVBWNNAWWFRQLZSY4GQDALXV7TJ6AAAAAGQAAAAHUAAAAAGAAAAABQAAAAAAAAAAADQAAAAAAAAAAAAAAAAAMIAAAAACZ72",
       "WBYZC43MT6RPQZJQFYEXFMRYIA64N4TM3TDETQH3GONXF37QNNJPWAAAAAAAAAAAAAAAAAAMAAAAADAAAAAAQAAAAACQAAAAAAAAAAAVAAAAAAAAAAAAMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAL6EQY"
     ];
+
+let balances = ["205", "3744", "2789", "1160", "1468"];
+
 let keysForAccountWithMoney = [
 [
   {
@@ -846,6 +849,7 @@ export let testData = {
   phrase: constPhrase,
   seed: constSeed,
   serialization: constSerWallet,
+  balance: balances,
   tx: txData,
   idList: accountIdsWithMoney,
   keysList: keysForAccountWithMoney

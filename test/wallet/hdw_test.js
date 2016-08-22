@@ -73,18 +73,64 @@ describe("HDWallet Positive Test. ", function () {
         let phrase = [];
         for (let i = 0; i < 5; i++)
             phrase[i] = testData.phrase[i];
-            // phrase[i] = HDKey.getMnemonic();
+        // phrase[i] = HDKey.getMnemonic();
 
         beforeEach(function (done) {
-            // console.log('Before called');
             sinon.stub(StellarSdk.Server.prototype, "getBalances", makeResponseList);
             done();
+        });
+
+        it("Create random Wallet. ", function (done) {
+            this.timeout(300000);
+            StellarSdk.HDWallet
+                .randomWallet(url)
+                .then(hdw => {
+                    StellarSdk.Server.prototype.getBalances.restore();
+                    done()
+                })
+                .catch(err => {
+                    StellarSdk.Server.prototype.getBalances.restore();
+                    done(err)
+                });
+        });
+
+        it("Create random mnemonic phrase. ", function (done) {
+            this.timeout(300000);
+            let defaultPhrase = StellarSdk.HDWallet.genMnemonicPhrase();
+            let engPhrase = StellarSdk.HDWallet.genMnemonicPhrase("eng");
+            let ukrPhrase = StellarSdk.HDWallet.genMnemonicPhrase("ukr");
+
+            // expect(HDKey.getSeedFromMnemonic(engPhrase).toString("hex")).to.equal(HDKey.getSeedFromMnemonic(defaultPhrase).toString("hex"));
+            // expect(HDKey.getSeedFromMnemonic(ukrPhrase).toString("hex")).to.equal(HDKey.getSeedFromMnemonic(defaultPhrase).toString("hex"));
+            
+            StellarSdk.Server.prototype.getBalances.restore();
+            done();
+
+
+        });
+
+        it("Create wallet from mnemonic phrase. ", function (done) {
+            this.timeout(300000);
+            let phrase = testData.phrase[3];
+            StellarSdk.HDWallet
+                .setByPhrase(phrase, url, "eng")
+                .then(hdw => {
+                    let mnemonic = hdw.getMnemonicPhrase("eng");
+                    expect(mnemonic).to.equals(phrase);
+                    StellarSdk.Server.prototype.getBalances.restore();
+                    done()
+                })
+                .catch(err => {
+                    StellarSdk.Server.prototype.getBalances.restore();
+                    done(err)
+                });
+
         });
 
         it("seed in HDW compare with const", function (done) {
             this.timeout(300000);
             let promise = Promise.resolve();
-
+        
             phrase.forEach(function (mnemonic, i) {
                 let p = () => {
                     return HDWallet.setByPhrase(mnemonic, url)
@@ -95,7 +141,7 @@ describe("HDWallet Positive Test. ", function () {
                 };
                 promise = promise.then(p)
             });
-
+        
             promise.then(() => {
                 StellarSdk.Server.prototype.getBalances.restore();
                 done()
@@ -104,11 +150,11 @@ describe("HDWallet Positive Test. ", function () {
                 done(err)
             });
         });
-
+        
         it("serialize/deserialize of HDWallet correctly", function (done) {
             this.timeout(300000);
             let promise = Promise.resolve();
-
+        
             phrase.forEach(function (mnemonic) {
                 let p = () => {
                     return HDWallet.setByPhrase(mnemonic, url)
@@ -131,9 +177,9 @@ describe("HDWallet Positive Test. ", function () {
                 StellarSdk.Server.prototype.getBalances.restore();
                 done(err)
             });
-
+        
         });
-
+        
         it("Setting indexes and refresh of HDWallet", function (done) {
             this.timeout(300000);
             let promise = Promise.resolve();
@@ -161,7 +207,7 @@ describe("HDWallet Positive Test. ", function () {
                 };
                 promise = promise.then(p);
             });
-
+        
             promise.then(() => {
                 StellarSdk.Server.prototype.getBalances.restore();
                 done()
@@ -170,7 +216,7 @@ describe("HDWallet Positive Test. ", function () {
                 done(err)
             });
         });
-
+        
         it("make list of keys for account with money", function (done) {
             this.timeout(400000);
             let promise = Promise.resolve();
@@ -194,7 +240,7 @@ describe("HDWallet Positive Test. ", function () {
                 };
                 promise = promise.then(p)
             });
-
+        
             promise.then(() => {
                 StellarSdk.Server.prototype.getBalances.restore();
                 done()
@@ -203,7 +249,7 @@ describe("HDWallet Positive Test. ", function () {
                 done(err)
             });
         });
-
+        
         it("make list of IDs of account with money", function (done) {
             this.timeout(400000);
             let promise = Promise.resolve();
@@ -229,7 +275,7 @@ describe("HDWallet Positive Test. ", function () {
                 };
                 promise = promise.then(p)
             });
-
+        
             promise.then(() => {
                 StellarSdk.Server.prototype.getBalances.restore();
                 done()
@@ -244,7 +290,7 @@ describe("HDWallet Positive Test. ", function () {
     describe('HDWallet. SetByStrKey', function () {
         let seed = [],
             mpub = [];
-        for (let i = 0; i < 3; i++) {
+        for (let i = 0; i < 5; i++) {
             seed[i] = new Buffer(testData.seed[i], "hex");
             let hdk = HDKey.fromMasterSeed(seed[i]);
             mpub[i] = hdk.getMasterPub("_");
@@ -292,10 +338,49 @@ describe("HDWallet Positive Test. ", function () {
                 });
         });
 
-        it("create HDWallet by mpub correctly", function (done) {
+        it("get balance", function (done) {
+
             this.timeout(300000);
             let promises = [];
 
+            seed.forEach(function(currentSeed, i) {
+                let p =  HDWallet.setByRawSeed(currentSeed, url)
+                    .then(hdw => {
+                        return hdw.getBalance(asset)
+                    })      
+                    .then(balance => {
+                        // console.log (balance, i);
+                        expect(balance).to.equal(testData.balance[i]);
+                        return Promise.resolve(true);
+                    });
+                
+                promises.push(p)
+            });
+
+            Promise.all(promises)
+                .then(result => {
+                    result.forEach(function (value) {
+                        if (value !== true)
+                            return false;
+                    });
+                    return true;
+
+                })
+                .then(res => {
+                    expect(res).to.equal(true);
+                    StellarSdk.Server.prototype.getBalances.restore();
+                    done();
+                })
+                .catch(err => {
+                    StellarSdk.Server.prototype.getBalances.restore();
+                    done(err)
+                });
+        });
+
+        it("create HDWallet by mpub correctly", function (done) {
+            this.timeout(300000);
+            let promises = [];
+    
             mpub.forEach(function (mPublic, i) {
                 let p = HDWallet.setByStrKey(mPublic, url)
                     .then(hdw => {
@@ -303,11 +388,11 @@ describe("HDWallet Positive Test. ", function () {
                         expect(pub).to.equal(mpub[i]);
                         return Promise.resolve(true);
                     });
-
+    
                 promises.push(p);
-
+    
             });
-
+    
             Promise.all(promises)
                 .then(result => {
                     result.forEach(function (value) {
@@ -324,9 +409,9 @@ describe("HDWallet Positive Test. ", function () {
 
 
     });
-
+    
     describe("Tx Test. ", function () {
-
+    
         beforeEach(function (done) {
             // console.log('Before called');
             sinon.stub(StellarSdk.Server.prototype, "getBalances", makeResponseList);
@@ -361,7 +446,7 @@ describe("HDWallet Positive Test. ", function () {
                                     // console.log("withdrawal ", list);
                                     // console.log(listConst.withdrawal[i]);
                                     // console.log(" ");
-
+    
                                     expect(checkList(list, constL)).to.equal(true);
                                     return Promise.resolve();
                                 });
@@ -381,7 +466,7 @@ describe("HDWallet Positive Test. ", function () {
                 .catch(err => {
                     StellarSdk.Server.prototype.getBalances.restore();
                     done(err)
-            });
+                });
         });
 
     });

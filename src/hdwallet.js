@@ -69,6 +69,26 @@ export class HDWallet {
     static _maxListLen() { return 50; }
 
     /**
+     * Create new wallet by random phrase
+     * @param url {string} server url
+     * @returns {*}
+     */
+    static randomWallet(url) {
+        let phrase = this.genMnemonicPhrase();
+        return this.setByPhrase(phrase, url);
+    }
+    
+    /**
+     * Return random mnemonic phrase
+     * @param {string} [lang] "eng" -> English, "ukr" -> Ukrainian
+     * @return {string}
+     */
+    static genMnemonicPhrase(lang) {
+        lang = lang || "eng";
+        return HDKey.getMnemonic(lang);
+    }
+
+    /**
      * Decode mnemonic and create HDWallet by seed
      * @param str {string} Mnemonic phrase for example:
      *       "fix forget despair friendship blue grip ..."
@@ -352,7 +372,19 @@ export class HDWallet {
         else
             throw new Error("Invalid argument! Must be index (type = number) or path (type = string).");
     }
-
+    
+    /**
+     * Return mnemonic phrase of this wallet
+     * @param {string} [lang] "eng" -> English, "ukr" -> Ukrainian
+     * @return {string}
+     */
+    getMnemonicPhrase(lang){
+        if (this.ver !== HDWallet._version().mpriv.byte)
+            throw new Error("Version of HDWallet mismatch");
+        lang = lang || "eng";
+        return HDKey.getMnemonicFromSeed(this.seed, lang);
+    }
+    
     /**
      * Calculate total balance of wallet for getting asset.
      * @param asset {Asset}
@@ -621,18 +653,23 @@ export class HDWallet {
     }
 
     __getDerivedKey(branchPath, index) {
-        if (typeof(this.__derivedKeys[branchPath]) == "undefined") {
-            this.__derivedKeys[branchPath] = {keys: []};
-            this.__derivedKeys[branchPath].hdk = this.hdk.derive(branchPath);
+        let path;
+        if (branchPath !== HDWallet._path().self)
+            path = branchPath.replace(branchPath[0], "m" );
+        else
+            path = branchPath;
+
+        if (typeof(this.__derivedKeys[path]) == "undefined") {
+            this.__derivedKeys[path] = {keys: []};
+            this.__derivedKeys[path].hdk = this.hdk.derive(path);
         }
-        if (typeof(this.__derivedKeys[branchPath].keys[index]) == "undefined") {
-            let derived = this.__derivedKeys[branchPath].hdk.derive(branchPath[0] + "/" + index);
-            this.__derivedKeys[branchPath].keys[index] = {
+        if (typeof(this.__derivedKeys[path].keys[index]) == "undefined") {
+            let derived = this.__derivedKeys[path].hdk.derive(path[0] + "/" + index);
+            this.__derivedKeys[path].keys[index] = {
                 privateKey: derived.privateKey,
                 publicKey: derived.publicKey };
         }
-
-        return this.__derivedKeys[branchPath].keys[index];
+        return this.__derivedKeys[path].keys[index];
 
     }
 
