@@ -102,7 +102,7 @@ describe("HDWallet Positive Test. ", function () {
 
             // expect(HDKey.getSeedFromMnemonic(engPhrase).toString("hex")).to.equal(HDKey.getSeedFromMnemonic(defaultPhrase).toString("hex"));
             // expect(HDKey.getSeedFromMnemonic(ukrPhrase).toString("hex")).to.equal(HDKey.getSeedFromMnemonic(defaultPhrase).toString("hex"));
-            
+
             StellarSdk.Server.prototype.getBalances.restore();
             done();
 
@@ -130,7 +130,7 @@ describe("HDWallet Positive Test. ", function () {
         it("seed in HDW compare with const", function (done) {
             this.timeout(300000);
             let promise = Promise.resolve();
-        
+
             phrase.forEach(function (mnemonic, i) {
                 let p = () => {
                     return HDWallet.setByPhrase(mnemonic, url)
@@ -141,7 +141,7 @@ describe("HDWallet Positive Test. ", function () {
                 };
                 promise = promise.then(p)
             });
-        
+
             promise.then(() => {
                 StellarSdk.Server.prototype.getBalances.restore();
                 done()
@@ -150,11 +150,11 @@ describe("HDWallet Positive Test. ", function () {
                 done(err)
             });
         });
-        
+
         it("serialize/deserialize of HDWallet correctly", function (done) {
             this.timeout(300000);
             let promise = Promise.resolve();
-        
+
             phrase.forEach(function (mnemonic) {
                 let p = () => {
                     return HDWallet.setByPhrase(mnemonic, url)
@@ -177,9 +177,9 @@ describe("HDWallet Positive Test. ", function () {
                 StellarSdk.Server.prototype.getBalances.restore();
                 done(err)
             });
-        
+
         });
-        
+        //
         it("Setting indexes and refresh of HDWallet", function (done) {
             this.timeout(300000);
             let promise = Promise.resolve();
@@ -207,7 +207,7 @@ describe("HDWallet Positive Test. ", function () {
                 };
                 promise = promise.then(p);
             });
-        
+
             promise.then(() => {
                 StellarSdk.Server.prototype.getBalances.restore();
                 done()
@@ -240,7 +240,7 @@ describe("HDWallet Positive Test. ", function () {
                 };
                 promise = promise.then(p)
             });
-        
+
             promise.then(() => {
                 StellarSdk.Server.prototype.getBalances.restore();
                 done()
@@ -249,7 +249,7 @@ describe("HDWallet Positive Test. ", function () {
                 done(err)
             });
         });
-        
+
         it("make list of IDs of account with money", function (done) {
             this.timeout(400000);
             let promise = Promise.resolve();
@@ -275,7 +275,7 @@ describe("HDWallet Positive Test. ", function () {
                 };
                 promise = promise.then(p)
             });
-        
+
             promise.then(() => {
                 StellarSdk.Server.prototype.getBalances.restore();
                 done()
@@ -295,6 +295,7 @@ describe("HDWallet Positive Test. ", function () {
             let hdk = HDKey.fromMasterSeed(seed[i]);
             mpub[i] = hdk.getMasterPub("_");
         }
+
 
         beforeEach(function (done) {
             this.timeout(300000);
@@ -347,13 +348,13 @@ describe("HDWallet Positive Test. ", function () {
                 let p =  HDWallet.setByRawSeed(currentSeed, url)
                     .then(hdw => {
                         return hdw.getBalance(asset)
-                    })      
+                    })
                     .then(balance => {
                         // console.log (balance, i);
                         expect(balance).to.equal(testData.balance[i]);
                         return Promise.resolve(true);
                     });
-                
+
                 promises.push(p)
             });
 
@@ -380,7 +381,7 @@ describe("HDWallet Positive Test. ", function () {
         it("create HDWallet by mpub correctly", function (done) {
             this.timeout(300000);
             let promises = [];
-    
+
             mpub.forEach(function (mPublic, i) {
                 let p = HDWallet.setByStrKey(mPublic, url)
                     .then(hdw => {
@@ -388,11 +389,11 @@ describe("HDWallet Positive Test. ", function () {
                         expect(pub).to.equal(mpub[i]);
                         return Promise.resolve(true);
                     });
-    
+
                 promises.push(p);
-    
+
             });
-    
+
             Promise.all(promises)
                 .then(result => {
                     result.forEach(function (value) {
@@ -411,7 +412,7 @@ describe("HDWallet Positive Test. ", function () {
     });
     
     describe("Tx Test. ", function () {
-    
+
         beforeEach(function (done) {
             // console.log('Before called');
             sinon.stub(StellarSdk.Server.prototype, "getBalances", makeResponseList);
@@ -446,7 +447,7 @@ describe("HDWallet Positive Test. ", function () {
                                     // console.log("withdrawal ", list);
                                     // console.log(listConst.withdrawal[i]);
                                     // console.log(" ");
-    
+
                                     expect(checkList(list, constL)).to.equal(true);
                                     return Promise.resolve();
                                 });
@@ -539,7 +540,7 @@ describe("HDWallet. Error handling test. ", function () {
                 done()
             }).catch(error => {
                 // console.log(error.message);
-                expect(error.message).to.equal("Invalid MasterPublic!");
+                expect(error.message).to.equal("invalid encoded string");
                 done()
             });
         });
@@ -566,7 +567,7 @@ describe("HDWallet. Error handling test. ", function () {
                 done()
             }).catch(error => {
                     // console.log(error.message);
-                    expect(error.message).to.equal("invalid checksum");
+                    expect(error.message).to.equal("invalid encoded string");
                     done()
                 });
         });

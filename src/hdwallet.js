@@ -12,7 +12,6 @@ let toBluebirdRej = require("bluebird").reject;
 const ONE = 10000000;
 const MAX_INT64 = '9223372036854775807';
 const CHAINCODE_LENGTH = 32;
-const BASE_PAD = 3;
 const MASTERPUBLIC_LENGTH = 64;
 
 let decodeMnemo = HDKey.getSeedFromMnemonic,
@@ -189,7 +188,7 @@ export class HDWallet {
      * @returns {HDWallet}
      */
     static setByMPublic(rawKey, url) {
-        if (rawKey.length !== MASTERPUBLIC_LENGTH + BASE_PAD)
+        if (rawKey.length !== MASTERPUBLIC_LENGTH)
             return toBluebirdRej(new Error("Invalid MasterPublic!"));
         let hdw = new HDWallet(url);
         let mpub = new HDKey();
@@ -533,7 +532,10 @@ export class HDWallet {
 
         return completeList(data);
     }
-
+    
+    /**
+     * @private
+     */
     _findMoneyInBranch(withdrawalList, data) {
         let self = this,
             _index = data.f_w_m,
@@ -584,6 +586,9 @@ export class HDWallet {
         return makingList(_index, _stopIndex);
     }
     
+    /**
+     * @private
+     */
     __collect(data, opType) {
         let self = this;
         data.otherBranchIndex = 0;
@@ -613,7 +618,7 @@ export class HDWallet {
 
                         for (let j = 0; j < respList[i].length; j++) {
                             if (respList[i][j].balance.isZero() === true) continue;
-
+                            
                             if ( (respList[i][j].asset.asset_code == data.asset) && (opType === "balance") )
                                 data.balance = data.balance.plus(respList[i][j].balance);
 
@@ -651,7 +656,10 @@ export class HDWallet {
 
         return findMoney(_index, _stopIndex);
     }
-
+    
+    /**
+     * @private
+     */
     __getDerivedKey(branchPath, index) {
         let path;
         if (branchPath !== HDWallet._path().self)
@@ -672,7 +680,10 @@ export class HDWallet {
         return this.__derivedKeys[path].keys[index];
 
     }
-
+    
+    /**
+     * @private
+     */
     static _updateIndexesInOtherBranches(path, hdw, indexList){
         let self = this;
         let _index = 0;
@@ -706,6 +717,9 @@ export class HDWallet {
         return indexing(_index, _stopIndex);
     }
 
+    /**
+     * @private
+     */
     static _updateIndexesInOwnBranch(branchPath, hdw, indexPairOld){
         let _index = this._min(indexPairOld.f_w_m, indexPairOld.f_u);
         let _stopIndex = this._lookAhead() + _index;
@@ -753,6 +767,9 @@ export class HDWallet {
         return request();
     }
 
+    /**
+     * @private
+     */
     static _checkAccounts(request, url) {
         if (request.length === 0)
             return toBluebirdRej("Invalid request");
@@ -784,6 +801,9 @@ export class HDWallet {
             });
     }
 
+    /**
+     * @private
+     */
     static _sumCollecting ( data, list ) {
         for (let i = 0; i < data.accountList.length; i++) {
             if (data.currentSum.plus(data.balance[i]).lessThan(data.amount) ) {
@@ -806,6 +826,9 @@ export class HDWallet {
         return false;
     }
 
+    /**
+     * @private
+     */
     static _makePaymentList(invoice, withdrawal) {
         let opList = [];
 
@@ -829,6 +852,9 @@ export class HDWallet {
         return opList;
     }
 
+    /**
+     * @private
+     */
     static _min(a, b) {
         if (a < b)
             return a;
@@ -836,6 +862,9 @@ export class HDWallet {
             return b;
     }
 
+    /**
+     * @private
+     */
     static _minAmount(a, b) {
         if (a.lessThan(b))
             return a;
@@ -843,6 +872,9 @@ export class HDWallet {
             return b;
     }
 
+    /**
+     * @private
+     */
     static _isValidAmount(value) {
         if (!isString(value))
             return false;
@@ -877,12 +909,18 @@ export class HDWallet {
         return true;
     }
 
+    /**
+     * @private
+     */
     static _toAmount(value) {
         if (this._isValidAmount(value))
             return new BigNumber(value).mul(ONE);
         throw new Error("Invalid amount - " + value + "!");
     }
 
+    /**
+     * @private
+     */
     static _fromAmount(value) {
         return new BigNumber(value).div(ONE).toString();
     }

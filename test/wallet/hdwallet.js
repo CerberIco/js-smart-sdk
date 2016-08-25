@@ -86,9 +86,9 @@ describe("Workflow Test. ", function () {
         StellarSdk.HDWallet
             .setByRawSeed(rootSeed, url)
             .then(hdw => {
-                console.log("Index pair: ", hdw.firstWithMoney, " | ", hdw.firstUnused);
-                console.log("Index list: ", hdw.mpubCounter, hdw.indexList);
-                console.log(" ");
+                // console.log("Index pair: ", hdw.firstWithMoney, " | ", hdw.firstUnused);
+                // console.log("Index list: ", hdw.mpubCounter, hdw.indexList);
+                // console.log(" ");
                 return hdw.getBalance(asset)
             })
             .then(balance => {
@@ -106,18 +106,18 @@ describe("Workflow Test. ", function () {
         StellarSdk.HDWallet
             .setByRawSeed(rootSeed, url)
             .then(alice => {
-                console.log("Index pair: ", alice.firstWithMoney, " | ", alice.firstUnused);
-                console.log("Index list: ", alice.mpubCounter, alice.indexList);
+                // console.log("Index pair: ", alice.firstWithMoney, " | ", alice.firstUnused);
+                // console.log("Index list: ", alice.mpubCounter, alice.indexList);
                 return alice.refresh()
             })
             .then(alice => {
-                console.log("Index pair: ", alice.firstWithMoney, " | ", alice.firstUnused);
-                console.log("Index list: ", alice.mpubCounter, alice.indexList);
+                // console.log("Index pair: ", alice.firstWithMoney, " | ", alice.firstUnused);
+                // console.log("Index list: ", alice.mpubCounter, alice.indexList);
                 return alice.totalRefresh()
             })
             .then(alice => {
-                console.log("Index pair: ", alice.firstWithMoney, " | ", alice.firstUnused);
-                console.log("Index list: ", alice.mpubCounter, alice.indexList);
+                // console.log("Index pair: ", alice.firstWithMoney, " | ", alice.firstUnused);
+                // console.log("Index list: ", alice.mpubCounter, alice.indexList);
                 done()
             })
             .catch(err => {
