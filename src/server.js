@@ -14,6 +14,7 @@ import {xdr, Account} from "stellar-base";
 import {HDWallet} from "./hdwallet";
 import isString from "lodash/isString";
 import {AssetsCallBuilder} from "./assets_call_builder";
+import {CommissionCallBuilder} from "./commission_call_builder";
 import {AccountTraitsCallBuilder} from "./account_traits_call_builder";
 let querystring = require('querystring');
 let axios = require("axios");
