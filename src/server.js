@@ -366,7 +366,7 @@ export class Server {
     getBalances(accountList) {
         var response = axios.post(
               URI(this.serverURL).path('balances').toString(),
-              accountList
+              querystring.stringify({multi_accounts: JSON.stringify(accountList)})
             )
             .then(function(response) {
                 return response.data;

@@ -2313,9 +2313,7 @@ var StellarSdk =
 	    }, {
 	        key: "getBalances",
 	        value: function getBalances(accountList) {
-	            var response = axios.post(URI(this.serverURL).path('balances').toString(), accountList
-	            //   querystring.stringify({multi_accounts: JSON.stringify(accountList)})
-	            ).then(function (response) {
+	            var response = axios.post(URI(this.serverURL).path('balances').toString(), querystring.stringify({ multi_accounts: JSON.stringify(accountList) })).then(function (response) {
 	                return response.data;
 	            })["catch"](function (response) {
 	                if (response instanceof Error) {
