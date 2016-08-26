@@ -2225,12 +2225,13 @@ var StellarSdk =
 	        * @param {object} opts
 	        * @param {string} [opts.from] source of operations 
 	        * @param {string} [opts.to] destination of operation
-	        * @param {int} [opts.from_type] source account type
-	        * @param {int} [opts.to_type] destination type
+	        * @param {string} [opts.from_type] source account type
+	        * @param {string} [opts.to_type] destination type
 	        * @param {Asset} [opts.asset] - The asset of commission
-	        * @param {int64} flat_fee - flat fee ("12.5")
-	        * @param {int64} percent_fee - percent fee defined as ("3.5")%
-	        * @param {keypair} keypair - to sign request
+	        * @param {string} flat_fee - flat fee
+	        * @param {string} percent_fee - percent fee
+	        * @param {keypair} signer - keypair used to sign request
+	        * @param {string} bankMasterAccountId - bank master account id
 	        * @returns {Promise} Returns a promise to the error if failed to set commission
 	        */
 	    }, {
@@ -2251,10 +2252,11 @@ var StellarSdk =
 	         * @param {object} opts
 	         * @param {string} [opts.from] source of operations 
 	         * @param {string} [opts.to] destination of operation
-	         * @param {int} [opts.from_type] source account type
-	         * @param {int} [opts.to_type] destination type
+	         * @param {string} [opts.from_type] source account type
+	         * @param {string} [opts.to_type] destination type
 	         * @param {Asset} [opts.asset] - The asset of commission
-	         * @param {keypair} keypair - to sign request
+	         * @param {keypair} signer - keypair used to sign request
+	         * @param {string} bankMasterAccountId - bank master account id
 	         */
 	    }, {
 	        key: "deleteCommission",
@@ -2313,9 +2315,7 @@ var StellarSdk =
 	    }, {
 	        key: "getBalances",
 	        value: function getBalances(accountList) {
-	            var response = axios.post(URI(this.serverURL).path('balances').toString(), accountList
-	            //   querystring.stringify({multi_accounts: JSON.stringify(accountList)})
-	            ).then(function (response) {
+	            var response = axios.post(URI(this.serverURL).path('balances').toString(), accountList).then(function (response) {
 	                return response.data;
 	            })["catch"](function (response) {
 	                if (response instanceof Error) {
@@ -2340,7 +2340,7 @@ var StellarSdk =
 	"use strict";
 
 	Object.defineProperty(exports, "__esModule", {
-	  value: true
+	    value: true
 	});
 
 	var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
@@ -2354,98 +2354,98 @@ var StellarSdk =
 	var _call_builder = __webpack_require__(10);
 
 	var AccountCallBuilder = (function (_CallBuilder) {
-	  _inherits(AccountCallBuilder, _CallBuilder);
+	    _inherits(AccountCallBuilder, _CallBuilder);
 
-	  /**
-	   * Creates a new {@link AccountCallBuilder} pointed to server defined by serverUrl.
-	   *
-	   * Do not create this object directly, use {@link Server#accounts}.
-	   * @see [All Accounts](https://www.stellar.org/developers/horizon/reference/accounts-all.html)
-	   * @constructor
-	   * @extends CallBuilder
-	   * @param {string} serverUrl Horizon server URL.
-	   */
+	    /**
+	     * Creates a new {@link AccountCallBuilder} pointed to server defined by serverUrl.
+	     *
+	     * Do not create this object directly, use {@link Server#accounts}.
+	     * @see [All Accounts](https://www.stellar.org/developers/horizon/reference/accounts-all.html)
+	     * @constructor
+	     * @extends CallBuilder
+	     * @param {string} serverUrl Horizon server URL.
+	     */
 
-	  function AccountCallBuilder(serverUrl) {
-	    _classCallCheck(this, AccountCallBuilder);
+	    function AccountCallBuilder(serverUrl) {
+	        _classCallCheck(this, AccountCallBuilder);
 
-	    _get(Object.getPrototypeOf(AccountCallBuilder.prototype), "constructor", this).call(this, serverUrl);
-	    this.url.segment('accounts');
-	  }
-
-	  /**
-	   * Returns information and links relating to a single account.
-	   * The balances section in the returned JSON will also list all the trust lines this account has set up.
-	   *
-	   * @deprecated use accountId method instead
-	   */
-
-	  _createClass(AccountCallBuilder, [{
-	    key: "address",
-	    value: function address(id) {
-	      console.warn("AccountCallBuilder#address is deprecated, please use AccountCallBuilder#accountId instead");
-	      return this.accountId(id);
+	        _get(Object.getPrototypeOf(AccountCallBuilder.prototype), "constructor", this).call(this, serverUrl);
+	        this.url.segment('accounts');
 	    }
 
 	    /**
 	     * Returns information and links relating to a single account.
 	     * The balances section in the returned JSON will also list all the trust lines this account has set up.
 	     *
-	     * @see [Account Details](https://www.stellar.org/developers/horizon/reference/accounts-single.html)
-	     * @param {string} id For example: `GDGQVOKHW4VEJRU2TETD6DBRKEO5ERCNF353LW5WBFW3JJWQ2BRQ6KDD`
-	     * @returns {AccountCallBuilder}
+	     * @deprecated use accountId method instead
 	     */
-	  }, {
-	    key: "accountId",
-	    value: function accountId(id) {
-	      this.filter.push(['accounts', id]);
-	      return this;
-	    }
 
-	    /**
-	     * Returns detailed income/outcome statistics relating to a single account.
-	     *
-	     * @see [Account Details] TODO: link to reference
-	     * @param {string} id For example: `GDGQVOKHW4VEJRU2TETD6DBRKEO5ERCNF353LW5WBFW3JJWQ2BRQ6KDD`
-	     * @returns {AccountCallBuilder}
-	     */
-	  }, {
-	    key: "statisticsForAccount",
-	    value: function statisticsForAccount(id) {
-	      this.filter.push(['accounts', id, "statistics"]);
-	      return this;
-	    }
+	    _createClass(AccountCallBuilder, [{
+	        key: "address",
+	        value: function address(id) {
+	            console.warn("AccountCallBuilder#address is deprecated, please use AccountCallBuilder#accountId instead");
+	            return this.accountId(id);
+	        }
 
-	    /**
-	     * Returns limits relating to a single account.
-	     *
-	     * @see [Account Details] TODO: link to reference
-	     * @param {string} id For example: `GDGQVOKHW4VEJRU2TETD6DBRKEO5ERCNF353LW5WBFW3JJWQ2BRQ6KDD`
-	     * @returns {AccountCallBuilder}
-	     */
-	  }, {
-	    key: "limits",
-	    value: function limits(id) {
-	      this.filter.push(['accounts', id, "limits"]);
-	      return this;
-	    }
+	        /**
+	         * Returns information and links relating to a single account.
+	         * The balances section in the returned JSON will also list all the trust lines this account has set up.
+	         *
+	         * @see [Account Details](https://www.stellar.org/developers/horizon/reference/accounts-single.html)
+	         * @param {string} id For example: `GDGQVOKHW4VEJRU2TETD6DBRKEO5ERCNF353LW5WBFW3JJWQ2BRQ6KDD`
+	         * @returns {AccountCallBuilder}
+	         */
+	    }, {
+	        key: "accountId",
+	        value: function accountId(id) {
+	            this.filter.push(['accounts', id]);
+	            return this;
+	        }
 
-	    /**
-	     * Returns restrictions relating to a single account.
-	     *
-	     * @see [Account Details] TODO: link to reference
-	     * @param {string} id For example: `GDGQVOKHW4VEJRU2TETD6DBRKEO5ERCNF353LW5WBFW3JJWQ2BRQ6KDD`
-	     * @returns {AccountCallBuilder}
-	     */
-	  }, {
-	    key: "traits",
-	    value: function traits(id) {
-	      this.filter.push(['accounts', id, "traits"]);
-	      return this;
-	    }
-	  }]);
+	        /**
+	         * Returns detailed income/outcome statistics relating to a single account.
+	         *
+	         * @see [Account Details] TODO: link to reference
+	         * @param {string} id For example: `GDGQVOKHW4VEJRU2TETD6DBRKEO5ERCNF353LW5WBFW3JJWQ2BRQ6KDD`
+	         * @returns {AccountCallBuilder}
+	         */
+	    }, {
+	        key: "statisticsForAccount",
+	        value: function statisticsForAccount(id) {
+	            this.filter.push(['accounts', id, "statistics"]);
+	            return this;
+	        }
 
-	  return AccountCallBuilder;
+	        /**
+	         * Returns limits relating to a single account.
+	         *
+	         * @see [Account Details] TODO: link to reference
+	         * @param {string} id For example: `GDGQVOKHW4VEJRU2TETD6DBRKEO5ERCNF353LW5WBFW3JJWQ2BRQ6KDD`
+	         * @returns {AccountCallBuilder}
+	         */
+	    }, {
+	        key: "limits",
+	        value: function limits(id) {
+	            this.filter.push(['accounts', id, "limits"]);
+	            return this;
+	        }
+
+	        /**
+	         * Returns restrictions relating to a single account.
+	         *
+	         * @see [Account Details] TODO: link to reference
+	         * @param {string} id For example: `GDGQVOKHW4VEJRU2TETD6DBRKEO5ERCNF353LW5WBFW3JJWQ2BRQ6KDD`
+	         * @returns {AccountCallBuilder}
+	         */
+	    }, {
+	        key: "traits",
+	        value: function traits(id) {
+	            this.filter.push(['accounts', id, "traits"]);
+	            return this;
+	        }
+	    }]);
+
+	    return AccountCallBuilder;
 	})(_call_builder.CallBuilder);
 
 	exports.AccountCallBuilder = AccountCallBuilder;
@@ -11251,7 +11251,7 @@ var StellarSdk =
 	 * @api public
 	 */
 	function querystring(query) {
-	  var parser = /([^=?&]+)=?([^&]*)/g
+	  var parser = /([^=?&]+)=([^&]*)/g
 	    , result = {}
 	    , part;
 
@@ -18613,7 +18613,7 @@ var StellarSdk =
 	 * 
 	 */
 	/**
-	 * bluebird build version 3.4.1
+	 * bluebird build version 3.4.3
 	 * Features enabled: core, race, call_get, generators, map, nodeify, promisify, props, reduce, settle, some, using, timers, filter, any, each
 	*/
 	!function(e){if(true)module.exports=e();else if("function"==typeof define&&define.amd)define([],e);else{var f;"undefined"!=typeof window?f=window:"undefined"!=typeof global?f=global:"undefined"!=typeof self&&(f=self),f.Promise=e()}}(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof _dereq_=="function"&&_dereq_;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof _dereq_=="function"&&_dereq_;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(_dereq_,module,exports){
@@ -19027,7 +19027,7 @@ var StellarSdk =
 
 	    var promise = this;
 	    var child = promise;
-	    while (promise.isCancellable()) {
+	    while (promise._isCancellable()) {
 	        if (!promise._cancelBy(child)) {
 	            if (child._isFollowing()) {
 	                child._followee().cancel();
@@ -19038,7 +19038,7 @@ var StellarSdk =
 	        }
 
 	        var parent = promise._cancellationParent;
-	        if (parent == null || !parent.isCancellable()) {
+	        if (parent == null || !parent._isCancellable()) {
 	            if (promise._isFollowing()) {
 	                promise._followee().cancel();
 	            } else {
@@ -19047,6 +19047,7 @@ var StellarSdk =
 	            break;
 	        } else {
 	            if (promise._isFollowing()) promise._followee().cancel();
+	            promise._setWillBeCancelled();
 	            child = promise;
 	            promise = parent;
 	        }
@@ -19084,8 +19085,7 @@ var StellarSdk =
 	};
 
 	Promise.prototype._cancel = function() {
-	    if (!this.isCancellable()) return;
-
+	    if (!this._isCancellable()) return;
 	    this._setCancelled();
 	    async.invoke(this._cancelPromises, this, undefined);
 	};
@@ -19096,6 +19096,10 @@ var StellarSdk =
 
 	Promise.prototype._unsetOnCancel = function() {
 	    this._onCancelField = undefined;
+	};
+
+	Promise.prototype._isCancellable = function() {
+	    return this.isPending() && !this._isCancelled();
 	};
 
 	Promise.prototype.isCancellable = function() {
@@ -19129,7 +19133,7 @@ var StellarSdk =
 	};
 
 	Promise.prototype._invokeInternalOnCancel = function() {
-	    if (this.isCancellable()) {
+	    if (this._isCancellable()) {
 	        this._doInvokeOnCancel(this._onCancel(), true);
 	        this._unsetOnCancel();
 	    }
@@ -19268,6 +19272,8 @@ var StellarSdk =
 	var possiblyUnhandledRejection;
 	var bluebirdFramePattern =
 	    /[\\\/]bluebird[\\\/]js[\\\/](release|debug|instrumented)/;
+	var nodeFramePattern = /\((?:timers\.js):\d+:\d+\)/;
+	var parseLinePattern = /[\/<\(](.+?):(\d+):(\d+)\)?\s*$/;
 	var stackFramePattern = null;
 	var formatStack = null;
 	var indentStackFrames = false;
@@ -19398,14 +19404,24 @@ var StellarSdk =
 
 	var fireDomEvent = (function() {
 	    try {
-	        var event = document.createEvent("CustomEvent");
-	        event.initCustomEvent("testingtheevent", false, true, {});
-	        util.global.dispatchEvent(event);
-	        return function(name, event) {
-	            var domEvent = document.createEvent("CustomEvent");
-	            domEvent.initCustomEvent(name.toLowerCase(), false, true, event);
-	            return !util.global.dispatchEvent(domEvent);
-	        };
+	        if (typeof CustomEvent === "function") {
+	            var event = new CustomEvent("CustomEvent");
+	            util.global.dispatchEvent(event);
+	            return function(name, event) {
+	                var domEvent = new CustomEvent(name.toLowerCase(), event);
+	                return !util.global.dispatchEvent(domEvent);
+	            };
+	        } else {
+	            var event = document.createEvent("CustomEvent");
+	            event.initCustomEvent("testingtheevent", false, true, {});
+	            util.global.dispatchEvent(event);
+	            return function(name, event) {
+	                var domEvent = document.createEvent("CustomEvent");
+	                domEvent.initCustomEvent(name.toLowerCase(), false, true,
+	                    event);
+	                return !util.global.dispatchEvent(domEvent);
+	            };
+	        }
 	    } catch (e) {}
 	    return function() {
 	        return false;
@@ -19562,7 +19578,7 @@ var StellarSdk =
 	}
 
 	function cancellationAttachCancellationCallback(onCancel) {
-	    if (!this.isCancellable()) return this;
+	    if (!this._isCancellable()) return this;
 
 	    var previousOnCancel = this._onCancel();
 	    if (previousOnCancel !== undefined) {
@@ -19653,8 +19669,41 @@ var StellarSdk =
 	        if ((promise._bitField & 65535) === 0) return;
 
 	        if (name) name = name + " ";
+	        var handlerLine = "";
+	        var creatorLine = "";
+	        if (promiseCreated._trace) {
+	            var traceLines = promiseCreated._trace.stack.split("\n");
+	            var stack = cleanStack(traceLines);
+	            for (var i = stack.length - 1; i >= 0; --i) {
+	                var line = stack[i];
+	                if (!nodeFramePattern.test(line)) {
+	                    var lineMatches = line.match(parseLinePattern);
+	                    if (lineMatches) {
+	                        handlerLine  = "at " + lineMatches[1] +
+	                            ":" + lineMatches[2] + ":" + lineMatches[3] + " ";
+	                    }
+	                    break;
+	                }
+	            }
+
+	            if (stack.length > 0) {
+	                var firstUserLine = stack[0];
+	                for (var i = 0; i < traceLines.length; ++i) {
+
+	                    if (traceLines[i] === firstUserLine) {
+	                        if (i > 0) {
+	                            creatorLine = "\n" + traceLines[i - 1];
+	                        }
+	                        break;
+	                    }
+	                }
+
+	            }
+	        }
 	        var msg = "a promise was created in a " + name +
-	            "handler but was not returned from it";
+	            "handler " + handlerLine + "but was not returned from it, " +
+	            "see http://goo.gl/rRqMUw" +
+	            creatorLine;
 	        promise._warn(msg, true, promiseCreated);
 	    }
 	}
@@ -20115,7 +20164,7 @@ var StellarSdk =
 
 	},{"./errors":12,"./util":36}],10:[function(_dereq_,module,exports){
 	"use strict";
-	module.exports = function(Promise) {
+	module.exports = function(Promise, tryConvertToPromise) {
 	function returner() {
 	    return this.value;
 	}
@@ -20125,6 +20174,7 @@ var StellarSdk =
 
 	Promise.prototype["return"] =
 	Promise.prototype.thenReturn = function (value) {
+	    value = tryConvertToPromise(value);
 	    if (value instanceof Promise) value.suppressUnhandledRejections();
 	    return this._then(
 	        returner, undefined, undefined, {value: value}, undefined);
@@ -20149,11 +20199,13 @@ var StellarSdk =
 
 	Promise.prototype.catchReturn = function (value) {
 	    if (arguments.length <= 1) {
+	        value = tryConvertToPromise(value);
 	        if (value instanceof Promise) value.suppressUnhandledRejections();
 	        return this._then(
 	            undefined, returner, undefined, {value: value}, undefined);
 	    } else {
 	        var _value = arguments[1];
+	        _value = tryConvertToPromise(_value);
 	        if (_value instanceof Promise) _value.suppressUnhandledRejections();
 	        var handler = function() {return _value;};
 	        return this.caught(value, handler);
@@ -20468,7 +20520,7 @@ var StellarSdk =
 	            var maybePromise = tryConvertToPromise(ret, promise);
 	            if (maybePromise instanceof Promise) {
 	                if (this.cancelPromise != null) {
-	                    if (maybePromise.isCancelled()) {
+	                    if (maybePromise._isCancelled()) {
 	                        var reason =
 	                            new CancellationError("late cancellation observer");
 	                        promise._attachExtraTrace(reason);
@@ -20694,9 +20746,13 @@ var StellarSdk =
 	            this._yieldedPromise = maybePromise;
 	            maybePromise._proxy(this, null);
 	        } else if (((bitField & 33554432) !== 0)) {
-	            this._promiseFulfilled(maybePromise._value());
+	            Promise._async.invoke(
+	                this._promiseFulfilled, this, maybePromise._value()
+	            );
 	        } else if (((bitField & 16777216) !== 0)) {
-	            this._promiseRejected(maybePromise._reason());
+	            Promise._async.invoke(
+	                this._promiseRejected, this, maybePromise._reason()
+	            );
 	        } else {
 	            this._promiseCancelled();
 	        }
@@ -21324,7 +21380,8 @@ var StellarSdk =
 	            if (util.isObject(item)) {
 	                catchInstances[j++] = item;
 	            } else {
-	                return apiRejection("expecting an object but got " + util.classString(item));
+	                return apiRejection("expecting an object but got " +
+	                    "A catch statement predicate " + util.classString(item));
 	            }
 	        }
 	        catchInstances.length = j;
@@ -21547,6 +21604,10 @@ var StellarSdk =
 	Promise.prototype._setCancelled = function() {
 	    this._bitField = this._bitField | 65536;
 	    this._fireEvent("promiseCancelled", this);
+	};
+
+	Promise.prototype._setWillBeCancelled = function() {
+	    this._bitField = this._bitField | 8388608;
 	};
 
 	Promise.prototype._setAsyncGuaranteed = function() {
@@ -21950,12 +22011,12 @@ var StellarSdk =
 	    debug);
 	_dereq_("./bind")(Promise, INTERNAL, tryConvertToPromise, debug);
 	_dereq_("./cancel")(Promise, PromiseArray, apiRejection, debug);
-	_dereq_("./direct_resolve")(Promise);
+	_dereq_("./direct_resolve")(Promise, tryConvertToPromise);
 	_dereq_("./synchronous_inspection")(Promise);
 	_dereq_("./join")(
 	    Promise, PromiseArray, tryConvertToPromise, INTERNAL, debug);
 	Promise.Promise = Promise;
-	Promise.version = "3.4.0";
+	Promise.version = "3.4.3";
 	_dereq_('./map.js')(Promise, PromiseArray, apiRejection, tryConvertToPromise, INTERNAL, debug);
 	_dereq_('./call_get.js')(Promise);
 	_dereq_('./using.js')(Promise, apiRejection, tryConvertToPromise, createContext, INTERNAL, debug);
@@ -22125,7 +22186,7 @@ var StellarSdk =
 	};
 
 	PromiseArray.prototype._cancel = function() {
-	    if (this._isResolved() || !this._promise.isCancellable()) return;
+	    if (this._isResolved() || !this._promise._isCancellable()) return;
 	    this._values = null;
 	    this._promise._cancel();
 	};
@@ -22939,7 +23000,8 @@ var StellarSdk =
 	    schedule = util.isRecentNode
 	                ? function(fn) { GlobalSetImmediate.call(global, fn); }
 	                : function(fn) { ProcessNextTick.call(process, fn); };
-	} else if (typeof NativePromise === "function") {
+	} else if (typeof NativePromise === "function" &&
+	           typeof NativePromise.resolve === "function") {
 	    var nativePromise = NativePromise.resolve();
 	    schedule = function(fn) {
 	        nativePromise.then(fn);
@@ -23233,13 +23295,20 @@ var StellarSdk =
 	    return (this._bitField & 50331648) !== 0;
 	};
 
-	PromiseInspection.prototype.isCancelled =
-	Promise.prototype._isCancelled = function() {
+	PromiseInspection.prototype.isCancelled = function() {
+	    return (this._bitField & 8454144) !== 0;
+	};
+
+	Promise.prototype.__isCancelled = function() {
 	    return (this._bitField & 65536) === 65536;
 	};
 
+	Promise.prototype._isCancelled = function() {
+	    return this._target().__isCancelled();
+	};
+
 	Promise.prototype.isCancelled = function() {
-	    return this._target()._isCancelled();
+	    return (this._target()._bitField & 8454144) !== 0;
 	};
 
 	Promise.prototype.isPending = function() {
@@ -23398,6 +23467,7 @@ var StellarSdk =
 	        if (debug.cancellation()) {
 	            ret._setOnCancel(new HandleWrapper(handle));
 	        }
+	        ret._captureStackTrace();
 	    }
 	    ret._setAsyncGuaranteed();
 	    return ret;
@@ -24741,7 +24811,7 @@ var StellarSdk =
 	'use strict';
 
 	Object.defineProperty(exports, '__esModule', {
-	  value: true
+	    value: true
 	});
 
 	var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
@@ -24760,81 +24830,81 @@ var StellarSdk =
 	 */
 
 	var EffectCallBuilder = (function (_CallBuilder) {
-	  _inherits(EffectCallBuilder, _CallBuilder);
+	    _inherits(EffectCallBuilder, _CallBuilder);
 
-	  /*
-	   * Creates a new {@link EffectCallBuilder} pointed to server defined by serverUrl.
-	   *
-	   * Do not create this object directly, use {@link Server#effects}.
-	   * @see [All Effects](https://www.stellar.org/developers/horizon/reference/effects-all.html)
-	   * @constructor
-	   * @param {string} serverUrl Horizon server URL.
-	   */
-
-	  function EffectCallBuilder(serverUrl) {
-	    _classCallCheck(this, EffectCallBuilder);
-
-	    _get(Object.getPrototypeOf(EffectCallBuilder.prototype), 'constructor', this).call(this, serverUrl);
-	    this.url.segment('effects');
-	  }
-
-	  /**
-	   * This endpoint represents all effects that changed a given account. It will return relevant effects from the creation of the account to the current ledger.
-	   * @see [Effects for Account](https://www.stellar.org/developers/horizon/reference/effects-for-account.html)
-	   * @param {string} accountId For example: `GDGQVOKHW4VEJRU2TETD6DBRKEO5ERCNF353LW5WBFW3JJWQ2BRQ6KDD`
-	   * @returns {EffectCallBuilder}
-	   */
-
-	  _createClass(EffectCallBuilder, [{
-	    key: 'forAccount',
-	    value: function forAccount(accountId) {
-	      this.filter.push(['accounts', accountId, 'effects']);
-	      return this;
-	    }
-
-	    /**
-	     * Effects are the specific ways that the ledger was changed by any operation.
+	    /*
+	     * Creates a new {@link EffectCallBuilder} pointed to server defined by serverUrl.
 	     *
-	     * This endpoint represents all effects that occurred in the given ledger.
-	     * @see [Effects for Ledger](https://www.stellar.org/developers/horizon/reference/effects-for-ledger.html)
-	     * @param {number} ledgerId Ledger ID
-	     * @returns {EffectCallBuilder}
+	     * Do not create this object directly, use {@link Server#effects}.
+	     * @see [All Effects](https://www.stellar.org/developers/horizon/reference/effects-all.html)
+	     * @constructor
+	     * @param {string} serverUrl Horizon server URL.
 	     */
-	  }, {
-	    key: 'forLedger',
-	    value: function forLedger(ledgerId) {
-	      this.filter.push(['ledgers', ledgerId, 'effects']);
-	      return this;
+
+	    function EffectCallBuilder(serverUrl) {
+	        _classCallCheck(this, EffectCallBuilder);
+
+	        _get(Object.getPrototypeOf(EffectCallBuilder.prototype), 'constructor', this).call(this, serverUrl);
+	        this.url.segment('effects');
 	    }
 
 	    /**
-	     * This endpoint represents all effects that occurred as a result of a given transaction.
-	     * @see [Effects for Transaction](https://www.stellar.org/developers/horizon/reference/effects-for-transaction.html)
-	     * @param {string} transactionId Transaction ID
+	     * This endpoint represents all effects that changed a given account. It will return relevant effects from the creation of the account to the current ledger.
+	     * @see [Effects for Account](https://www.stellar.org/developers/horizon/reference/effects-for-account.html)
+	     * @param {string} accountId For example: `GDGQVOKHW4VEJRU2TETD6DBRKEO5ERCNF353LW5WBFW3JJWQ2BRQ6KDD`
 	     * @returns {EffectCallBuilder}
 	     */
-	  }, {
-	    key: 'forTransaction',
-	    value: function forTransaction(transactionId) {
-	      this.filter.push(['transactions', transactionId, 'effects']);
-	      return this;
-	    }
 
-	    /**
-	     * This endpoint represents all effects that occurred as a result of a given operation.
-	     * @see [Effects for Operation](https://www.stellar.org/developers/horizon/reference/effects-for-operation.html)
-	     * @param {number} operationId Operation ID
-	     * @returns {EffectCallBuilder}
-	     */
-	  }, {
-	    key: 'forOperation',
-	    value: function forOperation(operationId) {
-	      this.filter.push(['operations', operationId, 'effects']);
-	      return this;
-	    }
-	  }]);
+	    _createClass(EffectCallBuilder, [{
+	        key: 'forAccount',
+	        value: function forAccount(accountId) {
+	            this.filter.push(['accounts', accountId, 'effects']);
+	            return this;
+	        }
 
-	  return EffectCallBuilder;
+	        /**
+	         * Effects are the specific ways that the ledger was changed by any operation.
+	         *
+	         * This endpoint represents all effects that occurred in the given ledger.
+	         * @see [Effects for Ledger](https://www.stellar.org/developers/horizon/reference/effects-for-ledger.html)
+	         * @param {number} ledgerId Ledger ID
+	         * @returns {EffectCallBuilder}
+	         */
+	    }, {
+	        key: 'forLedger',
+	        value: function forLedger(ledgerId) {
+	            this.filter.push(['ledgers', ledgerId, 'effects']);
+	            return this;
+	        }
+
+	        /**
+	         * This endpoint represents all effects that occurred as a result of a given transaction.
+	         * @see [Effects for Transaction](https://www.stellar.org/developers/horizon/reference/effects-for-transaction.html)
+	         * @param {string} transactionId Transaction ID
+	         * @returns {EffectCallBuilder}
+	         */
+	    }, {
+	        key: 'forTransaction',
+	        value: function forTransaction(transactionId) {
+	            this.filter.push(['transactions', transactionId, 'effects']);
+	            return this;
+	        }
+
+	        /**
+	         * This endpoint represents all effects that occurred as a result of a given operation.
+	         * @see [Effects for Operation](https://www.stellar.org/developers/horizon/reference/effects-for-operation.html)
+	         * @param {number} operationId Operation ID
+	         * @returns {EffectCallBuilder}
+	         */
+	    }, {
+	        key: 'forOperation',
+	        value: function forOperation(operationId) {
+	            this.filter.push(['operations', operationId, 'effects']);
+	            return this;
+	        }
+	    }]);
+
+	    return EffectCallBuilder;
 	})(_call_builder.CallBuilder);
 
 	exports.EffectCallBuilder = EffectCallBuilder;

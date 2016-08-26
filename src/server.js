@@ -284,12 +284,13 @@ export class Server {
     * @param {object} opts
     * @param {string} [opts.from] source of operations 
     * @param {string} [opts.to] destination of operation
-    * @param {int} [opts.from_type] source account type
-    * @param {int} [opts.to_type] destination type
+    * @param {string} [opts.from_type] source account type
+    * @param {string} [opts.to_type] destination type
     * @param {Asset} [opts.asset] - The asset of commission
-    * @param {int64} flat_fee - flat fee ("12.5")
-    * @param {int64} percent_fee - percent fee defined as ("3.5")%
-    * @param {keypair} keypair - to sign request
+    * @param {string} flat_fee - flat fee
+    * @param {string} percent_fee - percent fee
+    * @param {keypair} signer - keypair used to sign request
+    * @param {string} bankMasterAccountId - bank master account id
     * @returns {Promise} Returns a promise to the error if failed to set commission
     */
      setCommission(opts, flat_fee, percent_fee, signer, bankMasterAccountId) {
@@ -308,10 +309,11 @@ export class Server {
      * @param {object} opts
      * @param {string} [opts.from] source of operations 
      * @param {string} [opts.to] destination of operation
-     * @param {int} [opts.from_type] source account type
-     * @param {int} [opts.to_type] destination type
+     * @param {string} [opts.from_type] source account type
+     * @param {string} [opts.to_type] destination type
      * @param {Asset} [opts.asset] - The asset of commission
-     * @param {keypair} keypair - to sign request
+     * @param {keypair} signer - keypair used to sign request
+     * @param {string} bankMasterAccountId - bank master account id
      */
      deleteCommission(opts, signer, bankMasterAccountId) {
         var self = this;
