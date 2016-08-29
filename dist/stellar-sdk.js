@@ -627,7 +627,7 @@ var StellarSdk =
 	  }
 	});
 
-	var _hdwallet = __webpack_require__(435);
+	var _hdwallet = __webpack_require__(436);
 
 	Object.defineProperty(exports, "HDWallet", {
 	  enumerable: true,
@@ -1920,12 +1920,11 @@ var StellarSdk =
 
 	var _stellarBase = __webpack_require__(191);
 
-	var _hdwallet = __webpack_require__(435);
-
-	var _lodashIsString = __webpack_require__(437);
+	var _lodashIsString = __webpack_require__(435);
 
 	var _lodashIsString2 = _interopRequireDefault(_lodashIsString);
 
+	var querystring = __webpack_require__(149);
 	var axios = __webpack_require__(124);
 	var toBluebird = __webpack_require__(180).resolve;
 	var URI = __webpack_require__(120);
@@ -2141,8 +2140,28 @@ var StellarSdk =
 	    }, {
 	        key: "getBalances",
 	        value: function getBalances(accountList) {
-	            var response = axios.post(URI(this.serverURL).path('balances').toString(), accountList).then(function (response) {
+	            var response = axios.post(URI(this.serverURL).path('balances').toString(), querystring.stringify({ multi_accounts: JSON.stringify(accountList) })).then(function (response) {
 	                return response.data;
+	            })["catch"](function (response) {
+	                if (response instanceof Error) {
+	                    return Promise.reject(response);
+	                } else {
+	                    return Promise.reject(response.data);
+	                }
+	            });
+	            return toBluebird(response);
+	        }
+
+	        /**
+	         * Get payments history for given accounts
+	         * @param accountList {Array} Array of AccountId
+	         * @returns {Promise}
+	         */
+	    }, {
+	        key: "getPayments",
+	        value: function getPayments(accountList) {
+	            var response = axios.post(URI(this.serverURL).path('payments').toString(), querystring.stringify({ multi_accounts: JSON.stringify(accountList) })).then(function (response) {
+	                return response.data._embedded.records;
 	            })["catch"](function (response) {
 	                if (response instanceof Error) {
 	                    return Promise.reject(response);
@@ -62693,6 +62712,51 @@ var StellarSdk =
 /* 435 */
 /***/ function(module, exports, __webpack_require__) {
 
+	var isArray = __webpack_require__(27),
+	    isObjectLike = __webpack_require__(26);
+
+	/** `Object#toString` result references. */
+	var stringTag = '[object String]';
+
+	/** Used for built-in method references. */
+	var objectProto = Object.prototype;
+
+	/**
+	 * Used to resolve the
+	 * [`toStringTag`](http://ecma-international.org/ecma-262/7.0/#sec-object.prototype.tostring)
+	 * of values.
+	 */
+	var objectToString = objectProto.toString;
+
+	/**
+	 * Checks if `value` is classified as a `String` primitive or object.
+	 *
+	 * @static
+	 * @since 0.1.0
+	 * @memberOf _
+	 * @category Lang
+	 * @param {*} value The value to check.
+	 * @returns {boolean} Returns `true` if `value` is a string, else `false`.
+	 * @example
+	 *
+	 * _.isString('abc');
+	 * // => true
+	 *
+	 * _.isString(1);
+	 * // => false
+	 */
+	function isString(value) {
+	  return typeof value == 'string' ||
+	    (!isArray(value) && isObjectLike(value) && objectToString.call(value) == stringTag);
+	}
+
+	module.exports = isString;
+
+
+/***/ },
+/* 436 */
+/***/ function(module, exports, __webpack_require__) {
+
 	/* WEBPACK VAR INJECTION */(function(Buffer) {"use strict";
 	Object.defineProperty(exports, "__esModule", {
 	    value: true
@@ -62716,11 +62780,11 @@ var StellarSdk =
 
 	var _server = __webpack_require__(8);
 
-	var _bignumberJs = __webpack_require__(436);
+	var _bignumberJs = __webpack_require__(437);
 
 	var _bignumberJs2 = _interopRequireDefault(_bignumberJs);
 
-	var _lodashIsString = __webpack_require__(437);
+	var _lodashIsString = __webpack_require__(435);
 
 	var _lodashIsString2 = _interopRequireDefault(_lodashIsString);
 
@@ -62762,7 +62826,7 @@ var StellarSdk =
 	        this.seed = null;
 	        this.hdk = null;
 	        this._serverURL = url;
-	        this.__derivedKeys = {};
+	        this._derivedKeys = {};
 	    }
 
 	    _createClass(HDWallet, [{
@@ -62967,7 +63031,7 @@ var StellarSdk =
 	                data.isPublic = true;
 	            }
 
-	            return this.__collect(data, "balance").then(function () {
+	            return this._collect(data, "balance").then(function () {
 	                return HDWallet._fromAmount(data.balance);
 	            });
 	        }
@@ -62988,7 +63052,7 @@ var StellarSdk =
 	                data.path = [HDWallet._path().self];
 	                data.isPublic = true;
 	            }
-	            return this.__collect(data, "ids").then(function () {
+	            return this._collect(data, "ids").then(function () {
 	                return data.resultList;
 	            });
 	        }
@@ -63007,7 +63071,7 @@ var StellarSdk =
 	            data.resultList = [];
 	            data.path = [HDWallet._path().own["private"], HDWallet._path().others["private"]];
 
-	            return this.__collect(data, "keys").then(function () {
+	            return this._collect(data, "keys").then(function () {
 	                return data.resultList;
 	            });
 	        }
@@ -63032,18 +63096,18 @@ var StellarSdk =
 	            var stopIndex = numberOfAddresses + index;
 
 	            while (index < stopIndex) {
-	                var derivedKey = this.__getDerivedKey(path, index);
+	                var derivedKey = this._getDerivedKey(path, index);
 	                invoiceList.push({
-	                    key: strEncode(HDWallet._version().accountId.str, derivedKey.publicKey),
+	                    key: derivedKey.publicKey,
 	                    amount: HDWallet._accountBalanceLimit()
 	                });
 	                index++;
 	            }
 
 	            if (!piece.isZero()) {
-	                var derivedKey = this.__getDerivedKey(path, index);
+	                var derivedKey = this._getDerivedKey(path, index);
 	                invoiceList.push({
-	                    key: strEncode(HDWallet._version().accountId.str, derivedKey.publicKey),
+	                    key: derivedKey.publicKey,
 	                    amount: piece
 	                });
 	            }
@@ -63090,6 +63154,68 @@ var StellarSdk =
 
 	            return completeList(data);
 	        }
+	    }, {
+	        key: "fullPaymentHistory",
+	        value: function fullPaymentHistory() {
+	            if (this.ver !== HDWallet._version().mpriv.byte) toBluebirdRej(new Error("This method only for private wallet"));
+
+	            var branchNumber = 0;
+	            var self = this;
+
+	            return self.paymentHistory().then(function (response) {
+	                function makeResult() {
+	                    if (branchNumber < self.indexList.length) return self.paymentHistoryForBranch(branchNumber).then(function (list) {
+	                        for (var i = 0, l = response.length; i < list.length; i++, l++) {
+	                            response[l] = list[i];
+	                        }branchNumber++;
+	                        return makeResult();
+	                    });else return response;
+	                }
+
+	                return makeResult();
+	            });
+	        }
+	    }, {
+	        key: "paymentHistoryForBranch",
+	        value: function paymentHistoryForBranch(number) {
+	            if (this.ver !== HDWallet._version().mpriv.byte) return toBluebirdRej(new Error("This method only for private wallet"));
+	            var mpub = this.getMPub(number);
+	            return HDWallet.setByStrKey(mpub, this._serverURL).then(function (hdw) {
+	                return hdw.paymentHistory();
+	            });
+	        }
+	    }, {
+	        key: "paymentHistory",
+	        value: function paymentHistory() {
+	            var stop = this.firstUnused,
+	                path = undefined,
+	                self = this;
+	            var request = [];
+	            if (stop === 0) return toBluebirdRes(request);
+
+	            if (self.ver == HDWallet._version().mpriv.byte) path = HDWallet._path().own["public"];else if (this.ver == HDWallet._version().mpub.byte) path = HDWallet._path().self;
+
+	            for (var i = 0; i < stop; i++) {
+	                request[i] = this._getDerivedKey(path, i).publicKey;
+	            }return this.paymentHistoryForIDs(request);
+	        }
+	    }, {
+	        key: "paymentHistoryForIDs",
+	        value: function paymentHistoryForIDs(request) {
+	            if (request.length === 0) return toBluebirdRej("Invalid request");
+	            var server = new _server.Server(this._serverURL);
+	            return server.getPayments(request).then(function (records) {
+	                var result = [];
+	                for (var i = 0; i < records.length; i++) {
+	                    result[i] = {
+	                        from: records[i].from,
+	                        to: records[i].to,
+	                        amount: records[i].amount
+	                    };
+	                }
+	                return result;
+	            });
+	        }
 
 	        /**
 	         * @private
@@ -63106,8 +63232,8 @@ var StellarSdk =
 	                    privateKeyList = [];
 
 	                for (var i = index, l = 0; i < stopIndex; i++, l++) {
-	                    var derivedKey = self.__getDerivedKey(data.path, i);
-	                    accountList[l] = strEncode(HDWallet._version().accountId.str, derivedKey.publicKey);
+	                    var derivedKey = self._getDerivedKey(data.path, i);
+	                    accountList[l] = derivedKey.publicKey;
 	                    privateKeyList[l] = strEncode(HDWallet._version().mpriv.str, derivedKey.privateKey);
 	                }
 
@@ -63143,8 +63269,8 @@ var StellarSdk =
 	         * @private
 	         */
 	    }, {
-	        key: "__collect",
-	        value: function __collect(data, opType) {
+	        key: "_collect",
+	        value: function _collect(data, opType) {
 	            var self = this;
 	            data.otherBranchIndex = 0;
 	            var currentPath = data.path[0];
@@ -63156,8 +63282,8 @@ var StellarSdk =
 	                var privateKeyList = [];
 
 	                for (var i = index, l = 0; i < stopIndex; i++, l++) {
-	                    var derivedKey = self.__getDerivedKey(currentPath, i);
-	                    accountList[l] = strEncode(HDWallet._version().accountId.str, derivedKey.publicKey);
+	                    var derivedKey = self._getDerivedKey(currentPath, i);
+	                    accountList[l] = derivedKey.publicKey;
 	                    if (opType === "keys") privateKeyList[l] = strEncode(HDWallet._version().mpriv.str, derivedKey.privateKey);
 	                }
 
@@ -63209,22 +63335,22 @@ var StellarSdk =
 	         * @private
 	         */
 	    }, {
-	        key: "__getDerivedKey",
-	        value: function __getDerivedKey(branchPath, index) {
+	        key: "_getDerivedKey",
+	        value: function _getDerivedKey(branchPath, index) {
 	            var path = undefined;
 	            if (branchPath !== HDWallet._path().self) path = branchPath.replace(branchPath[0], "m");else path = branchPath;
 
-	            if (typeof this.__derivedKeys[path] == "undefined") {
-	                this.__derivedKeys[path] = { keys: [] };
-	                this.__derivedKeys[path].hdk = this.hdk.derive(path);
+	            if (typeof this._derivedKeys[path] == "undefined") {
+	                this._derivedKeys[path] = { keys: [] };
+	                this._derivedKeys[path].hdk = this.hdk.derive(path);
 	            }
-	            if (typeof this.__derivedKeys[path].keys[index] == "undefined") {
-	                var derived = this.__derivedKeys[path].hdk.derive(path[0] + "/" + index);
-	                this.__derivedKeys[path].keys[index] = {
+	            if (typeof this._derivedKeys[path].keys[index] == "undefined") {
+	                var derived = this._derivedKeys[path].hdk.derive(path[0] + "/" + index);
+	                this._derivedKeys[path].keys[index] = {
 	                    privateKey: derived.privateKey,
-	                    publicKey: derived.publicKey };
+	                    publicKey: strEncode(HDWallet._version().accountId.str, derived.publicKey) };
 	            }
-	            return this.__derivedKeys[path].keys[index];
+	            return this._derivedKeys[path].keys[index];
 	        }
 
 	        /**
@@ -63472,8 +63598,8 @@ var StellarSdk =
 	            function request() {
 	                var accountList = [];
 	                for (var i = _index, l = 0; i < _stopIndex; i++, l++) {
-	                    var derivedKey = hdw.__getDerivedKey(branchPath, i);
-	                    accountList[l] = strEncode(self._version().accountId.str, derivedKey.publicKey);
+	                    var derivedKey = hdw._getDerivedKey(branchPath, i);
+	                    accountList[l] = derivedKey.publicKey;
 	                }
 
 	                return self._checkAccounts(accountList, hdw._serverURL).then(function (respList) {
@@ -63666,7 +63792,7 @@ var StellarSdk =
 	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(161).Buffer))
 
 /***/ },
-/* 436 */
+/* 437 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var __WEBPACK_AMD_DEFINE_RESULT__;/*! bignumber.js v2.4.0 https://github.com/MikeMcl/bignumber.js/LICENCE */
@@ -66409,51 +66535,6 @@ var StellarSdk =
 
 
 /***/ },
-/* 437 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var isArray = __webpack_require__(27),
-	    isObjectLike = __webpack_require__(26);
-
-	/** `Object#toString` result references. */
-	var stringTag = '[object String]';
-
-	/** Used for built-in method references. */
-	var objectProto = Object.prototype;
-
-	/**
-	 * Used to resolve the
-	 * [`toStringTag`](http://ecma-international.org/ecma-262/7.0/#sec-object.prototype.tostring)
-	 * of values.
-	 */
-	var objectToString = objectProto.toString;
-
-	/**
-	 * Checks if `value` is classified as a `String` primitive or object.
-	 *
-	 * @static
-	 * @since 0.1.0
-	 * @memberOf _
-	 * @category Lang
-	 * @param {*} value The value to check.
-	 * @returns {boolean} Returns `true` if `value` is a string, else `false`.
-	 * @example
-	 *
-	 * _.isString('abc');
-	 * // => true
-	 *
-	 * _.isString(1);
-	 * // => false
-	 */
-	function isString(value) {
-	  return typeof value == 'string' ||
-	    (!isArray(value) && isObjectLike(value) && objectToString.call(value) == stringTag);
-	}
-
-	module.exports = isString;
-
-
-/***/ },
 /* 438 */
 /***/ function(module, exports, __webpack_require__) {
 
@@ -66487,7 +66568,7 @@ var StellarSdk =
 
 	var _toml2 = _interopRequireDefault(_toml);
 
-	var _lodashIsString = __webpack_require__(437);
+	var _lodashIsString = __webpack_require__(435);
 
 	var _lodashIsString2 = _interopRequireDefault(_lodashIsString);
 

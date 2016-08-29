@@ -11,9 +11,9 @@ import {PaymentCallBuilder} from "./payment_call_builder";
 import {EffectCallBuilder} from "./effect_call_builder";
 import {FriendbotBuilder} from "./friendbot_builder";
 import {xdr, Account} from "stellar-base";
-import {HDWallet} from "./hdwallet";
 import isString from "lodash/isString";
 
+let querystring = require('querystring');
 let axios = require("axios");
 let toBluebird = require("bluebird").resolve;
 let URI = require("urijs");
@@ -202,10 +202,33 @@ export class Server {
     getBalances(accountList) {
         var response = axios.post(
               URI(this.serverURL).path('balances').toString(),
-              accountList
+              querystring.stringify({multi_accounts: JSON.stringify(accountList)})
             )
             .then(function(response) {
                 return response.data;
+            })
+            .catch(function (response) {
+                if (response instanceof Error) {
+                    return Promise.reject(response);
+                } else {
+                    return Promise.reject(response.data);
+                }
+            });
+        return toBluebird(response);
+    }
+
+    /**
+     * Get payments history for given accounts
+     * @param accountList {Array} Array of AccountId
+     * @returns {Promise}
+     */
+    getPayments(accountList) {
+        var response = axios.post(
+            URI(this.serverURL).path('payments').toString(),
+            querystring.stringify({multi_accounts: JSON.stringify(accountList)})
+        )
+            .then(function(response) {
+                return response.data._embedded.records;
             })
             .catch(function (response) {
                 if (response instanceof Error) {

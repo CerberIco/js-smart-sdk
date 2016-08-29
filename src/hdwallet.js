@@ -41,7 +41,7 @@ export class HDWallet {
         this.seed = null;
         this.hdk = null;
         this._serverURL = url;
-        this.__derivedKeys = {};
+        this._derivedKeys = {};
     }
 
     static _version() {
@@ -402,7 +402,7 @@ export class HDWallet {
             data.isPublic = true;
         }
 
-        return this.__collect(data, "balance")
+        return this._collect(data, "balance")
             .then(() => {
                 return HDWallet._fromAmount(data.balance);
             });
@@ -425,7 +425,7 @@ export class HDWallet {
             data.path = [HDWallet._path().self];
             data.isPublic = true;
         }
-        return this.__collect(data, "ids")
+        return this._collect(data, "ids")
             .then(() => {
                 return data.resultList;
             });
@@ -445,7 +445,7 @@ export class HDWallet {
         data.resultList = [];
         data.path = [HDWallet._path().own.private, HDWallet._path().others.private];
 
-        return this.__collect(data, "keys")
+        return this._collect(data, "keys")
             .then(() => {
                 return data.resultList;
             });
@@ -474,18 +474,18 @@ export class HDWallet {
         let stopIndex = numberOfAddresses + index;
 
         while (index < stopIndex) {
-            let derivedKey = this.__getDerivedKey(path, index);
+            let derivedKey = this._getDerivedKey(path, index);
             invoiceList.push({
-                key: strEncode(HDWallet._version().accountId.str, derivedKey.publicKey),
+                key: derivedKey.publicKey,
                 amount: HDWallet._accountBalanceLimit()
             });
             index++;
         }
 
         if(!(piece.isZero())) {
-            let derivedKey = this.__getDerivedKey(path, index);
+            let derivedKey = this._getDerivedKey(path, index);
             invoiceList.push({
-                key: strEncode(HDWallet._version().accountId.str, derivedKey.publicKey),
+                key: derivedKey.publicKey,
                 amount: piece
             });
         }
@@ -533,6 +533,79 @@ export class HDWallet {
         return completeList(data);
     }
     
+    fullPaymentHistory(){
+        if (this.ver !== HDWallet._version().mpriv.byte)
+            toBluebirdRej(new Error("This method only for private wallet"));
+
+        let branchNumber = 0;
+        let self = this;
+
+        return self.paymentHistory()
+            .then(response => {
+                function makeResult() {
+                    if (branchNumber < self.indexList.length)
+                        return self.paymentHistoryForBranch(branchNumber)
+                            .then(list => {
+                                for (let i = 0, l = response.length; i < list.length; i++, l++)
+                                    response[l] = list[i];
+                                branchNumber++;
+                                return makeResult();
+                            });
+                    else
+                        return response;
+                }
+
+                return makeResult();
+            });
+    }
+
+    paymentHistoryForBranch(number) {
+        if (this.ver !== HDWallet._version().mpriv.byte)
+            return toBluebirdRej(new Error("This method only for private wallet"));
+        let mpub = this.getMPub(number);
+        return HDWallet.setByStrKey(mpub, this._serverURL)
+            .then(hdw => {
+                return hdw.paymentHistory();
+            });
+    }
+    
+    paymentHistory() {
+        let stop = this.firstUnused,
+            path, self = this;
+        let request = [];
+        if (stop === 0)
+            return toBluebirdRes(request);
+
+        if (self.ver == HDWallet._version().mpriv.byte)
+            path = HDWallet._path().own.public;
+        else if (this.ver == HDWallet._version().mpub.byte) 
+            path = HDWallet._path().self;
+         
+        for (let i = 0; i < stop; i++)
+            request[i] = this._getDerivedKey(path, i).publicKey;
+
+        return this.paymentHistoryForIDs(request);        
+        
+    }
+
+    paymentHistoryForIDs(request) {
+        if (request.length === 0)
+            return toBluebirdRej("Invalid request");
+        let server = new Server(this._serverURL);
+        return server.getPayments(request)
+            .then(records => {
+                let result = [];
+                for (let i = 0; i < records.length; i++) {
+                    result[i] = {
+                        from: records[i].from,
+                        to: records[i].to,
+                        amount: records[i].amount
+                    };
+                }
+                return result;
+            });
+    }
+    
     /**
      * @private
      */
@@ -546,8 +619,8 @@ export class HDWallet {
                 privateKeyList = [];
             
             for (let i = index, l = 0; i < stopIndex; i++, l++) {
-                let derivedKey = self.__getDerivedKey(data.path, i);
-                accountList[l] = strEncode(HDWallet._version().accountId.str, derivedKey.publicKey);
+                let derivedKey = self._getDerivedKey(data.path, i);
+                accountList[l] = derivedKey.publicKey;
                 privateKeyList[l] = strEncode(HDWallet._version().mpriv.str, derivedKey.privateKey);
             }
 
@@ -589,22 +662,22 @@ export class HDWallet {
     /**
      * @private
      */
-    __collect(data, opType) {
+    _collect(data, opType) {
         let self = this;
         data.otherBranchIndex = 0;
         let currentPath = data.path[0];
         let _index = self.firstWithMoney,
             _stopIndex = _index + HDWallet._lookAhead();
-
+    
         function findMoney(index, stopIndex) {
             let accountList = [];
             let privateKeyList = [];
 
             for (let i = index, l = 0; i < stopIndex; i++, l++) {
-                let derivedKey = self.__getDerivedKey(currentPath, i);
-                accountList[l] = strEncode(HDWallet._version().accountId.str, derivedKey.publicKey);
+                let derivedKey = self._getDerivedKey(currentPath, i);
+                accountList[l] = derivedKey.publicKey;
                 if (opType === "keys")
-                    privateKeyList[l] =  strEncode(HDWallet._version().mpriv.str, derivedKey.privateKey);
+                    privateKeyList[l] = strEncode(HDWallet._version().mpriv.str, derivedKey.privateKey);
             }
 
             return HDWallet._checkAccounts(accountList, self._serverURL)
@@ -660,27 +733,27 @@ export class HDWallet {
     /**
      * @private
      */
-    __getDerivedKey(branchPath, index) {
+    _getDerivedKey(branchPath, index) {
         let path;
         if (branchPath !== HDWallet._path().self)
             path = branchPath.replace(branchPath[0], "m" );
         else
             path = branchPath;
 
-        if (typeof(this.__derivedKeys[path]) == "undefined") {
-            this.__derivedKeys[path] = {keys: []};
-            this.__derivedKeys[path].hdk = this.hdk.derive(path);
+        if (typeof(this._derivedKeys[path]) == "undefined") {
+            this._derivedKeys[path] = {keys: []};
+            this._derivedKeys[path].hdk = this.hdk.derive(path);
         }
-        if (typeof(this.__derivedKeys[path].keys[index]) == "undefined") {
-            let derived = this.__derivedKeys[path].hdk.derive(path[0] + "/" + index);
-            this.__derivedKeys[path].keys[index] = {
+        if (typeof(this._derivedKeys[path].keys[index]) == "undefined") {
+            let derived = this._derivedKeys[path].hdk.derive(path[0] + "/" + index);
+            this._derivedKeys[path].keys[index] = {
                 privateKey: derived.privateKey,
-                publicKey: derived.publicKey };
+                publicKey:  strEncode(HDWallet._version().accountId.str, derived.publicKey) };
         }
-        return this.__derivedKeys[path].keys[index];
+        return this._derivedKeys[path].keys[index];
 
     }
-    
+
     /**
      * @private
      */
@@ -734,8 +807,8 @@ export class HDWallet {
         function request() {
             let accountList = [];
             for (let i = _index, l = 0; i < _stopIndex; i++, l++) {
-                let derivedKey = hdw.__getDerivedKey(branchPath, i);
-                accountList[l] = strEncode(self._version().accountId.str, derivedKey.publicKey);
+                let derivedKey = hdw._getDerivedKey(branchPath, i);
+                accountList[l] = derivedKey.publicKey;
             }
 
             return self._checkAccounts(accountList, hdw._serverURL)
