@@ -1,6 +1,8 @@
 import * as StellarBase from "stellar-base";
 import {testData, badData} from "./test_data";
+import BigNumber from 'bignumber.js';
 
+const ONE = 10000000;
 let HDWallet = StellarSdk.HDWallet;
 let HDKey = StellarBase.HDKey;
 let Promise = require("bluebird");
@@ -17,11 +19,18 @@ function bufferCompare(buf1, buf2) {
     return true ;
 }
 
+function fromAmount(value) {
+    return new BigNumber(value).div(ONE).toString();
+}
+function toAmount(value) {
+    return new BigNumber(value).mul(ONE);
+}
+
 function checkList(list, constList) {
     for (let i = 0; i < list.length; i++) {
-        if ((list[i].key !== constList[i].key) || (StellarSdk.HDWallet._fromAmount(list[i].amount) !== constList[i].amount)) {
+        if ((list[i].key !== constList[i].key) || (fromAmount(list[i].amount) !== constList[i].amount)) {
             console.log(list[i].key, "==", constList[i].key);
-            console.log(StellarSdk.HDWallet._fromAmount(list[i].amount), "==", constList[i].amount);
+            console.log(fromAmount(list[i].amount), "==", constList[i].amount);
             return false;
         }
     }
@@ -441,7 +450,7 @@ describe("HDWallet Positive Test. ", function () {
                         })
                         .then(hdw => {
                             // console.log(hdw);
-                            return hdw.makeWithdrawalList(HDWallet._toAmount(testData.tx.amount[i]), asset)
+                            return hdw.makeWithdrawalList(toAmount(testData.tx.amount[i]), asset)
                                 .then(list => {
                                     let constL = testData.tx.withdrawal[i];
                                     // console.log("withdrawal ", list);

@@ -219,16 +219,16 @@ export class Server {
 
     /**
      * Get payments history for given accounts
-     * @param accountList {Array} Array of AccountId
+     * @param request {Object}
      * @returns {Promise}
      */
-    getPayments(accountList) {
-        var response = axios.post(
+    getPayments(request) {
+        var response = axios.post( 
             URI(this.serverURL).path('payments').toString(),
-            querystring.stringify({multi_accounts: JSON.stringify(accountList)})
-        )
+            querystring.stringify(request)
+            )
             .then(function(response) {
-                return response.data._embedded.records;
+                return response.data;
             })
             .catch(function (response) {
                 if (response instanceof Error) {

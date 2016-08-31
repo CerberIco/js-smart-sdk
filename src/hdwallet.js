@@ -330,7 +330,7 @@ export class HDWallet {
                                 destination: paymentList[i].dest,
                                 source: HDKey.getHDKeyForSigning(paymentList[i].source).accountId(),
                                 asset: asset,
-                                amount: HDWallet._fromAmount(paymentList[i].amount)
+                                amount: fromAmount(paymentList[i].amount)
                             }));
                         }
                         let txEnvelope = transaction.build();
@@ -404,7 +404,7 @@ export class HDWallet {
 
         return this._collect(data, "balance")
             .then(() => {
-                return HDWallet._fromAmount(data.balance);
+                return fromAmount(data.balance);
             });
 
     }
@@ -459,7 +459,7 @@ export class HDWallet {
     makeInvoiceList(strAmount){
         let path,
             invoiceList = [],
-            amount = HDWallet._toAmount(strAmount),
+            amount = toAmount(strAmount),
             index = this.firstUnused;
 
         if (this.ver == HDWallet._version().mpriv.byte)
@@ -532,49 +532,73 @@ export class HDWallet {
 
         return completeList(data);
     }
-    
-    fullPaymentHistory(){
+    /**
+     * Return payment history for all branches.
+     * @param {Object} [params] all params is optional
+     *     params.after  = "2006-01-02T15:04:05Z";
+     *     params.before = "2006-02-02T15:04:05Z";
+     *     params.limit  =  "10";
+     * @returns {*}
+     */    
+    fullPaymentHistory(params) {
         if (this.ver !== HDWallet._version().mpriv.byte)
             toBluebirdRej(new Error("This method only for private wallet"));
 
         let branchNumber = 0;
         let self = this;
+        let stop = self.firstUnused;
+        let path = HDWallet._path().own.public;
+        let accountList = [];
+        let request = {};
 
-        return self.paymentHistory()
-            .then(response => {
-                function makeResult() {
-                    if (branchNumber < self.indexList.length)
-                        return self.paymentHistoryForBranch(branchNumber)
-                            .then(list => {
-                                for (let i = 0, l = response.length; i < list.length; i++, l++)
-                                    response[l] = list[i];
-                                branchNumber++;
-                                return makeResult();
-                            });
-                    else
-                        return response;
-                }
+        if (params) {
+            if (params.after) request.after = params.after;
+            if (params.before) request.before = params.before;
 
-                return makeResult();
-            });
+            if (params.limit) request.limit = params.limit;
+        }
+
+        if (typeof (request.limit) === "undefined") request.limit = "10";
+
+        for (let i = 0; i < stop; i++)
+            accountList[i] = this._getDerivedKey(path, i).publicKey;
+
+        function makeRequestList() {
+            if (branchNumber < self.indexList.length)
+                return self._paymentRequestForBranch(branchNumber)
+                    .then(list => {
+                        for (let i = 0, l = accountList.length; i < list.length; i++, l++)
+                            accountList[l] = list[i];
+                        
+                        branchNumber++;
+                        return makeRequestList();
+                    });
+            else {
+                request.multi_accounts = JSON.stringify(accountList);
+                request.order = "desc";
+                return self._paymentHistoryForIDs(accountList, request);
+            }
+            }
+
+        return makeRequestList();
+
     }
 
-    paymentHistoryForBranch(number) {
-        if (this.ver !== HDWallet._version().mpriv.byte)
-            return toBluebirdRej(new Error("This method only for private wallet"));
-        let mpub = this.getMPub(number);
-        return HDWallet.setByStrKey(mpub, this._serverURL)
-            .then(hdw => {
-                return hdw.paymentHistory();
-            });
-    }
-    
-    paymentHistory() {
+    /**
+     * Return payment history for own branch.
+     * @param {Object} [params] all params is optional 
+     *     params.after  = "2006-01-02T15:04:05Z";
+     *     params.before = "2006-02-02T15:04:05Z";
+     *     params.limit  =  "10";
+     * @returns {*}
+     */
+    paymentHistory(params) {
         let stop = this.firstUnused,
             path, self = this;
-        let request = [];
-        if (stop === 0)
-            return toBluebirdRes(request);
+        let accountList = [];
+        let request = {};
+
+        if (stop === 0) return toBluebirdRes(accountList);
 
         if (self.ver == HDWallet._version().mpriv.byte)
             path = HDWallet._path().own.public;
@@ -582,27 +606,85 @@ export class HDWallet {
             path = HDWallet._path().self;
          
         for (let i = 0; i < stop; i++)
-            request[i] = this._getDerivedKey(path, i).publicKey;
+            accountList[i] = this._getDerivedKey(path, i).publicKey;
 
-        return this.paymentHistoryForIDs(request);        
-        
+        if (params) {
+            if (params.after) request.after = params.after;
+            if (params.before) request.before = params.before;
+
+            if (params.limit) request.limit = params.limit;
+        }
+
+        if (typeof (request.limit) === "undefined") request.limit = "10";
+
+        request.multi_accounts = JSON.stringify(accountList);
+        request.order = "desc";
+
+
+        return this._paymentHistoryForIDs(accountList, request);
     }
 
-    paymentHistoryForIDs(request) {
-        if (request.length === 0)
+    _paymentRequestForBranch(number) {
+        if (this.ver !== HDWallet._version().mpriv.byte)
+            return toBluebirdRej(new Error("This method only for private wallet"));
+        let mpub = this.getMPub(number);
+
+        return HDWallet.setByStrKey(mpub, this._serverURL)
+            .then(hdw => {
+                let path = HDWallet._path().self;
+                let request = [];
+                let stop = hdw.firstUnused;
+
+                for (let i = 0; i < stop; i++)
+                    request[i] = hdw._getDerivedKey(path, i).publicKey;
+
+                return request;
+            });
+    }
+
+    _paymentHistoryForIDs(accountList, request) {
+        if (accountList.length === 0)
             return toBluebirdRej("Invalid request");
+
         let server = new Server(this._serverURL);
+        let self = this;
         return server.getPayments(request)
-            .then(records => {
-                let result = [];
+            .then(payments => {
+                let records = payments._embedded.records;
                 for (let i = 0; i < records.length; i++) {
-                    result[i] = {
-                        from: records[i].from,
-                        to: records[i].to,
-                        amount: records[i].amount
-                    };
+                    let direction = "undefined";
+                    let route = 0;
+
+                    if (accountList.indexOf(records[i].to) !== -1) route += 1;
+                    if (accountList.indexOf(records[i].from) !== -1) route += 2;
+
+                    switch (route) {
+                        case 1 : {direction = "incoming"; break;}
+                        case 2 : {direction = "outgoing"; break;}
+                        case 3 : {direction = "internal"; break;}
+                    }
+                    
+                    records[i].direction = direction;
                 }
+
+                let result = {};
+                result.records = records;
+                result._request = request;
+
+                result.next = () => {
+                    result._request.order = "asc";
+                    result._request.cursor = getCursor(payments._links.next.href);
+                    return self._paymentHistoryForIDs(accountList, result._request);
+                };
+
+                result.prev = () => {
+                    result._request.order = "desc";
+                    result._request.cursor = getCursor(payments._links.next.href);
+                    return self._paymentHistoryForIDs(accountList, result._request);
+                };
+
                 return result;
+
             });
     }
     
@@ -651,7 +733,7 @@ export class HDWallet {
                         return data.currentSum;
                     
                     _index += HDWallet._lookAhead();
-                    _stopIndex = HDWallet._min(_index + HDWallet._lookAhead(), HDWallet._maxIndex());
+                    _stopIndex = min(_index + HDWallet._lookAhead(), HDWallet._maxIndex());
                     return makingList(_index, _stopIndex);
                 });
         }
@@ -696,7 +778,7 @@ export class HDWallet {
                                 data.balance = data.balance.plus(respList[i][j].balance);
 
                             balances.push({ asset: respList[i][j].asset,
-                                balance: HDWallet._fromAmount(respList[i][j].balance) });
+                                balance: fromAmount(respList[i][j].balance) });
                         }
 
                         if ( (balances.length !== 0) && (opType === "ids") )
@@ -711,7 +793,7 @@ export class HDWallet {
 
                         if(data.otherBranchIndex < self.indexList.length) {
                             _index = self.indexList[data.otherBranchIndex];
-                            _stopIndex = HDWallet._min(_index + HDWallet._lookAhead(), HDWallet._maxIndex());
+                            _stopIndex = min(_index + HDWallet._lookAhead(), HDWallet._maxIndex());
                             currentPath = data.path[1] + "/" + data.otherBranchIndex;
                             data.otherBranchIndex++;
 
@@ -722,7 +804,7 @@ export class HDWallet {
                     }
 
                     _index += HDWallet._lookAhead();
-                    _stopIndex = HDWallet._min(_index + HDWallet._lookAhead(), HDWallet._maxIndex());
+                    _stopIndex = min(_index + HDWallet._lookAhead(), HDWallet._maxIndex());
                     return findMoney(_index, _stopIndex);
                 });
         }
@@ -781,7 +863,7 @@ export class HDWallet {
 
                     indexList[index] = resultIndexPair.f_w_m;
                     
-                    _stopIndex = self._min(_index + self._branchAhead(), self._maxListLen());
+                    _stopIndex = min(_index + self._branchAhead(), self._maxListLen());
 
                     return indexing(_index, _stopIndex);
 
@@ -794,7 +876,7 @@ export class HDWallet {
      * @private
      */
     static _updateIndexesInOwnBranch(branchPath, hdw, indexPairOld){
-        let _index = this._min(indexPairOld.f_w_m, indexPairOld.f_u);
+        let _index = min(indexPairOld.f_w_m, indexPairOld.f_u);
         let _stopIndex = this._lookAhead() + _index;
         let self = this;
         let f_w_mFound = false;
@@ -861,7 +943,7 @@ export class HDWallet {
                         responseList[pos].push({
                             isValid: true,
                             asset: data.asset,
-                            balance: HDWallet._toAmount(account.balance) });
+                            balance: toAmount(account.balance) });
                     });
                 });
 
@@ -906,7 +988,7 @@ export class HDWallet {
         let opList = [];
 
         for (let wI = 0, iI = 0; wI < withdrawal.length;) {
-            let op_amount = this._minAmount(withdrawal[wI].amount, invoice[iI].amount);
+            let op_amount = minAmount(withdrawal[wI].amount, invoice[iI].amount);
 
             opList.push({ dest: invoice[iI].key,
                 source: withdrawal[wI].key,
@@ -925,76 +1007,75 @@ export class HDWallet {
         return opList;
     }
 
-    /**
-     * @private
-     */
-    static _min(a, b) {
-        if (a < b)
-            return a;
-        else
-            return b;
+    
+}
+
+function getCursor(url) {
+    let name = "cursor";
+    name = name.replace(/[\[\]]/g, "\\$&");
+    var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
+        results = regex.exec(url);
+    if (!results) return null;
+    if (!results[2]) return '';
+    return decodeURIComponent(results[2].replace(/\+/g, " "));
+}
+
+function min(a, b) {
+    if (a < b)
+        return a;
+    else
+        return b;
+}
+
+
+function minAmount(a, b) {
+    if (a.lessThan(b))
+        return a;
+    else
+        return b;
+}
+
+function isValidAmount(value) {
+    if (!isString(value))
+        return false;
+
+    let amount;
+    try {
+        amount = new BigNumber(value);
+    } catch (e) {
+        return false;
     }
 
-    /**
-     * @private
-     */
-    static _minAmount(a, b) {
-        if (a.lessThan(b))
-            return a;
-        else
-            return b;
-    }
+    // < 0
+    if (amount.isNegative())
+        return false;
 
-    /**
-     * @private
-     */
-    static _isValidAmount(value) {
-        if (!isString(value))
-            return false;
+    // > Max value
+    if (amount.times(ONE).greaterThan(new BigNumber(MAX_INT64).toString()))
+        return false;
 
-        let amount;
-        try {
-            amount = new BigNumber(value);
-        } catch (e) {
-            return false;
-        }
+    // Decimal places (max 7)
+    if (amount.decimalPlaces() > 7)
+        return false;
 
-        // < 0
-        if (amount.isNegative())
-            return false;
+    // Infinity
+    if (!amount.isFinite())
+        return false;
 
-        // > Max value
-        if (amount.times(ONE).greaterThan(new BigNumber(MAX_INT64).toString()))
-            return false;
+    // NaN
+    if (amount.isNaN())
+        return false;
 
-        // Decimal places (max 7)
-        if (amount.decimalPlaces() > 7)
-            return false;
+    return true;
+}
 
-        // Infinity
-        if (!amount.isFinite())
-            return false;
+function toAmount(value) {
+    if (isValidAmount(value))
+        return new BigNumber(value).mul(ONE);
+    throw new Error("Invalid amount - " + value + "!");
+}
 
-        // NaN
-        if (amount.isNaN())
-            return false;
 
-        return true;
-    }
-
-    /**
-     * @private
-     */
-    static _toAmount(value) {
-        if (this._isValidAmount(value))
-            return new BigNumber(value).mul(ONE);
-        throw new Error("Invalid amount - " + value + "!");
-    }
-
-    /**
-     * @private
-     */
-    static _fromAmount(value) {
-        return new BigNumber(value).div(ONE).toString();
-    }
+function fromAmount(value) {
+    return new BigNumber(value).div(ONE).toString();
 }
