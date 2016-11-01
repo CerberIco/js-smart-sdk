@@ -627,7 +627,7 @@ var StellarSdk =
 	  }
 	});
 
-	var _hdwallet = __webpack_require__(429);
+	var _hdwallet = __webpack_require__(433);
 
 	Object.defineProperty(exports, "HDWallet", {
 	  enumerable: true,
@@ -1920,17 +1920,15 @@ var StellarSdk =
 
 	var _stellarBase = __webpack_require__(193);
 
-	var _hdwallet = __webpack_require__(429);
-
-	var _lodashIsString = __webpack_require__(431);
+	var _lodashIsString = __webpack_require__(429);
 
 	var _lodashIsString2 = _interopRequireDefault(_lodashIsString);
 
-	var _assets_call_builder = __webpack_require__(432);
+	var _assets_call_builder = __webpack_require__(430);
 
-	var _commission_call_builder = __webpack_require__(433);
+	var _commission_call_builder = __webpack_require__(431);
 
-	var _account_traits_call_builder = __webpack_require__(434);
+	var _account_traits_call_builder = __webpack_require__(432);
 
 	var querystring = __webpack_require__(150);
 	var axios = __webpack_require__(125);
@@ -2314,6 +2312,26 @@ var StellarSdk =
 	        key: "getBalances",
 	        value: function getBalances(accountList) {
 	            var response = axios.post(URI(this.serverURL).path('balances').toString(), querystring.stringify({ multi_accounts: JSON.stringify(accountList) })).then(function (response) {
+	                return response.data;
+	            })["catch"](function (response) {
+	                if (response instanceof Error) {
+	                    return Promise.reject(response);
+	                } else {
+	                    return Promise.reject(response.data);
+	                }
+	            });
+	            return toBluebird(response);
+	        }
+
+	        /**
+	         * Get payments history for given accounts
+	         * @param request {Object}
+	         * @returns {Promise}
+	         */
+	    }, {
+	        key: "getPayments",
+	        value: function getPayments(request) {
+	            var response = axios.post(URI(this.serverURL).path('payments').toString(), querystring.stringify(request)).then(function (response) {
 	                return response.data;
 	            })["catch"](function (response) {
 	                if (response instanceof Error) {
@@ -61009,6 +61027,250 @@ var StellarSdk =
 /* 429 */
 /***/ function(module, exports, __webpack_require__) {
 
+	var isArray = __webpack_require__(27),
+	    isObjectLike = __webpack_require__(26);
+
+	/** `Object#toString` result references. */
+	var stringTag = '[object String]';
+
+	/** Used for built-in method references. */
+	var objectProto = Object.prototype;
+
+	/**
+	 * Used to resolve the
+	 * [`toStringTag`](http://ecma-international.org/ecma-262/7.0/#sec-object.prototype.tostring)
+	 * of values.
+	 */
+	var objectToString = objectProto.toString;
+
+	/**
+	 * Checks if `value` is classified as a `String` primitive or object.
+	 *
+	 * @static
+	 * @since 0.1.0
+	 * @memberOf _
+	 * @category Lang
+	 * @param {*} value The value to check.
+	 * @returns {boolean} Returns `true` if `value` is a string, else `false`.
+	 * @example
+	 *
+	 * _.isString('abc');
+	 * // => true
+	 *
+	 * _.isString(1);
+	 * // => false
+	 */
+	function isString(value) {
+	  return typeof value == 'string' ||
+	    (!isArray(value) && isObjectLike(value) && objectToString.call(value) == stringTag);
+	}
+
+	module.exports = isString;
+
+
+/***/ },
+/* 430 */
+/***/ function(module, exports, __webpack_require__) {
+
+	"use strict";
+
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+
+	var _get = function get(_x, _x2, _x3) { var _again = true; _function: while (_again) { var object = _x, property = _x2, receiver = _x3; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x = parent; _x2 = property; _x3 = receiver; _again = true; desc = parent = undefined; continue _function; } } else if ("value" in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
+
+	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+	function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+	var _call_builder = __webpack_require__(10);
+
+	var AssetsCallBuilder = (function (_CallBuilder) {
+	    _inherits(AssetsCallBuilder, _CallBuilder);
+
+	    /**
+	     * Creates a new {@link AssetsCallBuilder} pointed to server defined by serverUrl.
+	     *
+	     * Do not create this object directly, use {@link Server#Assets}.
+	     * @constructor
+	     * @extends CallBuilder
+	     * @param {string} serverUrl Horizon server URL.
+	     */
+
+	    function AssetsCallBuilder(serverUrl) {
+	        _classCallCheck(this, AssetsCallBuilder);
+
+	        _get(Object.getPrototypeOf(AssetsCallBuilder.prototype), "constructor", this).call(this, serverUrl);
+	        this.url.segment('assets');
+	    }
+
+	    return AssetsCallBuilder;
+	})(_call_builder.CallBuilder);
+
+	exports.AssetsCallBuilder = AssetsCallBuilder;
+
+/***/ },
+/* 431 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+
+	Object.defineProperty(exports, '__esModule', {
+	    value: true
+	});
+
+	var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
+
+	var _get = function get(_x, _x2, _x3) { var _again = true; _function: while (_again) { var object = _x, property = _x2, receiver = _x3; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x = parent; _x2 = property; _x3 = receiver; _again = true; desc = parent = undefined; continue _function; } } else if ('value' in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
+
+	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError('Cannot call a class as a function'); } }
+
+	function _inherits(subClass, superClass) { if (typeof superClass !== 'function' && superClass !== null) { throw new TypeError('Super expression must either be null or a function, not ' + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+	var _call_builder = __webpack_require__(10);
+
+	var CommissionCallBuilder = (function (_CallBuilder) {
+	    _inherits(CommissionCallBuilder, _CallBuilder);
+
+	    function CommissionCallBuilder(serverUrl) {
+	        _classCallCheck(this, CommissionCallBuilder);
+
+	        _get(Object.getPrototypeOf(CommissionCallBuilder.prototype), 'constructor', this).call(this, serverUrl);
+	        this.url.segment('commission');
+	    }
+
+	    /**
+	     * Returns commission based on operation data
+	     *
+	     * @param {string} source - The source of operation for which commission is counted
+	     * @param {string} destination - The destination account ID.
+	     * @param {Asset} asset - The asset to send.
+	     * @param {string} amount - The amount to send.
+	     */
+
+	    _createClass(CommissionCallBuilder, [{
+	        key: 'calculate',
+	        value: function calculate(source, destination, asset, amount) {
+	            this.url.segment('calculate');
+	            this.url.addQuery('from', source);
+	            this.url.addQuery('to', destination);
+	            this.url.addQuery('amount', amount);
+
+	            if (!asset.isNative()) {
+	                this.url.addQuery('asset_type', asset.getAssetType());
+	                this.url.addQuery('asset_code', asset.getCode());
+	                this.url.addQuery('asset_issuer', asset.getIssuer());
+	            } else {
+	                this.url.addQuery('asset_type', 'native');
+	            }
+	            return this;
+	        }
+
+	        /**
+	         * Returns commissions filtered by accountId
+	         */
+	    }, {
+	        key: 'forAccount',
+	        value: function forAccount(accountId) {
+	            this.url.addQuery('account_id', accountId);
+	            return this;
+	        }
+
+	        /**
+	         * Returns commissions filtered by accountType
+	         */
+	    }, {
+	        key: 'forAccountType',
+	        value: function forAccountType(accountType) {
+	            this.url.addQuery('account_type', accountType);
+	            return this;
+	        }
+
+	        /**
+	         * Returns commissions filtered by asset
+	         */
+	    }, {
+	        key: 'forAsset',
+	        value: function forAsset(asset) {
+	            if (!asset.isNative()) {
+	                this.url.addQuery('asset_type', asset.getAssetType());
+	                this.url.addQuery('asset_code', asset.getCode());
+	                this.url.addQuery('asset_issuer', asset.getIssuer());
+	            } else {
+	                this.url.addQuery('asset_type', 'native');
+	            }
+	            return this;
+	        }
+	    }]);
+
+	    return CommissionCallBuilder;
+	})(_call_builder.CallBuilder);
+
+	exports.CommissionCallBuilder = CommissionCallBuilder;
+
+/***/ },
+/* 432 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+
+	Object.defineProperty(exports, '__esModule', {
+	    value: true
+	});
+
+	var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
+
+	var _get = function get(_x, _x2, _x3) { var _again = true; _function: while (_again) { var object = _x, property = _x2, receiver = _x3; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x = parent; _x2 = property; _x3 = receiver; _again = true; desc = parent = undefined; continue _function; } } else if ('value' in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
+
+	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError('Cannot call a class as a function'); } }
+
+	function _inherits(subClass, superClass) { if (typeof superClass !== 'function' && superClass !== null) { throw new TypeError('Super expression must either be null or a function, not ' + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+	var _call_builder = __webpack_require__(10);
+
+	var AccountTraitsCallBuilder = (function (_CallBuilder) {
+	    _inherits(AccountTraitsCallBuilder, _CallBuilder);
+
+	    /**
+	     * Creates a new {@link AccountTraitsCallBuilder} pointed to server defined by serverUrl.
+	     *
+	     * Do not create this object directly, use {@link Server#accountTraits}.
+	     * @constructor
+	     * @extends CallBuilder
+	     * @param {string} serverUrl Horizon server URL.
+	     */
+
+	    function AccountTraitsCallBuilder(serverUrl) {
+	        _classCallCheck(this, AccountTraitsCallBuilder);
+
+	        _get(Object.getPrototypeOf(AccountTraitsCallBuilder.prototype), 'constructor', this).call(this, serverUrl);
+	        this.url.segment('traits');
+	    }
+
+	    /**
+	     * This endpoint responds with a Account traits specivied for account.
+	     * @param {string} accountId For example: `GDGQVOKHW4VEJRU2TETD6DBRKEO5ERCNF353LW5WBFW3JJWQ2BRQ6KDD`
+	     * @returns {AccountTraitsCallBuilder}
+	     */
+
+	    _createClass(AccountTraitsCallBuilder, [{
+	        key: 'forAccount',
+	        value: function forAccount(accountId) {
+	            this.filter.push(['accounts', accountId, 'traits']);
+	            return this;
+	        }
+	    }]);
+
+	    return AccountTraitsCallBuilder;
+	})(_call_builder.CallBuilder);
+
+	exports.AccountTraitsCallBuilder = AccountTraitsCallBuilder;
+
+/***/ },
+/* 433 */
+/***/ function(module, exports, __webpack_require__) {
+
 	/* WEBPACK VAR INJECTION */(function(Buffer) {"use strict";
 	Object.defineProperty(exports, "__esModule", {
 	    value: true
@@ -61032,11 +61294,11 @@ var StellarSdk =
 
 	var _server = __webpack_require__(8);
 
-	var _bignumberJs = __webpack_require__(430);
+	var _bignumberJs = __webpack_require__(434);
 
 	var _bignumberJs2 = _interopRequireDefault(_bignumberJs);
 
-	var _lodashIsString = __webpack_require__(431);
+	var _lodashIsString = __webpack_require__(429);
 
 	var _lodashIsString2 = _interopRequireDefault(_lodashIsString);
 
@@ -61046,7 +61308,6 @@ var StellarSdk =
 	var ONE = 10000000;
 	var MAX_INT64 = '9223372036854775807';
 	var CHAINCODE_LENGTH = 32;
-	var BASE_PAD = 3;
 	var MASTERPUBLIC_LENGTH = 64;
 
 	var decodeMnemo = _stellarBase.HDKey.getSeedFromMnemonic,
@@ -61079,7 +61340,7 @@ var StellarSdk =
 	        this.seed = null;
 	        this.hdk = null;
 	        this._serverURL = url;
-	        this.__derivedKeys = {};
+	        this._derivedKeys = {};
 	    }
 
 	    _createClass(HDWallet, [{
@@ -61213,7 +61474,7 @@ var StellarSdk =
 	                            destination: paymentList[i].dest,
 	                            source: _stellarBase.HDKey.getHDKeyForSigning(paymentList[i].source).accountId(),
 	                            asset: asset,
-	                            amount: HDWallet._fromAmount(paymentList[i].amount)
+	                            amount: fromAmount(paymentList[i].amount)
 	                        }));
 	                    }
 	                    var txEnvelope = transaction.build();
@@ -61254,6 +61515,19 @@ var StellarSdk =
 	        }
 
 	        /**
+	         * Return mnemonic phrase of this wallet
+	         * @param {string} [lang] "eng" -> English, "ukr" -> Ukrainian
+	         * @return {string}
+	         */
+	    }, {
+	        key: "getMnemonicPhrase",
+	        value: function getMnemonicPhrase(lang) {
+	            if (this.ver !== HDWallet._version().mpriv.byte) throw new Error("Version of HDWallet mismatch");
+	            lang = lang || "eng";
+	            return _stellarBase.HDKey.getMnemonicFromSeed(this.seed, lang);
+	        }
+
+	        /**
 	         * Calculate total balance of wallet for getting asset.
 	         * @param asset {Asset}
 	         * @returns {string} balance
@@ -61271,8 +61545,8 @@ var StellarSdk =
 	                data.isPublic = true;
 	            }
 
-	            return this.__collect(data, "balance").then(function () {
-	                return HDWallet._fromAmount(data.balance);
+	            return this._collect(data, "balance").then(function () {
+	                return fromAmount(data.balance);
 	            });
 	        }
 
@@ -61292,7 +61566,7 @@ var StellarSdk =
 	                data.path = [HDWallet._path().self];
 	                data.isPublic = true;
 	            }
-	            return this.__collect(data, "ids").then(function () {
+	            return this._collect(data, "ids").then(function () {
 	                return data.resultList;
 	            });
 	        }
@@ -61311,7 +61585,7 @@ var StellarSdk =
 	            data.resultList = [];
 	            data.path = [HDWallet._path().own["private"], HDWallet._path().others["private"]];
 
-	            return this.__collect(data, "keys").then(function () {
+	            return this._collect(data, "keys").then(function () {
 	                return data.resultList;
 	            });
 	        }
@@ -61326,7 +61600,7 @@ var StellarSdk =
 	        value: function makeInvoiceList(strAmount) {
 	            var path = undefined,
 	                invoiceList = [],
-	                amount = HDWallet._toAmount(strAmount),
+	                amount = toAmount(strAmount),
 	                index = this.firstUnused;
 
 	            if (this.ver == HDWallet._version().mpriv.byte) path = HDWallet._path().own["public"];else if (this.ver == HDWallet._version().mpub.byte) path = HDWallet._path().self;else throw new Error("Version of HDWallet mismatch");
@@ -61336,18 +61610,18 @@ var StellarSdk =
 	            var stopIndex = numberOfAddresses + index;
 
 	            while (index < stopIndex) {
-	                var derivedKey = this.__getDerivedKey(path, index);
+	                var derivedKey = this._getDerivedKey(path, index);
 	                invoiceList.push({
-	                    key: strEncode(HDWallet._version().accountId.str, derivedKey.publicKey),
+	                    key: derivedKey.publicKey,
 	                    amount: HDWallet._accountBalanceLimit()
 	                });
 	                index++;
 	            }
 
 	            if (!piece.isZero()) {
-	                var derivedKey = this.__getDerivedKey(path, index);
+	                var derivedKey = this._getDerivedKey(path, index);
 	                invoiceList.push({
-	                    key: strEncode(HDWallet._version().accountId.str, derivedKey.publicKey),
+	                    key: derivedKey.publicKey,
 	                    amount: piece
 	                });
 	            }
@@ -61394,6 +61668,164 @@ var StellarSdk =
 
 	            return completeList(data);
 	        }
+
+	        /**
+	         * Return payment history for all branches.
+	         * @param {Object} [params] all params is optional
+	         *     params.after  = "2006-01-02T15:04:05Z";
+	         *     params.before = "2006-02-02T15:04:05Z";
+	         *     params.limit  =  "10";
+	         * @returns {*}
+	         */
+	    }, {
+	        key: "fullPaymentHistory",
+	        value: function fullPaymentHistory(params) {
+	            if (this.ver !== HDWallet._version().mpriv.byte) toBluebirdRej(new Error("This method only for private wallet"));
+
+	            var branchNumber = 0;
+	            var self = this;
+	            var stop = self.firstUnused;
+	            var path = HDWallet._path().own["public"];
+	            var accountList = [];
+	            var request = {};
+
+	            if (params) {
+	                if (params.after) request.after = params.after;
+	                if (params.before) request.before = params.before;
+
+	                if (params.limit) request.limit = params.limit;
+	            }
+
+	            if (typeof request.limit === "undefined") request.limit = "10";
+
+	            for (var i = 0; i < stop; i++) {
+	                accountList[i] = this._getDerivedKey(path, i).publicKey;
+	            }function makeRequestList() {
+	                if (branchNumber < self.indexList.length) return self._paymentRequestForBranch(branchNumber).then(function (list) {
+	                    for (var i = 0, l = accountList.length; i < list.length; i++, l++) {
+	                        accountList[l] = list[i];
+	                    }branchNumber++;
+	                    return makeRequestList();
+	                });else {
+	                    request.multi_accounts = JSON.stringify(accountList);
+	                    request.order = "desc";
+	                    return self._paymentHistoryForIDs(accountList, request);
+	                }
+	            }
+
+	            return makeRequestList();
+	        }
+
+	        /**
+	         * Return payment history for own branch.
+	         * @param {Object} [params] all params is optional 
+	         *     params.after  = "2006-01-02T15:04:05Z";
+	         *     params.before = "2006-02-02T15:04:05Z";
+	         *     params.limit  =  "10";
+	         * @returns {*}
+	         */
+	    }, {
+	        key: "paymentHistory",
+	        value: function paymentHistory(params) {
+	            var stop = this.firstUnused,
+	                path = undefined,
+	                self = this;
+	            var accountList = [];
+	            var request = {};
+
+	            if (stop === 0) return toBluebirdRes(accountList);
+
+	            if (self.ver == HDWallet._version().mpriv.byte) path = HDWallet._path().own["public"];else if (this.ver == HDWallet._version().mpub.byte) path = HDWallet._path().self;
+
+	            for (var i = 0; i < stop; i++) {
+	                accountList[i] = this._getDerivedKey(path, i).publicKey;
+	            }if (params) {
+	                if (params.after) request.after = params.after;
+	                if (params.before) request.before = params.before;
+
+	                if (params.limit) request.limit = params.limit;
+	            }
+
+	            if (typeof request.limit === "undefined") request.limit = "10";
+
+	            request.multi_accounts = JSON.stringify(accountList);
+	            request.order = "desc";
+
+	            return this._paymentHistoryForIDs(accountList, request);
+	        }
+	    }, {
+	        key: "_paymentRequestForBranch",
+	        value: function _paymentRequestForBranch(number) {
+	            if (this.ver !== HDWallet._version().mpriv.byte) return toBluebirdRej(new Error("This method only for private wallet"));
+	            var mpub = this.getMPub(number);
+
+	            return HDWallet.setByStrKey(mpub, this._serverURL).then(function (hdw) {
+	                var path = HDWallet._path().self;
+	                var request = [];
+	                var stop = hdw.firstUnused;
+
+	                for (var i = 0; i < stop; i++) {
+	                    request[i] = hdw._getDerivedKey(path, i).publicKey;
+	                }return request;
+	            });
+	        }
+	    }, {
+	        key: "_paymentHistoryForIDs",
+	        value: function _paymentHistoryForIDs(accountList, request) {
+	            if (accountList.length === 0) return toBluebirdRej("Invalid request");
+
+	            var server = new _server.Server(this._serverURL);
+	            var self = this;
+	            return server.getPayments(request).then(function (payments) {
+	                var records = payments._embedded.records;
+	                for (var i = 0; i < records.length; i++) {
+	                    var direction = "undefined";
+	                    var route = 0;
+
+	                    if (accountList.indexOf(records[i].to) !== -1) route += 1;
+	                    if (accountList.indexOf(records[i].from) !== -1) route += 2;
+
+	                    switch (route) {
+	                        case 1:
+	                            {
+	                                direction = "incoming";break;
+	                            }
+	                        case 2:
+	                            {
+	                                direction = "outgoing";break;
+	                            }
+	                        case 3:
+	                            {
+	                                direction = "internal";break;
+	                            }
+	                    }
+
+	                    records[i].direction = direction;
+	                }
+
+	                var result = {};
+	                result.records = records;
+	                result._request = request;
+
+	                result.next = function () {
+	                    result._request.order = "asc";
+	                    result._request.cursor = getCursor(payments._links.next.href);
+	                    return self._paymentHistoryForIDs(accountList, result._request);
+	                };
+
+	                result.prev = function () {
+	                    result._request.order = "desc";
+	                    result._request.cursor = getCursor(payments._links.next.href);
+	                    return self._paymentHistoryForIDs(accountList, result._request);
+	                };
+
+	                return result;
+	            });
+	        }
+
+	        /**
+	         * @private
+	         */
 	    }, {
 	        key: "_findMoneyInBranch",
 	        value: function _findMoneyInBranch(withdrawalList, data) {
@@ -61406,8 +61838,8 @@ var StellarSdk =
 	                    privateKeyList = [];
 
 	                for (var i = index, l = 0; i < stopIndex; i++, l++) {
-	                    var derivedKey = self.__getDerivedKey(data.path, i);
-	                    accountList[l] = strEncode(HDWallet._version().accountId.str, derivedKey.publicKey);
+	                    var derivedKey = self._getDerivedKey(data.path, i);
+	                    accountList[l] = derivedKey.publicKey;
 	                    privateKeyList[l] = strEncode(HDWallet._version().mpriv.str, derivedKey.privateKey);
 	                }
 
@@ -61431,16 +61863,20 @@ var StellarSdk =
 	                    if (HDWallet._sumCollecting(data, withdrawalList) === true) return data.currentSum;
 
 	                    _index += HDWallet._lookAhead();
-	                    _stopIndex = HDWallet._min(_index + HDWallet._lookAhead(), HDWallet._maxIndex());
+	                    _stopIndex = min(_index + HDWallet._lookAhead(), HDWallet._maxIndex());
 	                    return makingList(_index, _stopIndex);
 	                });
 	            }
 
 	            return makingList(_index, _stopIndex);
 	        }
+
+	        /**
+	         * @private
+	         */
 	    }, {
-	        key: "__collect",
-	        value: function __collect(data, opType) {
+	        key: "_collect",
+	        value: function _collect(data, opType) {
 	            var self = this;
 	            data.otherBranchIndex = 0;
 	            var currentPath = data.path[0];
@@ -61452,8 +61888,8 @@ var StellarSdk =
 	                var privateKeyList = [];
 
 	                for (var i = index, l = 0; i < stopIndex; i++, l++) {
-	                    var derivedKey = self.__getDerivedKey(currentPath, i);
-	                    accountList[l] = strEncode(HDWallet._version().accountId.str, derivedKey.publicKey);
+	                    var derivedKey = self._getDerivedKey(currentPath, i);
+	                    accountList[l] = derivedKey.publicKey;
 	                    if (opType === "keys") privateKeyList[l] = strEncode(HDWallet._version().mpriv.str, derivedKey.privateKey);
 	                }
 
@@ -61471,7 +61907,7 @@ var StellarSdk =
 	                            if (respList[i][j].asset.asset_code == data.asset && opType === "balance") data.balance = data.balance.plus(respList[i][j].balance);
 
 	                            balances.push({ asset: respList[i][j].asset,
-	                                balance: HDWallet._fromAmount(respList[i][j].balance) });
+	                                balance: fromAmount(respList[i][j].balance) });
 	                        }
 
 	                        if (balances.length !== 0 && opType === "ids") data.resultList.push({ account_id: accountList[i], balances: balances });
@@ -61483,7 +61919,7 @@ var StellarSdk =
 
 	                        if (data.otherBranchIndex < self.indexList.length) {
 	                            _index = self.indexList[data.otherBranchIndex];
-	                            _stopIndex = HDWallet._min(_index + HDWallet._lookAhead(), HDWallet._maxIndex());
+	                            _stopIndex = min(_index + HDWallet._lookAhead(), HDWallet._maxIndex());
 	                            currentPath = data.path[1] + "/" + data.otherBranchIndex;
 	                            data.otherBranchIndex++;
 
@@ -61493,29 +61929,39 @@ var StellarSdk =
 	                    }
 
 	                    _index += HDWallet._lookAhead();
-	                    _stopIndex = HDWallet._min(_index + HDWallet._lookAhead(), HDWallet._maxIndex());
+	                    _stopIndex = min(_index + HDWallet._lookAhead(), HDWallet._maxIndex());
 	                    return findMoney(_index, _stopIndex);
 	                });
 	            }
 
 	            return findMoney(_index, _stopIndex);
 	        }
-	    }, {
-	        key: "__getDerivedKey",
-	        value: function __getDerivedKey(branchPath, index) {
-	            if (typeof this.__derivedKeys[branchPath] == "undefined") {
-	                this.__derivedKeys[branchPath] = { keys: [] };
-	                this.__derivedKeys[branchPath].hdk = this.hdk.derive(branchPath);
-	            }
-	            if (typeof this.__derivedKeys[branchPath].keys[index] == "undefined") {
-	                var derived = this.__derivedKeys[branchPath].hdk.derive(branchPath[0] + "/" + index);
-	                this.__derivedKeys[branchPath].keys[index] = {
-	                    privateKey: derived.privateKey,
-	                    publicKey: derived.publicKey };
-	            }
 
-	            return this.__derivedKeys[branchPath].keys[index];
+	        /**
+	         * @private
+	         */
+	    }, {
+	        key: "_getDerivedKey",
+	        value: function _getDerivedKey(branchPath, index) {
+	            var path = undefined;
+	            if (branchPath !== HDWallet._path().self) path = branchPath.replace(branchPath[0], "m");else path = branchPath;
+
+	            if (typeof this._derivedKeys[path] == "undefined") {
+	                this._derivedKeys[path] = { keys: [] };
+	                this._derivedKeys[path].hdk = this.hdk.derive(path);
+	            }
+	            if (typeof this._derivedKeys[path].keys[index] == "undefined") {
+	                var derived = this._derivedKeys[path].hdk.derive(path[0] + "/" + index);
+	                this._derivedKeys[path].keys[index] = {
+	                    privateKey: derived.privateKey,
+	                    publicKey: strEncode(HDWallet._version().accountId.str, derived.publicKey) };
+	            }
+	            return this._derivedKeys[path].keys[index];
 	        }
+
+	        /**
+	         * @private
+	         */
 	    }], [{
 	        key: "_version",
 	        value: function _version() {
@@ -61559,6 +62005,30 @@ var StellarSdk =
 	        key: "_maxListLen",
 	        value: function _maxListLen() {
 	            return 50;
+	        }
+
+	        /**
+	         * Create new wallet by random phrase
+	         * @param url {string} server url
+	         * @returns {*}
+	         */
+	    }, {
+	        key: "randomWallet",
+	        value: function randomWallet(url) {
+	            var phrase = this.genMnemonicPhrase();
+	            return this.setByPhrase(phrase, url);
+	        }
+
+	        /**
+	         * Return random mnemonic phrase
+	         * @param {string} [lang] "eng" -> English, "ukr" -> Ukrainian
+	         * @return {string}
+	         */
+	    }, {
+	        key: "genMnemonicPhrase",
+	        value: function genMnemonicPhrase(lang) {
+	            lang = lang || "eng";
+	            return _stellarBase.HDKey.getMnemonic(lang);
 	        }
 
 	        /**
@@ -61675,7 +62145,7 @@ var StellarSdk =
 	    }, {
 	        key: "setByMPublic",
 	        value: function setByMPublic(rawKey, url) {
-	            if (rawKey.length !== MASTERPUBLIC_LENGTH + BASE_PAD) return toBluebirdRej(new Error("Invalid MasterPublic!"));
+	            if (rawKey.length !== MASTERPUBLIC_LENGTH) return toBluebirdRej(new Error("Invalid MasterPublic!"));
 	            var hdw = new HDWallet(url);
 	            var mpub = new _stellarBase.HDKey();
 	            mpub.versions = this._version().mpub.byte;
@@ -61707,17 +62177,21 @@ var StellarSdk =
 
 	                    indexList[index] = resultIndexPair.f_w_m;
 
-	                    _stopIndex = self._min(_index + self._branchAhead(), self._maxListLen());
+	                    _stopIndex = min(_index + self._branchAhead(), self._maxListLen());
 
 	                    return indexing(_index, _stopIndex);
 	                });
 	            }
 	            return indexing(_index, _stopIndex);
 	        }
+
+	        /**
+	         * @private
+	         */
 	    }, {
 	        key: "_updateIndexesInOwnBranch",
 	        value: function _updateIndexesInOwnBranch(branchPath, hdw, indexPairOld) {
-	            var _index = this._min(indexPairOld.f_w_m, indexPairOld.f_u);
+	            var _index = min(indexPairOld.f_w_m, indexPairOld.f_u);
 	            var _stopIndex = this._lookAhead() + _index;
 	            var self = this;
 	            var f_w_mFound = false;
@@ -61730,8 +62204,8 @@ var StellarSdk =
 	            function request() {
 	                var accountList = [];
 	                for (var i = _index, l = 0; i < _stopIndex; i++, l++) {
-	                    var derivedKey = hdw.__getDerivedKey(branchPath, i);
-	                    accountList[l] = strEncode(self._version().accountId.str, derivedKey.publicKey);
+	                    var derivedKey = hdw._getDerivedKey(branchPath, i);
+	                    accountList[l] = derivedKey.publicKey;
 	                }
 
 	                return self._checkAccounts(accountList, hdw._serverURL).then(function (respList) {
@@ -61760,6 +62234,10 @@ var StellarSdk =
 	            }
 	            return request();
 	        }
+
+	        /**
+	         * @private
+	         */
 	    }, {
 	        key: "_checkAccounts",
 	        value: function _checkAccounts(request, url) {
@@ -61777,7 +62255,7 @@ var StellarSdk =
 	                        responseList[pos].push({
 	                            isValid: true,
 	                            asset: data.asset,
-	                            balance: HDWallet._toAmount(account.balance) });
+	                            balance: toAmount(account.balance) });
 	                    });
 	                });
 
@@ -61789,6 +62267,10 @@ var StellarSdk =
 	                return responseList;
 	            });
 	        }
+
+	        /**
+	         * @private
+	         */
 	    }, {
 	        key: "_sumCollecting",
 	        value: function _sumCollecting(data, list) {
@@ -61811,13 +62293,17 @@ var StellarSdk =
 	            }
 	            return false;
 	        }
+
+	        /**
+	         * @private
+	         */
 	    }, {
 	        key: "_makePaymentList",
 	        value: function _makePaymentList(invoice, withdrawal) {
 	            var opList = [];
 
 	            for (var wI = 0, iI = 0; wI < withdrawal.length;) {
-	                var op_amount = this._minAmount(withdrawal[wI].amount, invoice[iI].amount);
+	                var op_amount = minAmount(withdrawal[wI].amount, invoice[iI].amount);
 
 	                opList.push({ dest: invoice[iI].key,
 	                    source: withdrawal[wI].key,
@@ -61833,66 +62319,71 @@ var StellarSdk =
 
 	            return opList;
 	        }
-	    }, {
-	        key: "_min",
-	        value: function _min(a, b) {
-	            if (a < b) return a;else return b;
-	        }
-	    }, {
-	        key: "_minAmount",
-	        value: function _minAmount(a, b) {
-	            if (a.lessThan(b)) return a;else return b;
-	        }
-	    }, {
-	        key: "_isValidAmount",
-	        value: function _isValidAmount(value) {
-	            if (!(0, _lodashIsString2["default"])(value)) return false;
-
-	            var amount = undefined;
-	            try {
-	                amount = new _bignumberJs2["default"](value);
-	            } catch (e) {
-	                return false;
-	            }
-
-	            // < 0
-	            if (amount.isNegative()) return false;
-
-	            // > Max value
-	            if (amount.times(ONE).greaterThan(new _bignumberJs2["default"](MAX_INT64).toString())) return false;
-
-	            // Decimal places (max 7)
-	            if (amount.decimalPlaces() > 7) return false;
-
-	            // Infinity
-	            if (!amount.isFinite()) return false;
-
-	            // NaN
-	            if (amount.isNaN()) return false;
-
-	            return true;
-	        }
-	    }, {
-	        key: "_toAmount",
-	        value: function _toAmount(value) {
-	            if (this._isValidAmount(value)) return new _bignumberJs2["default"](value).mul(ONE);
-	            throw new Error("Invalid amount - " + value + "!");
-	        }
-	    }, {
-	        key: "_fromAmount",
-	        value: function _fromAmount(value) {
-	            return new _bignumberJs2["default"](value).div(ONE).toString();
-	        }
 	    }]);
 
 	    return HDWallet;
 	})();
 
 	exports.HDWallet = HDWallet;
+
+	function getCursor(url) {
+	    var name = "cursor";
+	    name = name.replace(/[\[\]]/g, "\\$&");
+	    var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
+	        results = regex.exec(url);
+	    if (!results) return null;
+	    if (!results[2]) return '';
+	    return decodeURIComponent(results[2].replace(/\+/g, " "));
+	}
+
+	function min(a, b) {
+	    if (a < b) return a;else return b;
+	}
+
+	function minAmount(a, b) {
+	    if (a.lessThan(b)) return a;else return b;
+	}
+
+	function isValidAmount(value) {
+	    if (!(0, _lodashIsString2["default"])(value)) return false;
+
+	    var amount = undefined;
+	    try {
+	        amount = new _bignumberJs2["default"](value);
+	    } catch (e) {
+	        return false;
+	    }
+
+	    // < 0
+	    if (amount.isNegative()) return false;
+
+	    // > Max value
+	    if (amount.times(ONE).greaterThan(new _bignumberJs2["default"](MAX_INT64).toString())) return false;
+
+	    // Decimal places (max 7)
+	    if (amount.decimalPlaces() > 7) return false;
+
+	    // Infinity
+	    if (!amount.isFinite()) return false;
+
+	    // NaN
+	    if (amount.isNaN()) return false;
+
+	    return true;
+	}
+
+	function toAmount(value) {
+	    if (isValidAmount(value)) return new _bignumberJs2["default"](value).mul(ONE);
+	    throw new Error("Invalid amount - " + value + "!");
+	}
+
+	function fromAmount(value) {
+	    return new _bignumberJs2["default"](value).div(ONE).toString();
+	}
 	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(162).Buffer))
 
 /***/ },
-/* 430 */
+/* 434 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var __WEBPACK_AMD_DEFINE_RESULT__;/*! bignumber.js v2.4.0 https://github.com/MikeMcl/bignumber.js/LICENCE */
@@ -64635,250 +65126,6 @@ var StellarSdk =
 
 
 /***/ },
-/* 431 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var isArray = __webpack_require__(27),
-	    isObjectLike = __webpack_require__(26);
-
-	/** `Object#toString` result references. */
-	var stringTag = '[object String]';
-
-	/** Used for built-in method references. */
-	var objectProto = Object.prototype;
-
-	/**
-	 * Used to resolve the
-	 * [`toStringTag`](http://ecma-international.org/ecma-262/7.0/#sec-object.prototype.tostring)
-	 * of values.
-	 */
-	var objectToString = objectProto.toString;
-
-	/**
-	 * Checks if `value` is classified as a `String` primitive or object.
-	 *
-	 * @static
-	 * @since 0.1.0
-	 * @memberOf _
-	 * @category Lang
-	 * @param {*} value The value to check.
-	 * @returns {boolean} Returns `true` if `value` is a string, else `false`.
-	 * @example
-	 *
-	 * _.isString('abc');
-	 * // => true
-	 *
-	 * _.isString(1);
-	 * // => false
-	 */
-	function isString(value) {
-	  return typeof value == 'string' ||
-	    (!isArray(value) && isObjectLike(value) && objectToString.call(value) == stringTag);
-	}
-
-	module.exports = isString;
-
-
-/***/ },
-/* 432 */
-/***/ function(module, exports, __webpack_require__) {
-
-	"use strict";
-
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-
-	var _get = function get(_x, _x2, _x3) { var _again = true; _function: while (_again) { var object = _x, property = _x2, receiver = _x3; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x = parent; _x2 = property; _x3 = receiver; _again = true; desc = parent = undefined; continue _function; } } else if ("value" in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
-
-	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-	function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
-
-	var _call_builder = __webpack_require__(10);
-
-	var AssetsCallBuilder = (function (_CallBuilder) {
-	    _inherits(AssetsCallBuilder, _CallBuilder);
-
-	    /**
-	     * Creates a new {@link AssetsCallBuilder} pointed to server defined by serverUrl.
-	     *
-	     * Do not create this object directly, use {@link Server#Assets}.
-	     * @constructor
-	     * @extends CallBuilder
-	     * @param {string} serverUrl Horizon server URL.
-	     */
-
-	    function AssetsCallBuilder(serverUrl) {
-	        _classCallCheck(this, AssetsCallBuilder);
-
-	        _get(Object.getPrototypeOf(AssetsCallBuilder.prototype), "constructor", this).call(this, serverUrl);
-	        this.url.segment('assets');
-	    }
-
-	    return AssetsCallBuilder;
-	})(_call_builder.CallBuilder);
-
-	exports.AssetsCallBuilder = AssetsCallBuilder;
-
-/***/ },
-/* 433 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
-
-	Object.defineProperty(exports, '__esModule', {
-	    value: true
-	});
-
-	var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
-
-	var _get = function get(_x, _x2, _x3) { var _again = true; _function: while (_again) { var object = _x, property = _x2, receiver = _x3; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x = parent; _x2 = property; _x3 = receiver; _again = true; desc = parent = undefined; continue _function; } } else if ('value' in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
-
-	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError('Cannot call a class as a function'); } }
-
-	function _inherits(subClass, superClass) { if (typeof superClass !== 'function' && superClass !== null) { throw new TypeError('Super expression must either be null or a function, not ' + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
-
-	var _call_builder = __webpack_require__(10);
-
-	var CommissionCallBuilder = (function (_CallBuilder) {
-	    _inherits(CommissionCallBuilder, _CallBuilder);
-
-	    function CommissionCallBuilder(serverUrl) {
-	        _classCallCheck(this, CommissionCallBuilder);
-
-	        _get(Object.getPrototypeOf(CommissionCallBuilder.prototype), 'constructor', this).call(this, serverUrl);
-	        this.url.segment('commission');
-	    }
-
-	    /**
-	     * Returns commission based on operation data
-	     *
-	     * @param {string} source - The source of operation for which commission is counted
-	     * @param {string} destination - The destination account ID.
-	     * @param {Asset} asset - The asset to send.
-	     * @param {string} amount - The amount to send.
-	     */
-
-	    _createClass(CommissionCallBuilder, [{
-	        key: 'calculate',
-	        value: function calculate(source, destination, asset, amount) {
-	            this.url.segment('calculate');
-	            this.url.addQuery('from', source);
-	            this.url.addQuery('to', destination);
-	            this.url.addQuery('amount', amount);
-
-	            if (!asset.isNative()) {
-	                this.url.addQuery('asset_type', asset.getAssetType());
-	                this.url.addQuery('asset_code', asset.getCode());
-	                this.url.addQuery('asset_issuer', asset.getIssuer());
-	            } else {
-	                this.url.addQuery('asset_type', 'native');
-	            }
-	            return this;
-	        }
-
-	        /**
-	         * Returns commissions filtered by accountId
-	         */
-	    }, {
-	        key: 'forAccount',
-	        value: function forAccount(accountId) {
-	            this.url.addQuery('account_id', accountId);
-	            return this;
-	        }
-
-	        /**
-	         * Returns commissions filtered by accountType
-	         */
-	    }, {
-	        key: 'forAccountType',
-	        value: function forAccountType(accountType) {
-	            this.url.addQuery('account_type', accountType);
-	            return this;
-	        }
-
-	        /**
-	         * Returns commissions filtered by asset
-	         */
-	    }, {
-	        key: 'forAsset',
-	        value: function forAsset(asset) {
-	            if (!asset.isNative()) {
-	                this.url.addQuery('asset_type', asset.getAssetType());
-	                this.url.addQuery('asset_code', asset.getCode());
-	                this.url.addQuery('asset_issuer', asset.getIssuer());
-	            } else {
-	                this.url.addQuery('asset_type', 'native');
-	            }
-	            return this;
-	        }
-	    }]);
-
-	    return CommissionCallBuilder;
-	})(_call_builder.CallBuilder);
-
-	exports.CommissionCallBuilder = CommissionCallBuilder;
-
-/***/ },
-/* 434 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
-
-	Object.defineProperty(exports, '__esModule', {
-	    value: true
-	});
-
-	var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
-
-	var _get = function get(_x, _x2, _x3) { var _again = true; _function: while (_again) { var object = _x, property = _x2, receiver = _x3; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x = parent; _x2 = property; _x3 = receiver; _again = true; desc = parent = undefined; continue _function; } } else if ('value' in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
-
-	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError('Cannot call a class as a function'); } }
-
-	function _inherits(subClass, superClass) { if (typeof superClass !== 'function' && superClass !== null) { throw new TypeError('Super expression must either be null or a function, not ' + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
-
-	var _call_builder = __webpack_require__(10);
-
-	var AccountTraitsCallBuilder = (function (_CallBuilder) {
-	    _inherits(AccountTraitsCallBuilder, _CallBuilder);
-
-	    /**
-	     * Creates a new {@link AccountTraitsCallBuilder} pointed to server defined by serverUrl.
-	     *
-	     * Do not create this object directly, use {@link Server#accountTraits}.
-	     * @constructor
-	     * @extends CallBuilder
-	     * @param {string} serverUrl Horizon server URL.
-	     */
-
-	    function AccountTraitsCallBuilder(serverUrl) {
-	        _classCallCheck(this, AccountTraitsCallBuilder);
-
-	        _get(Object.getPrototypeOf(AccountTraitsCallBuilder.prototype), 'constructor', this).call(this, serverUrl);
-	        this.url.segment('traits');
-	    }
-
-	    /**
-	     * This endpoint responds with a Account traits specivied for account.
-	     * @param {string} accountId For example: `GDGQVOKHW4VEJRU2TETD6DBRKEO5ERCNF353LW5WBFW3JJWQ2BRQ6KDD`
-	     * @returns {AccountTraitsCallBuilder}
-	     */
-
-	    _createClass(AccountTraitsCallBuilder, [{
-	        key: 'forAccount',
-	        value: function forAccount(accountId) {
-	            this.filter.push(['accounts', accountId, 'traits']);
-	            return this;
-	        }
-	    }]);
-
-	    return AccountTraitsCallBuilder;
-	})(_call_builder.CallBuilder);
-
-	exports.AccountTraitsCallBuilder = AccountTraitsCallBuilder;
-
-/***/ },
 /* 435 */
 /***/ function(module, exports, __webpack_require__) {
 
@@ -64912,7 +65159,7 @@ var StellarSdk =
 
 	var _toml2 = _interopRequireDefault(_toml);
 
-	var _lodashIsString = __webpack_require__(431);
+	var _lodashIsString = __webpack_require__(429);
 
 	var _lodashIsString2 = _interopRequireDefault(_lodashIsString);
 

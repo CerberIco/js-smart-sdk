@@ -11,7 +11,6 @@ import {PaymentCallBuilder} from "./payment_call_builder";
 import {EffectCallBuilder} from "./effect_call_builder";
 import {FriendbotBuilder} from "./friendbot_builder";
 import {xdr, Account} from "stellar-base";
-import {HDWallet} from "./hdwallet";
 import isString from "lodash/isString";
 import {AssetsCallBuilder} from "./assets_call_builder";
 import {CommissionCallBuilder} from "./commission_call_builder";
@@ -367,6 +366,29 @@ export class Server {
         var response = axios.post(
               URI(this.serverURL).path('balances').toString(),
               querystring.stringify({multi_accounts: JSON.stringify(accountList)})
+            )
+            .then(function(response) {
+                return response.data;
+            })
+            .catch(function (response) {
+                if (response instanceof Error) {
+                    return Promise.reject(response);
+                } else {
+                    return Promise.reject(response.data);
+                }
+            });
+        return toBluebird(response);
+    }
+
+    /**
+     * Get payments history for given accounts
+     * @param request {Object}
+     * @returns {Promise}
+     */
+    getPayments(request) {
+        var response = axios.post( 
+            URI(this.serverURL).path('payments').toString(),
+            querystring.stringify(request)
             )
             .then(function(response) {
                 return response.data;
