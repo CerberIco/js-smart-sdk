@@ -3,7 +3,7 @@ describe("integration tests", function () {
   const TIMEOUT = 20*1000;
   this.timeout(TIMEOUT);
   this.slow(TIMEOUT/2);
-  StellarSdk.Network.use(new StellarSdk.Network("Smart Money Dev ; March 2016"));
+  StellarSdk.Network.use(new StellarSdk.Network("Dev Smart Money ; May 2016"));
    let server = new StellarSdk.Server('http://dev.stellar.attic.pw:8010');
 
 
@@ -70,7 +70,7 @@ describe("integration tests", function () {
       .then(result =>{
         console.log("result: ", result);
         done();
-      })
+      }).catch(err => done(err))
     });
     it("set limits on account", function (done) {
       var limits = {
@@ -85,7 +85,7 @@ describe("integration tests", function () {
       .then(result =>{
         console.log("result: ", result);
         done();
-      })
+      }).catch(err => done(err))
     });
   });
 

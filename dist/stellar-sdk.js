@@ -589,9 +589,9 @@ var StellarSdk =
 	"use strict";
 
 	module.exports = __webpack_require__(1);
-	module.exports.axios = __webpack_require__(125);
-	module.exports.bluebird = __webpack_require__(181);
-	module.exports.StellarBase = __webpack_require__(193);
+	module.exports.axios = __webpack_require__(52);
+	module.exports.bluebird = __webpack_require__(109);
+	module.exports.StellarBase = __webpack_require__(121);
 
 	/*globals _*/
 	_.noConflict();
@@ -614,11 +614,11 @@ var StellarSdk =
 
 	// stellar-sdk classes to expose
 
-	var _errors = __webpack_require__(7);
+	var _errors = __webpack_require__(5);
 
 	_defaults(exports, _interopExportWildcard(_errors, _defaults));
 
-	var _server = __webpack_require__(8);
+	var _server = __webpack_require__(6);
 
 	Object.defineProperty(exports, "Server", {
 	  enumerable: true,
@@ -627,7 +627,7 @@ var StellarSdk =
 	  }
 	});
 
-	var _hdwallet = __webpack_require__(433);
+	var _hdwallet = __webpack_require__(363);
 
 	Object.defineProperty(exports, "HDWallet", {
 	  enumerable: true,
@@ -636,7 +636,7 @@ var StellarSdk =
 	  }
 	});
 
-	var _federation_server = __webpack_require__(435);
+	var _federation_server = __webpack_require__(365);
 
 	Object.defineProperty(exports, "FederationServer", {
 	  enumerable: true,
@@ -645,7 +645,7 @@ var StellarSdk =
 	  }
 	});
 
-	var _wallet = __webpack_require__(448);
+	var _wallet = __webpack_require__(394);
 
 	Object.defineProperty(exports, "EncryptedWalletStorage", {
 	  enumerable: true,
@@ -656,7 +656,7 @@ var StellarSdk =
 
 	// expose classes and functions from stellar-base
 
-	var _stellarBase = __webpack_require__(193);
+	var _stellarBase = __webpack_require__(121);
 
 	_defaults(exports, _interopExportWildcard(_stellarBase, _defaults));
 
@@ -666,967 +666,1161 @@ var StellarSdk =
 /* 2 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var require;var __WEBPACK_AMD_DEFINE_RESULT__;/* WEBPACK VAR INJECTION */(function(process, global, module) {/*!
+	var require;/* WEBPACK VAR INJECTION */(function(process, global) {/*!
 	 * @overview es6-promise - a tiny implementation of Promises/A+.
 	 * @copyright Copyright (c) 2014 Yehuda Katz, Tom Dale, Stefan Penner and contributors (Conversion to ES6 API by Jake Archibald)
 	 * @license   Licensed under MIT license
-	 *            See https://raw.githubusercontent.com/jakearchibald/es6-promise/master/LICENSE
-	 * @version   3.2.1
+	 *            See https://raw.githubusercontent.com/stefanpenner/es6-promise/master/LICENSE
+	 * @version   3.3.1
 	 */
 
-	(function() {
-	    "use strict";
-	    function lib$es6$promise$utils$$objectOrFunction(x) {
-	      return typeof x === 'function' || (typeof x === 'object' && x !== null);
-	    }
+	(function (global, factory) {
+	     true ? module.exports = factory() :
+	    typeof define === 'function' && define.amd ? define(factory) :
+	    (global.ES6Promise = factory());
+	}(this, (function () { 'use strict';
 
-	    function lib$es6$promise$utils$$isFunction(x) {
-	      return typeof x === 'function';
-	    }
+	function objectOrFunction(x) {
+	  return typeof x === 'function' || typeof x === 'object' && x !== null;
+	}
 
-	    function lib$es6$promise$utils$$isMaybeThenable(x) {
-	      return typeof x === 'object' && x !== null;
-	    }
+	function isFunction(x) {
+	  return typeof x === 'function';
+	}
 
-	    var lib$es6$promise$utils$$_isArray;
-	    if (!Array.isArray) {
-	      lib$es6$promise$utils$$_isArray = function (x) {
-	        return Object.prototype.toString.call(x) === '[object Array]';
-	      };
+	var _isArray = undefined;
+	if (!Array.isArray) {
+	  _isArray = function (x) {
+	    return Object.prototype.toString.call(x) === '[object Array]';
+	  };
+	} else {
+	  _isArray = Array.isArray;
+	}
+
+	var isArray = _isArray;
+
+	var len = 0;
+	var vertxNext = undefined;
+	var customSchedulerFn = undefined;
+
+	var asap = function asap(callback, arg) {
+	  queue[len] = callback;
+	  queue[len + 1] = arg;
+	  len += 2;
+	  if (len === 2) {
+	    // If len is 2, that means that we need to schedule an async flush.
+	    // If additional callbacks are queued before the queue is flushed, they
+	    // will be processed by this flush that we are scheduling.
+	    if (customSchedulerFn) {
+	      customSchedulerFn(flush);
 	    } else {
-	      lib$es6$promise$utils$$_isArray = Array.isArray;
+	      scheduleFlush();
 	    }
+	  }
+	};
+
+	function setScheduler(scheduleFn) {
+	  customSchedulerFn = scheduleFn;
+	}
+
+	function setAsap(asapFn) {
+	  asap = asapFn;
+	}
+
+	var browserWindow = typeof window !== 'undefined' ? window : undefined;
+	var browserGlobal = browserWindow || {};
+	var BrowserMutationObserver = browserGlobal.MutationObserver || browserGlobal.WebKitMutationObserver;
+	var isNode = typeof self === 'undefined' && typeof process !== 'undefined' && ({}).toString.call(process) === '[object process]';
+
+	// test for web worker but not in IE10
+	var isWorker = typeof Uint8ClampedArray !== 'undefined' && typeof importScripts !== 'undefined' && typeof MessageChannel !== 'undefined';
+
+	// node
+	function useNextTick() {
+	  // node version 0.10.x displays a deprecation warning when nextTick is used recursively
+	  // see https://github.com/cujojs/when/issues/410 for details
+	  return function () {
+	    return process.nextTick(flush);
+	  };
+	}
+
+	// vertx
+	function useVertxTimer() {
+	  return function () {
+	    vertxNext(flush);
+	  };
+	}
+
+	function useMutationObserver() {
+	  var iterations = 0;
+	  var observer = new BrowserMutationObserver(flush);
+	  var node = document.createTextNode('');
+	  observer.observe(node, { characterData: true });
+
+	  return function () {
+	    node.data = iterations = ++iterations % 2;
+	  };
+	}
+
+	// web worker
+	function useMessageChannel() {
+	  var channel = new MessageChannel();
+	  channel.port1.onmessage = flush;
+	  return function () {
+	    return channel.port2.postMessage(0);
+	  };
+	}
+
+	function useSetTimeout() {
+	  // Store setTimeout reference so es6-promise will be unaffected by
+	  // other code modifying setTimeout (like sinon.useFakeTimers())
+	  var globalSetTimeout = setTimeout;
+	  return function () {
+	    return globalSetTimeout(flush, 1);
+	  };
+	}
+
+	var queue = new Array(1000);
+	function flush() {
+	  for (var i = 0; i < len; i += 2) {
+	    var callback = queue[i];
+	    var arg = queue[i + 1];
+
+	    callback(arg);
+
+	    queue[i] = undefined;
+	    queue[i + 1] = undefined;
+	  }
+
+	  len = 0;
+	}
+
+	function attemptVertx() {
+	  try {
+	    var r = require;
+	    var vertx = __webpack_require__(4);
+	    vertxNext = vertx.runOnLoop || vertx.runOnContext;
+	    return useVertxTimer();
+	  } catch (e) {
+	    return useSetTimeout();
+	  }
+	}
+
+	var scheduleFlush = undefined;
+	// Decide what async method to use to triggering processing of queued callbacks:
+	if (isNode) {
+	  scheduleFlush = useNextTick();
+	} else if (BrowserMutationObserver) {
+	  scheduleFlush = useMutationObserver();
+	} else if (isWorker) {
+	  scheduleFlush = useMessageChannel();
+	} else if (browserWindow === undefined && "function" === 'function') {
+	  scheduleFlush = attemptVertx();
+	} else {
+	  scheduleFlush = useSetTimeout();
+	}
 
-	    var lib$es6$promise$utils$$isArray = lib$es6$promise$utils$$_isArray;
-	    var lib$es6$promise$asap$$len = 0;
-	    var lib$es6$promise$asap$$vertxNext;
-	    var lib$es6$promise$asap$$customSchedulerFn;
-
-	    var lib$es6$promise$asap$$asap = function asap(callback, arg) {
-	      lib$es6$promise$asap$$queue[lib$es6$promise$asap$$len] = callback;
-	      lib$es6$promise$asap$$queue[lib$es6$promise$asap$$len + 1] = arg;
-	      lib$es6$promise$asap$$len += 2;
-	      if (lib$es6$promise$asap$$len === 2) {
-	        // If len is 2, that means that we need to schedule an async flush.
-	        // If additional callbacks are queued before the queue is flushed, they
-	        // will be processed by this flush that we are scheduling.
-	        if (lib$es6$promise$asap$$customSchedulerFn) {
-	          lib$es6$promise$asap$$customSchedulerFn(lib$es6$promise$asap$$flush);
-	        } else {
-	          lib$es6$promise$asap$$scheduleFlush();
-	        }
-	      }
-	    }
-
-	    function lib$es6$promise$asap$$setScheduler(scheduleFn) {
-	      lib$es6$promise$asap$$customSchedulerFn = scheduleFn;
-	    }
-
-	    function lib$es6$promise$asap$$setAsap(asapFn) {
-	      lib$es6$promise$asap$$asap = asapFn;
-	    }
-
-	    var lib$es6$promise$asap$$browserWindow = (typeof window !== 'undefined') ? window : undefined;
-	    var lib$es6$promise$asap$$browserGlobal = lib$es6$promise$asap$$browserWindow || {};
-	    var lib$es6$promise$asap$$BrowserMutationObserver = lib$es6$promise$asap$$browserGlobal.MutationObserver || lib$es6$promise$asap$$browserGlobal.WebKitMutationObserver;
-	    var lib$es6$promise$asap$$isNode = typeof self === 'undefined' && typeof process !== 'undefined' && {}.toString.call(process) === '[object process]';
-
-	    // test for web worker but not in IE10
-	    var lib$es6$promise$asap$$isWorker = typeof Uint8ClampedArray !== 'undefined' &&
-	      typeof importScripts !== 'undefined' &&
-	      typeof MessageChannel !== 'undefined';
-
-	    // node
-	    function lib$es6$promise$asap$$useNextTick() {
-	      // node version 0.10.x displays a deprecation warning when nextTick is used recursively
-	      // see https://github.com/cujojs/when/issues/410 for details
-	      return function() {
-	        process.nextTick(lib$es6$promise$asap$$flush);
-	      };
-	    }
-
-	    // vertx
-	    function lib$es6$promise$asap$$useVertxTimer() {
-	      return function() {
-	        lib$es6$promise$asap$$vertxNext(lib$es6$promise$asap$$flush);
-	      };
-	    }
-
-	    function lib$es6$promise$asap$$useMutationObserver() {
-	      var iterations = 0;
-	      var observer = new lib$es6$promise$asap$$BrowserMutationObserver(lib$es6$promise$asap$$flush);
-	      var node = document.createTextNode('');
-	      observer.observe(node, { characterData: true });
-
-	      return function() {
-	        node.data = (iterations = ++iterations % 2);
-	      };
-	    }
-
-	    // web worker
-	    function lib$es6$promise$asap$$useMessageChannel() {
-	      var channel = new MessageChannel();
-	      channel.port1.onmessage = lib$es6$promise$asap$$flush;
-	      return function () {
-	        channel.port2.postMessage(0);
-	      };
-	    }
-
-	    function lib$es6$promise$asap$$useSetTimeout() {
-	      return function() {
-	        setTimeout(lib$es6$promise$asap$$flush, 1);
-	      };
-	    }
-
-	    var lib$es6$promise$asap$$queue = new Array(1000);
-	    function lib$es6$promise$asap$$flush() {
-	      for (var i = 0; i < lib$es6$promise$asap$$len; i+=2) {
-	        var callback = lib$es6$promise$asap$$queue[i];
-	        var arg = lib$es6$promise$asap$$queue[i+1];
-
-	        callback(arg);
-
-	        lib$es6$promise$asap$$queue[i] = undefined;
-	        lib$es6$promise$asap$$queue[i+1] = undefined;
-	      }
-
-	      lib$es6$promise$asap$$len = 0;
-	    }
-
-	    function lib$es6$promise$asap$$attemptVertx() {
-	      try {
-	        var r = require;
-	        var vertx = __webpack_require__(5);
-	        lib$es6$promise$asap$$vertxNext = vertx.runOnLoop || vertx.runOnContext;
-	        return lib$es6$promise$asap$$useVertxTimer();
-	      } catch(e) {
-	        return lib$es6$promise$asap$$useSetTimeout();
-	      }
-	    }
-
-	    var lib$es6$promise$asap$$scheduleFlush;
-	    // Decide what async method to use to triggering processing of queued callbacks:
-	    if (lib$es6$promise$asap$$isNode) {
-	      lib$es6$promise$asap$$scheduleFlush = lib$es6$promise$asap$$useNextTick();
-	    } else if (lib$es6$promise$asap$$BrowserMutationObserver) {
-	      lib$es6$promise$asap$$scheduleFlush = lib$es6$promise$asap$$useMutationObserver();
-	    } else if (lib$es6$promise$asap$$isWorker) {
-	      lib$es6$promise$asap$$scheduleFlush = lib$es6$promise$asap$$useMessageChannel();
-	    } else if (lib$es6$promise$asap$$browserWindow === undefined && "function" === 'function') {
-	      lib$es6$promise$asap$$scheduleFlush = lib$es6$promise$asap$$attemptVertx();
-	    } else {
-	      lib$es6$promise$asap$$scheduleFlush = lib$es6$promise$asap$$useSetTimeout();
-	    }
-	    function lib$es6$promise$then$$then(onFulfillment, onRejection) {
-	      var parent = this;
-
-	      var child = new this.constructor(lib$es6$promise$$internal$$noop);
-
-	      if (child[lib$es6$promise$$internal$$PROMISE_ID] === undefined) {
-	        lib$es6$promise$$internal$$makePromise(child);
-	      }
-
-	      var state = parent._state;
-
-	      if (state) {
-	        var callback = arguments[state - 1];
-	        lib$es6$promise$asap$$asap(function(){
-	          lib$es6$promise$$internal$$invokeCallback(state, child, callback, parent._result);
-	        });
-	      } else {
-	        lib$es6$promise$$internal$$subscribe(parent, child, onFulfillment, onRejection);
-	      }
-
-	      return child;
-	    }
-	    var lib$es6$promise$then$$default = lib$es6$promise$then$$then;
-	    function lib$es6$promise$promise$resolve$$resolve(object) {
-	      /*jshint validthis:true */
-	      var Constructor = this;
-
-	      if (object && typeof object === 'object' && object.constructor === Constructor) {
-	        return object;
-	      }
-
-	      var promise = new Constructor(lib$es6$promise$$internal$$noop);
-	      lib$es6$promise$$internal$$resolve(promise, object);
-	      return promise;
-	    }
-	    var lib$es6$promise$promise$resolve$$default = lib$es6$promise$promise$resolve$$resolve;
-	    var lib$es6$promise$$internal$$PROMISE_ID = Math.random().toString(36).substring(16);
-
-	    function lib$es6$promise$$internal$$noop() {}
-
-	    var lib$es6$promise$$internal$$PENDING   = void 0;
-	    var lib$es6$promise$$internal$$FULFILLED = 1;
-	    var lib$es6$promise$$internal$$REJECTED  = 2;
-
-	    var lib$es6$promise$$internal$$GET_THEN_ERROR = new lib$es6$promise$$internal$$ErrorObject();
-
-	    function lib$es6$promise$$internal$$selfFulfillment() {
-	      return new TypeError("You cannot resolve a promise with itself");
-	    }
-
-	    function lib$es6$promise$$internal$$cannotReturnOwn() {
-	      return new TypeError('A promises callback cannot return that same promise.');
-	    }
-
-	    function lib$es6$promise$$internal$$getThen(promise) {
-	      try {
-	        return promise.then;
-	      } catch(error) {
-	        lib$es6$promise$$internal$$GET_THEN_ERROR.error = error;
-	        return lib$es6$promise$$internal$$GET_THEN_ERROR;
-	      }
-	    }
-
-	    function lib$es6$promise$$internal$$tryThen(then, value, fulfillmentHandler, rejectionHandler) {
-	      try {
-	        then.call(value, fulfillmentHandler, rejectionHandler);
-	      } catch(e) {
-	        return e;
-	      }
-	    }
-
-	    function lib$es6$promise$$internal$$handleForeignThenable(promise, thenable, then) {
-	       lib$es6$promise$asap$$asap(function(promise) {
-	        var sealed = false;
-	        var error = lib$es6$promise$$internal$$tryThen(then, thenable, function(value) {
-	          if (sealed) { return; }
-	          sealed = true;
-	          if (thenable !== value) {
-	            lib$es6$promise$$internal$$resolve(promise, value);
-	          } else {
-	            lib$es6$promise$$internal$$fulfill(promise, value);
-	          }
-	        }, function(reason) {
-	          if (sealed) { return; }
-	          sealed = true;
-
-	          lib$es6$promise$$internal$$reject(promise, reason);
-	        }, 'Settle: ' + (promise._label || ' unknown promise'));
-
-	        if (!sealed && error) {
-	          sealed = true;
-	          lib$es6$promise$$internal$$reject(promise, error);
-	        }
-	      }, promise);
-	    }
-
-	    function lib$es6$promise$$internal$$handleOwnThenable(promise, thenable) {
-	      if (thenable._state === lib$es6$promise$$internal$$FULFILLED) {
-	        lib$es6$promise$$internal$$fulfill(promise, thenable._result);
-	      } else if (thenable._state === lib$es6$promise$$internal$$REJECTED) {
-	        lib$es6$promise$$internal$$reject(promise, thenable._result);
-	      } else {
-	        lib$es6$promise$$internal$$subscribe(thenable, undefined, function(value) {
-	          lib$es6$promise$$internal$$resolve(promise, value);
-	        }, function(reason) {
-	          lib$es6$promise$$internal$$reject(promise, reason);
-	        });
-	      }
-	    }
-
-	    function lib$es6$promise$$internal$$handleMaybeThenable(promise, maybeThenable, then) {
-	      if (maybeThenable.constructor === promise.constructor &&
-	          then === lib$es6$promise$then$$default &&
-	          constructor.resolve === lib$es6$promise$promise$resolve$$default) {
-	        lib$es6$promise$$internal$$handleOwnThenable(promise, maybeThenable);
-	      } else {
-	        if (then === lib$es6$promise$$internal$$GET_THEN_ERROR) {
-	          lib$es6$promise$$internal$$reject(promise, lib$es6$promise$$internal$$GET_THEN_ERROR.error);
-	        } else if (then === undefined) {
-	          lib$es6$promise$$internal$$fulfill(promise, maybeThenable);
-	        } else if (lib$es6$promise$utils$$isFunction(then)) {
-	          lib$es6$promise$$internal$$handleForeignThenable(promise, maybeThenable, then);
-	        } else {
-	          lib$es6$promise$$internal$$fulfill(promise, maybeThenable);
-	        }
-	      }
-	    }
-
-	    function lib$es6$promise$$internal$$resolve(promise, value) {
-	      if (promise === value) {
-	        lib$es6$promise$$internal$$reject(promise, lib$es6$promise$$internal$$selfFulfillment());
-	      } else if (lib$es6$promise$utils$$objectOrFunction(value)) {
-	        lib$es6$promise$$internal$$handleMaybeThenable(promise, value, lib$es6$promise$$internal$$getThen(value));
-	      } else {
-	        lib$es6$promise$$internal$$fulfill(promise, value);
-	      }
-	    }
-
-	    function lib$es6$promise$$internal$$publishRejection(promise) {
-	      if (promise._onerror) {
-	        promise._onerror(promise._result);
-	      }
-
-	      lib$es6$promise$$internal$$publish(promise);
-	    }
-
-	    function lib$es6$promise$$internal$$fulfill(promise, value) {
-	      if (promise._state !== lib$es6$promise$$internal$$PENDING) { return; }
-
-	      promise._result = value;
-	      promise._state = lib$es6$promise$$internal$$FULFILLED;
-
-	      if (promise._subscribers.length !== 0) {
-	        lib$es6$promise$asap$$asap(lib$es6$promise$$internal$$publish, promise);
-	      }
-	    }
-
-	    function lib$es6$promise$$internal$$reject(promise, reason) {
-	      if (promise._state !== lib$es6$promise$$internal$$PENDING) { return; }
-	      promise._state = lib$es6$promise$$internal$$REJECTED;
-	      promise._result = reason;
-
-	      lib$es6$promise$asap$$asap(lib$es6$promise$$internal$$publishRejection, promise);
-	    }
-
-	    function lib$es6$promise$$internal$$subscribe(parent, child, onFulfillment, onRejection) {
-	      var subscribers = parent._subscribers;
-	      var length = subscribers.length;
-
-	      parent._onerror = null;
-
-	      subscribers[length] = child;
-	      subscribers[length + lib$es6$promise$$internal$$FULFILLED] = onFulfillment;
-	      subscribers[length + lib$es6$promise$$internal$$REJECTED]  = onRejection;
-
-	      if (length === 0 && parent._state) {
-	        lib$es6$promise$asap$$asap(lib$es6$promise$$internal$$publish, parent);
-	      }
-	    }
-
-	    function lib$es6$promise$$internal$$publish(promise) {
-	      var subscribers = promise._subscribers;
-	      var settled = promise._state;
-
-	      if (subscribers.length === 0) { return; }
-
-	      var child, callback, detail = promise._result;
-
-	      for (var i = 0; i < subscribers.length; i += 3) {
-	        child = subscribers[i];
-	        callback = subscribers[i + settled];
-
-	        if (child) {
-	          lib$es6$promise$$internal$$invokeCallback(settled, child, callback, detail);
-	        } else {
-	          callback(detail);
-	        }
-	      }
-
-	      promise._subscribers.length = 0;
-	    }
-
-	    function lib$es6$promise$$internal$$ErrorObject() {
-	      this.error = null;
-	    }
-
-	    var lib$es6$promise$$internal$$TRY_CATCH_ERROR = new lib$es6$promise$$internal$$ErrorObject();
-
-	    function lib$es6$promise$$internal$$tryCatch(callback, detail) {
-	      try {
-	        return callback(detail);
-	      } catch(e) {
-	        lib$es6$promise$$internal$$TRY_CATCH_ERROR.error = e;
-	        return lib$es6$promise$$internal$$TRY_CATCH_ERROR;
-	      }
-	    }
-
-	    function lib$es6$promise$$internal$$invokeCallback(settled, promise, callback, detail) {
-	      var hasCallback = lib$es6$promise$utils$$isFunction(callback),
-	          value, error, succeeded, failed;
-
-	      if (hasCallback) {
-	        value = lib$es6$promise$$internal$$tryCatch(callback, detail);
-
-	        if (value === lib$es6$promise$$internal$$TRY_CATCH_ERROR) {
-	          failed = true;
-	          error = value.error;
-	          value = null;
-	        } else {
-	          succeeded = true;
-	        }
-
-	        if (promise === value) {
-	          lib$es6$promise$$internal$$reject(promise, lib$es6$promise$$internal$$cannotReturnOwn());
-	          return;
-	        }
-
-	      } else {
-	        value = detail;
-	        succeeded = true;
-	      }
-
-	      if (promise._state !== lib$es6$promise$$internal$$PENDING) {
-	        // noop
-	      } else if (hasCallback && succeeded) {
-	        lib$es6$promise$$internal$$resolve(promise, value);
-	      } else if (failed) {
-	        lib$es6$promise$$internal$$reject(promise, error);
-	      } else if (settled === lib$es6$promise$$internal$$FULFILLED) {
-	        lib$es6$promise$$internal$$fulfill(promise, value);
-	      } else if (settled === lib$es6$promise$$internal$$REJECTED) {
-	        lib$es6$promise$$internal$$reject(promise, value);
-	      }
-	    }
-
-	    function lib$es6$promise$$internal$$initializePromise(promise, resolver) {
-	      try {
-	        resolver(function resolvePromise(value){
-	          lib$es6$promise$$internal$$resolve(promise, value);
-	        }, function rejectPromise(reason) {
-	          lib$es6$promise$$internal$$reject(promise, reason);
-	        });
-	      } catch(e) {
-	        lib$es6$promise$$internal$$reject(promise, e);
-	      }
-	    }
-
-	    var lib$es6$promise$$internal$$id = 0;
-	    function lib$es6$promise$$internal$$nextId() {
-	      return lib$es6$promise$$internal$$id++;
-	    }
-
-	    function lib$es6$promise$$internal$$makePromise(promise) {
-	      promise[lib$es6$promise$$internal$$PROMISE_ID] = lib$es6$promise$$internal$$id++;
-	      promise._state = undefined;
-	      promise._result = undefined;
-	      promise._subscribers = [];
-	    }
-
-	    function lib$es6$promise$promise$all$$all(entries) {
-	      return new lib$es6$promise$enumerator$$default(this, entries).promise;
-	    }
-	    var lib$es6$promise$promise$all$$default = lib$es6$promise$promise$all$$all;
-	    function lib$es6$promise$promise$race$$race(entries) {
-	      /*jshint validthis:true */
-	      var Constructor = this;
-
-	      if (!lib$es6$promise$utils$$isArray(entries)) {
-	        return new Constructor(function(resolve, reject) {
-	          reject(new TypeError('You must pass an array to race.'));
-	        });
-	      } else {
-	        return new Constructor(function(resolve, reject) {
-	          var length = entries.length;
-	          for (var i = 0; i < length; i++) {
-	            Constructor.resolve(entries[i]).then(resolve, reject);
-	          }
-	        });
-	      }
-	    }
-	    var lib$es6$promise$promise$race$$default = lib$es6$promise$promise$race$$race;
-	    function lib$es6$promise$promise$reject$$reject(reason) {
-	      /*jshint validthis:true */
-	      var Constructor = this;
-	      var promise = new Constructor(lib$es6$promise$$internal$$noop);
-	      lib$es6$promise$$internal$$reject(promise, reason);
-	      return promise;
-	    }
-	    var lib$es6$promise$promise$reject$$default = lib$es6$promise$promise$reject$$reject;
-
-
-	    function lib$es6$promise$promise$$needsResolver() {
-	      throw new TypeError('You must pass a resolver function as the first argument to the promise constructor');
-	    }
-
-	    function lib$es6$promise$promise$$needsNew() {
-	      throw new TypeError("Failed to construct 'Promise': Please use the 'new' operator, this object constructor cannot be called as a function.");
-	    }
-
-	    var lib$es6$promise$promise$$default = lib$es6$promise$promise$$Promise;
-	    /**
-	      Promise objects represent the eventual result of an asynchronous operation. The
-	      primary way of interacting with a promise is through its `then` method, which
-	      registers callbacks to receive either a promise's eventual value or the reason
-	      why the promise cannot be fulfilled.
-
-	      Terminology
-	      -----------
-
-	      - `promise` is an object or function with a `then` method whose behavior conforms to this specification.
-	      - `thenable` is an object or function that defines a `then` method.
-	      - `value` is any legal JavaScript value (including undefined, a thenable, or a promise).
-	      - `exception` is a value that is thrown using the throw statement.
-	      - `reason` is a value that indicates why a promise was rejected.
-	      - `settled` the final resting state of a promise, fulfilled or rejected.
-
-	      A promise can be in one of three states: pending, fulfilled, or rejected.
-
-	      Promises that are fulfilled have a fulfillment value and are in the fulfilled
-	      state.  Promises that are rejected have a rejection reason and are in the
-	      rejected state.  A fulfillment value is never a thenable.
-
-	      Promises can also be said to *resolve* a value.  If this value is also a
-	      promise, then the original promise's settled state will match the value's
-	      settled state.  So a promise that *resolves* a promise that rejects will
-	      itself reject, and a promise that *resolves* a promise that fulfills will
-	      itself fulfill.
-
-
-	      Basic Usage:
-	      ------------
-
-	      ```js
-	      var promise = new Promise(function(resolve, reject) {
-	        // on success
-	        resolve(value);
-
-	        // on failure
-	        reject(reason);
+	function then(onFulfillment, onRejection) {
+	  var _arguments = arguments;
+
+	  var parent = this;
+
+	  var child = new this.constructor(noop);
+
+	  if (child[PROMISE_ID] === undefined) {
+	    makePromise(child);
+	  }
+
+	  var _state = parent._state;
+
+	  if (_state) {
+	    (function () {
+	      var callback = _arguments[_state - 1];
+	      asap(function () {
+	        return invokeCallback(_state, child, callback, parent._result);
 	      });
-
-	      promise.then(function(value) {
-	        // on fulfillment
-	      }, function(reason) {
-	        // on rejection
-	      });
-	      ```
-
-	      Advanced Usage:
-	      ---------------
-
-	      Promises shine when abstracting away asynchronous interactions such as
-	      `XMLHttpRequest`s.
-
-	      ```js
-	      function getJSON(url) {
-	        return new Promise(function(resolve, reject){
-	          var xhr = new XMLHttpRequest();
-
-	          xhr.open('GET', url);
-	          xhr.onreadystatechange = handler;
-	          xhr.responseType = 'json';
-	          xhr.setRequestHeader('Accept', 'application/json');
-	          xhr.send();
-
-	          function handler() {
-	            if (this.readyState === this.DONE) {
-	              if (this.status === 200) {
-	                resolve(this.response);
-	              } else {
-	                reject(new Error('getJSON: `' + url + '` failed with status: [' + this.status + ']'));
-	              }
-	            }
-	          };
-	        });
-	      }
-
-	      getJSON('/posts.json').then(function(json) {
-	        // on fulfillment
-	      }, function(reason) {
-	        // on rejection
-	      });
-	      ```
-
-	      Unlike callbacks, promises are great composable primitives.
-
-	      ```js
-	      Promise.all([
-	        getJSON('/posts'),
-	        getJSON('/comments')
-	      ]).then(function(values){
-	        values[0] // => postsJSON
-	        values[1] // => commentsJSON
-
-	        return values;
-	      });
-	      ```
-
-	      @class Promise
-	      @param {function} resolver
-	      Useful for tooling.
-	      @constructor
-	    */
-	    function lib$es6$promise$promise$$Promise(resolver) {
-	      this[lib$es6$promise$$internal$$PROMISE_ID] = lib$es6$promise$$internal$$nextId();
-	      this._result = this._state = undefined;
-	      this._subscribers = [];
-
-	      if (lib$es6$promise$$internal$$noop !== resolver) {
-	        typeof resolver !== 'function' && lib$es6$promise$promise$$needsResolver();
-	        this instanceof lib$es6$promise$promise$$Promise ? lib$es6$promise$$internal$$initializePromise(this, resolver) : lib$es6$promise$promise$$needsNew();
-	      }
-	    }
-
-	    lib$es6$promise$promise$$Promise.all = lib$es6$promise$promise$all$$default;
-	    lib$es6$promise$promise$$Promise.race = lib$es6$promise$promise$race$$default;
-	    lib$es6$promise$promise$$Promise.resolve = lib$es6$promise$promise$resolve$$default;
-	    lib$es6$promise$promise$$Promise.reject = lib$es6$promise$promise$reject$$default;
-	    lib$es6$promise$promise$$Promise._setScheduler = lib$es6$promise$asap$$setScheduler;
-	    lib$es6$promise$promise$$Promise._setAsap = lib$es6$promise$asap$$setAsap;
-	    lib$es6$promise$promise$$Promise._asap = lib$es6$promise$asap$$asap;
-
-	    lib$es6$promise$promise$$Promise.prototype = {
-	      constructor: lib$es6$promise$promise$$Promise,
-
-	    /**
-	      The primary way of interacting with a promise is through its `then` method,
-	      which registers callbacks to receive either a promise's eventual value or the
-	      reason why the promise cannot be fulfilled.
-
-	      ```js
-	      findUser().then(function(user){
-	        // user is available
-	      }, function(reason){
-	        // user is unavailable, and you are given the reason why
-	      });
-	      ```
-
-	      Chaining
-	      --------
-
-	      The return value of `then` is itself a promise.  This second, 'downstream'
-	      promise is resolved with the return value of the first promise's fulfillment
-	      or rejection handler, or rejected if the handler throws an exception.
-
-	      ```js
-	      findUser().then(function (user) {
-	        return user.name;
-	      }, function (reason) {
-	        return 'default name';
-	      }).then(function (userName) {
-	        // If `findUser` fulfilled, `userName` will be the user's name, otherwise it
-	        // will be `'default name'`
-	      });
-
-	      findUser().then(function (user) {
-	        throw new Error('Found user, but still unhappy');
-	      }, function (reason) {
-	        throw new Error('`findUser` rejected and we're unhappy');
-	      }).then(function (value) {
-	        // never reached
-	      }, function (reason) {
-	        // if `findUser` fulfilled, `reason` will be 'Found user, but still unhappy'.
-	        // If `findUser` rejected, `reason` will be '`findUser` rejected and we're unhappy'.
-	      });
-	      ```
-	      If the downstream promise does not specify a rejection handler, rejection reasons will be propagated further downstream.
-
-	      ```js
-	      findUser().then(function (user) {
-	        throw new PedagogicalException('Upstream error');
-	      }).then(function (value) {
-	        // never reached
-	      }).then(function (value) {
-	        // never reached
-	      }, function (reason) {
-	        // The `PedgagocialException` is propagated all the way down to here
-	      });
-	      ```
-
-	      Assimilation
-	      ------------
-
-	      Sometimes the value you want to propagate to a downstream promise can only be
-	      retrieved asynchronously. This can be achieved by returning a promise in the
-	      fulfillment or rejection handler. The downstream promise will then be pending
-	      until the returned promise is settled. This is called *assimilation*.
-
-	      ```js
-	      findUser().then(function (user) {
-	        return findCommentsByAuthor(user);
-	      }).then(function (comments) {
-	        // The user's comments are now available
-	      });
-	      ```
-
-	      If the assimliated promise rejects, then the downstream promise will also reject.
-
-	      ```js
-	      findUser().then(function (user) {
-	        return findCommentsByAuthor(user);
-	      }).then(function (comments) {
-	        // If `findCommentsByAuthor` fulfills, we'll have the value here
-	      }, function (reason) {
-	        // If `findCommentsByAuthor` rejects, we'll have the reason here
-	      });
-	      ```
-
-	      Simple Example
-	      --------------
-
-	      Synchronous Example
-
-	      ```javascript
-	      var result;
-
-	      try {
-	        result = findResult();
-	        // success
-	      } catch(reason) {
-	        // failure
-	      }
-	      ```
-
-	      Errback Example
-
-	      ```js
-	      findResult(function(result, err){
-	        if (err) {
-	          // failure
-	        } else {
-	          // success
-	        }
-	      });
-	      ```
-
-	      Promise Example;
-
-	      ```javascript
-	      findResult().then(function(result){
-	        // success
-	      }, function(reason){
-	        // failure
-	      });
-	      ```
-
-	      Advanced Example
-	      --------------
-
-	      Synchronous Example
-
-	      ```javascript
-	      var author, books;
-
-	      try {
-	        author = findAuthor();
-	        books  = findBooksByAuthor(author);
-	        // success
-	      } catch(reason) {
-	        // failure
-	      }
-	      ```
-
-	      Errback Example
-
-	      ```js
-
-	      function foundBooks(books) {
-
-	      }
-
-	      function failure(reason) {
-
-	      }
-
-	      findAuthor(function(author, err){
-	        if (err) {
-	          failure(err);
-	          // failure
-	        } else {
-	          try {
-	            findBoooksByAuthor(author, function(books, err) {
-	              if (err) {
-	                failure(err);
-	              } else {
-	                try {
-	                  foundBooks(books);
-	                } catch(reason) {
-	                  failure(reason);
-	                }
-	              }
-	            });
-	          } catch(error) {
-	            failure(err);
-	          }
-	          // success
-	        }
-	      });
-	      ```
-
-	      Promise Example;
-
-	      ```javascript
-	      findAuthor().
-	        then(findBooksByAuthor).
-	        then(function(books){
-	          // found books
-	      }).catch(function(reason){
-	        // something went wrong
-	      });
-	      ```
-
-	      @method then
-	      @param {Function} onFulfilled
-	      @param {Function} onRejected
-	      Useful for tooling.
-	      @return {Promise}
-	    */
-	      then: lib$es6$promise$then$$default,
-
-	    /**
-	      `catch` is simply sugar for `then(undefined, onRejection)` which makes it the same
-	      as the catch block of a try/catch statement.
-
-	      ```js
-	      function findAuthor(){
-	        throw new Error('couldn't find that author');
-	      }
-
-	      // synchronous
-	      try {
-	        findAuthor();
-	      } catch(reason) {
-	        // something went wrong
-	      }
-
-	      // async with promises
-	      findAuthor().catch(function(reason){
-	        // something went wrong
-	      });
-	      ```
-
-	      @method catch
-	      @param {Function} onRejection
-	      Useful for tooling.
-	      @return {Promise}
-	    */
-	      'catch': function(onRejection) {
-	        return this.then(null, onRejection);
-	      }
-	    };
-	    var lib$es6$promise$enumerator$$default = lib$es6$promise$enumerator$$Enumerator;
-	    function lib$es6$promise$enumerator$$Enumerator(Constructor, input) {
-	      this._instanceConstructor = Constructor;
-	      this.promise = new Constructor(lib$es6$promise$$internal$$noop);
-
-	      if (!this.promise[lib$es6$promise$$internal$$PROMISE_ID]) {
-	        lib$es6$promise$$internal$$makePromise(this.promise);
-	      }
-
-	      if (lib$es6$promise$utils$$isArray(input)) {
-	        this._input     = input;
-	        this.length     = input.length;
-	        this._remaining = input.length;
-
-	        this._result = new Array(this.length);
-
-	        if (this.length === 0) {
-	          lib$es6$promise$$internal$$fulfill(this.promise, this._result);
-	        } else {
-	          this.length = this.length || 0;
-	          this._enumerate();
-	          if (this._remaining === 0) {
-	            lib$es6$promise$$internal$$fulfill(this.promise, this._result);
-	          }
-	        }
-	      } else {
-	        lib$es6$promise$$internal$$reject(this.promise, lib$es6$promise$enumerator$$validationError());
-	      }
-	    }
-
-	    function lib$es6$promise$enumerator$$validationError() {
-	      return new Error('Array Methods must be provided an Array');
-	    }
-
-	    lib$es6$promise$enumerator$$Enumerator.prototype._enumerate = function() {
-	      var length  = this.length;
-	      var input   = this._input;
-
-	      for (var i = 0; this._state === lib$es6$promise$$internal$$PENDING && i < length; i++) {
-	        this._eachEntry(input[i], i);
-	      }
-	    };
-
-	    lib$es6$promise$enumerator$$Enumerator.prototype._eachEntry = function(entry, i) {
-	      var c = this._instanceConstructor;
-	      var resolve = c.resolve;
-
-	      if (resolve === lib$es6$promise$promise$resolve$$default) {
-	        var then = lib$es6$promise$$internal$$getThen(entry);
-
-	        if (then === lib$es6$promise$then$$default &&
-	            entry._state !== lib$es6$promise$$internal$$PENDING) {
-	          this._settledAt(entry._state, i, entry._result);
-	        } else if (typeof then !== 'function') {
-	          this._remaining--;
-	          this._result[i] = entry;
-	        } else if (c === lib$es6$promise$promise$$default) {
-	          var promise = new c(lib$es6$promise$$internal$$noop);
-	          lib$es6$promise$$internal$$handleMaybeThenable(promise, entry, then);
-	          this._willSettleAt(promise, i);
-	        } else {
-	          this._willSettleAt(new c(function(resolve) { resolve(entry); }), i);
-	        }
-	      } else {
-	        this._willSettleAt(resolve(entry), i);
-	      }
-	    };
-
-	    lib$es6$promise$enumerator$$Enumerator.prototype._settledAt = function(state, i, value) {
-	      var promise = this.promise;
-
-	      if (promise._state === lib$es6$promise$$internal$$PENDING) {
-	        this._remaining--;
-
-	        if (state === lib$es6$promise$$internal$$REJECTED) {
-	          lib$es6$promise$$internal$$reject(promise, value);
-	        } else {
-	          this._result[i] = value;
-	        }
-	      }
-
-	      if (this._remaining === 0) {
-	        lib$es6$promise$$internal$$fulfill(promise, this._result);
-	      }
-	    };
-
-	    lib$es6$promise$enumerator$$Enumerator.prototype._willSettleAt = function(promise, i) {
-	      var enumerator = this;
-
-	      lib$es6$promise$$internal$$subscribe(promise, undefined, function(value) {
-	        enumerator._settledAt(lib$es6$promise$$internal$$FULFILLED, i, value);
-	      }, function(reason) {
-	        enumerator._settledAt(lib$es6$promise$$internal$$REJECTED, i, reason);
-	      });
-	    };
-	    function lib$es6$promise$polyfill$$polyfill() {
-	      var local;
-
-	      if (typeof global !== 'undefined') {
-	          local = global;
-	      } else if (typeof self !== 'undefined') {
-	          local = self;
-	      } else {
-	          try {
-	              local = Function('return this')();
-	          } catch (e) {
-	              throw new Error('polyfill failed because global object is unavailable in this environment');
-	          }
-	      }
-
-	      var P = local.Promise;
-
-	      if (P && Object.prototype.toString.call(P.resolve()) === '[object Promise]' && !P.cast) {
+	    })();
+	  } else {
+	    subscribe(parent, child, onFulfillment, onRejection);
+	  }
+
+	  return child;
+	}
+
+	/**
+	  `Promise.resolve` returns a promise that will become resolved with the
+	  passed `value`. It is shorthand for the following:
+
+	  ```javascript
+	  let promise = new Promise(function(resolve, reject){
+	    resolve(1);
+	  });
+
+	  promise.then(function(value){
+	    // value === 1
+	  });
+	  ```
+
+	  Instead of writing the above, your code now simply becomes the following:
+
+	  ```javascript
+	  let promise = Promise.resolve(1);
+
+	  promise.then(function(value){
+	    // value === 1
+	  });
+	  ```
+
+	  @method resolve
+	  @static
+	  @param {Any} value value that the returned promise will be resolved with
+	  Useful for tooling.
+	  @return {Promise} a promise that will become fulfilled with the given
+	  `value`
+	*/
+	function resolve(object) {
+	  /*jshint validthis:true */
+	  var Constructor = this;
+
+	  if (object && typeof object === 'object' && object.constructor === Constructor) {
+	    return object;
+	  }
+
+	  var promise = new Constructor(noop);
+	  _resolve(promise, object);
+	  return promise;
+	}
+
+	var PROMISE_ID = Math.random().toString(36).substring(16);
+
+	function noop() {}
+
+	var PENDING = void 0;
+	var FULFILLED = 1;
+	var REJECTED = 2;
+
+	var GET_THEN_ERROR = new ErrorObject();
+
+	function selfFulfillment() {
+	  return new TypeError("You cannot resolve a promise with itself");
+	}
+
+	function cannotReturnOwn() {
+	  return new TypeError('A promises callback cannot return that same promise.');
+	}
+
+	function getThen(promise) {
+	  try {
+	    return promise.then;
+	  } catch (error) {
+	    GET_THEN_ERROR.error = error;
+	    return GET_THEN_ERROR;
+	  }
+	}
+
+	function tryThen(then, value, fulfillmentHandler, rejectionHandler) {
+	  try {
+	    then.call(value, fulfillmentHandler, rejectionHandler);
+	  } catch (e) {
+	    return e;
+	  }
+	}
+
+	function handleForeignThenable(promise, thenable, then) {
+	  asap(function (promise) {
+	    var sealed = false;
+	    var error = tryThen(then, thenable, function (value) {
+	      if (sealed) {
 	        return;
 	      }
+	      sealed = true;
+	      if (thenable !== value) {
+	        _resolve(promise, value);
+	      } else {
+	        fulfill(promise, value);
+	      }
+	    }, function (reason) {
+	      if (sealed) {
+	        return;
+	      }
+	      sealed = true;
 
-	      local.Promise = lib$es6$promise$promise$$default;
+	      _reject(promise, reason);
+	    }, 'Settle: ' + (promise._label || ' unknown promise'));
+
+	    if (!sealed && error) {
+	      sealed = true;
+	      _reject(promise, error);
 	    }
-	    var lib$es6$promise$polyfill$$default = lib$es6$promise$polyfill$$polyfill;
+	  }, promise);
+	}
 
-	    var lib$es6$promise$umd$$ES6Promise = {
-	      'Promise': lib$es6$promise$promise$$default,
-	      'polyfill': lib$es6$promise$polyfill$$default
-	    };
+	function handleOwnThenable(promise, thenable) {
+	  if (thenable._state === FULFILLED) {
+	    fulfill(promise, thenable._result);
+	  } else if (thenable._state === REJECTED) {
+	    _reject(promise, thenable._result);
+	  } else {
+	    subscribe(thenable, undefined, function (value) {
+	      return _resolve(promise, value);
+	    }, function (reason) {
+	      return _reject(promise, reason);
+	    });
+	  }
+	}
 
-	    /* global define:true module:true window: true */
-	    if ("function" === 'function' && __webpack_require__(6)['amd']) {
-	      !(__WEBPACK_AMD_DEFINE_RESULT__ = function() { return lib$es6$promise$umd$$ES6Promise; }.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
-	    } else if (typeof module !== 'undefined' && module['exports']) {
-	      module['exports'] = lib$es6$promise$umd$$ES6Promise;
-	    } else if (typeof this !== 'undefined') {
-	      this['ES6Promise'] = lib$es6$promise$umd$$ES6Promise;
+	function handleMaybeThenable(promise, maybeThenable, then$$) {
+	  if (maybeThenable.constructor === promise.constructor && then$$ === then && maybeThenable.constructor.resolve === resolve) {
+	    handleOwnThenable(promise, maybeThenable);
+	  } else {
+	    if (then$$ === GET_THEN_ERROR) {
+	      _reject(promise, GET_THEN_ERROR.error);
+	    } else if (then$$ === undefined) {
+	      fulfill(promise, maybeThenable);
+	    } else if (isFunction(then$$)) {
+	      handleForeignThenable(promise, maybeThenable, then$$);
+	    } else {
+	      fulfill(promise, maybeThenable);
+	    }
+	  }
+	}
+
+	function _resolve(promise, value) {
+	  if (promise === value) {
+	    _reject(promise, selfFulfillment());
+	  } else if (objectOrFunction(value)) {
+	    handleMaybeThenable(promise, value, getThen(value));
+	  } else {
+	    fulfill(promise, value);
+	  }
+	}
+
+	function publishRejection(promise) {
+	  if (promise._onerror) {
+	    promise._onerror(promise._result);
+	  }
+
+	  publish(promise);
+	}
+
+	function fulfill(promise, value) {
+	  if (promise._state !== PENDING) {
+	    return;
+	  }
+
+	  promise._result = value;
+	  promise._state = FULFILLED;
+
+	  if (promise._subscribers.length !== 0) {
+	    asap(publish, promise);
+	  }
+	}
+
+	function _reject(promise, reason) {
+	  if (promise._state !== PENDING) {
+	    return;
+	  }
+	  promise._state = REJECTED;
+	  promise._result = reason;
+
+	  asap(publishRejection, promise);
+	}
+
+	function subscribe(parent, child, onFulfillment, onRejection) {
+	  var _subscribers = parent._subscribers;
+	  var length = _subscribers.length;
+
+	  parent._onerror = null;
+
+	  _subscribers[length] = child;
+	  _subscribers[length + FULFILLED] = onFulfillment;
+	  _subscribers[length + REJECTED] = onRejection;
+
+	  if (length === 0 && parent._state) {
+	    asap(publish, parent);
+	  }
+	}
+
+	function publish(promise) {
+	  var subscribers = promise._subscribers;
+	  var settled = promise._state;
+
+	  if (subscribers.length === 0) {
+	    return;
+	  }
+
+	  var child = undefined,
+	      callback = undefined,
+	      detail = promise._result;
+
+	  for (var i = 0; i < subscribers.length; i += 3) {
+	    child = subscribers[i];
+	    callback = subscribers[i + settled];
+
+	    if (child) {
+	      invokeCallback(settled, child, callback, detail);
+	    } else {
+	      callback(detail);
+	    }
+	  }
+
+	  promise._subscribers.length = 0;
+	}
+
+	function ErrorObject() {
+	  this.error = null;
+	}
+
+	var TRY_CATCH_ERROR = new ErrorObject();
+
+	function tryCatch(callback, detail) {
+	  try {
+	    return callback(detail);
+	  } catch (e) {
+	    TRY_CATCH_ERROR.error = e;
+	    return TRY_CATCH_ERROR;
+	  }
+	}
+
+	function invokeCallback(settled, promise, callback, detail) {
+	  var hasCallback = isFunction(callback),
+	      value = undefined,
+	      error = undefined,
+	      succeeded = undefined,
+	      failed = undefined;
+
+	  if (hasCallback) {
+	    value = tryCatch(callback, detail);
+
+	    if (value === TRY_CATCH_ERROR) {
+	      failed = true;
+	      error = value.error;
+	      value = null;
+	    } else {
+	      succeeded = true;
 	    }
 
-	    lib$es6$promise$polyfill$$default();
-	}).call(this);
+	    if (promise === value) {
+	      _reject(promise, cannotReturnOwn());
+	      return;
+	    }
+	  } else {
+	    value = detail;
+	    succeeded = true;
+	  }
+
+	  if (promise._state !== PENDING) {
+	    // noop
+	  } else if (hasCallback && succeeded) {
+	      _resolve(promise, value);
+	    } else if (failed) {
+	      _reject(promise, error);
+	    } else if (settled === FULFILLED) {
+	      fulfill(promise, value);
+	    } else if (settled === REJECTED) {
+	      _reject(promise, value);
+	    }
+	}
+
+	function initializePromise(promise, resolver) {
+	  try {
+	    resolver(function resolvePromise(value) {
+	      _resolve(promise, value);
+	    }, function rejectPromise(reason) {
+	      _reject(promise, reason);
+	    });
+	  } catch (e) {
+	    _reject(promise, e);
+	  }
+	}
+
+	var id = 0;
+	function nextId() {
+	  return id++;
+	}
+
+	function makePromise(promise) {
+	  promise[PROMISE_ID] = id++;
+	  promise._state = undefined;
+	  promise._result = undefined;
+	  promise._subscribers = [];
+	}
+
+	function Enumerator(Constructor, input) {
+	  this._instanceConstructor = Constructor;
+	  this.promise = new Constructor(noop);
+
+	  if (!this.promise[PROMISE_ID]) {
+	    makePromise(this.promise);
+	  }
+
+	  if (isArray(input)) {
+	    this._input = input;
+	    this.length = input.length;
+	    this._remaining = input.length;
+
+	    this._result = new Array(this.length);
+
+	    if (this.length === 0) {
+	      fulfill(this.promise, this._result);
+	    } else {
+	      this.length = this.length || 0;
+	      this._enumerate();
+	      if (this._remaining === 0) {
+	        fulfill(this.promise, this._result);
+	      }
+	    }
+	  } else {
+	    _reject(this.promise, validationError());
+	  }
+	}
+
+	function validationError() {
+	  return new Error('Array Methods must be provided an Array');
+	};
+
+	Enumerator.prototype._enumerate = function () {
+	  var length = this.length;
+	  var _input = this._input;
+
+	  for (var i = 0; this._state === PENDING && i < length; i++) {
+	    this._eachEntry(_input[i], i);
+	  }
+	};
+
+	Enumerator.prototype._eachEntry = function (entry, i) {
+	  var c = this._instanceConstructor;
+	  var resolve$$ = c.resolve;
+
+	  if (resolve$$ === resolve) {
+	    var _then = getThen(entry);
+
+	    if (_then === then && entry._state !== PENDING) {
+	      this._settledAt(entry._state, i, entry._result);
+	    } else if (typeof _then !== 'function') {
+	      this._remaining--;
+	      this._result[i] = entry;
+	    } else if (c === Promise) {
+	      var promise = new c(noop);
+	      handleMaybeThenable(promise, entry, _then);
+	      this._willSettleAt(promise, i);
+	    } else {
+	      this._willSettleAt(new c(function (resolve$$) {
+	        return resolve$$(entry);
+	      }), i);
+	    }
+	  } else {
+	    this._willSettleAt(resolve$$(entry), i);
+	  }
+	};
+
+	Enumerator.prototype._settledAt = function (state, i, value) {
+	  var promise = this.promise;
+
+	  if (promise._state === PENDING) {
+	    this._remaining--;
+
+	    if (state === REJECTED) {
+	      _reject(promise, value);
+	    } else {
+	      this._result[i] = value;
+	    }
+	  }
+
+	  if (this._remaining === 0) {
+	    fulfill(promise, this._result);
+	  }
+	};
+
+	Enumerator.prototype._willSettleAt = function (promise, i) {
+	  var enumerator = this;
+
+	  subscribe(promise, undefined, function (value) {
+	    return enumerator._settledAt(FULFILLED, i, value);
+	  }, function (reason) {
+	    return enumerator._settledAt(REJECTED, i, reason);
+	  });
+	};
+
+	/**
+	  `Promise.all` accepts an array of promises, and returns a new promise which
+	  is fulfilled with an array of fulfillment values for the passed promises, or
+	  rejected with the reason of the first passed promise to be rejected. It casts all
+	  elements of the passed iterable to promises as it runs this algorithm.
+
+	  Example:
+
+	  ```javascript
+	  let promise1 = resolve(1);
+	  let promise2 = resolve(2);
+	  let promise3 = resolve(3);
+	  let promises = [ promise1, promise2, promise3 ];
+
+	  Promise.all(promises).then(function(array){
+	    // The array here would be [ 1, 2, 3 ];
+	  });
+	  ```
+
+	  If any of the `promises` given to `all` are rejected, the first promise
+	  that is rejected will be given as an argument to the returned promises's
+	  rejection handler. For example:
+
+	  Example:
+
+	  ```javascript
+	  let promise1 = resolve(1);
+	  let promise2 = reject(new Error("2"));
+	  let promise3 = reject(new Error("3"));
+	  let promises = [ promise1, promise2, promise3 ];
+
+	  Promise.all(promises).then(function(array){
+	    // Code here never runs because there are rejected promises!
+	  }, function(error) {
+	    // error.message === "2"
+	  });
+	  ```
+
+	  @method all
+	  @static
+	  @param {Array} entries array of promises
+	  @param {String} label optional string for labeling the promise.
+	  Useful for tooling.
+	  @return {Promise} promise that is fulfilled when all `promises` have been
+	  fulfilled, or rejected if any of them become rejected.
+	  @static
+	*/
+	function all(entries) {
+	  return new Enumerator(this, entries).promise;
+	}
+
+	/**
+	  `Promise.race` returns a new promise which is settled in the same way as the
+	  first passed promise to settle.
+
+	  Example:
+
+	  ```javascript
+	  let promise1 = new Promise(function(resolve, reject){
+	    setTimeout(function(){
+	      resolve('promise 1');
+	    }, 200);
+	  });
+
+	  let promise2 = new Promise(function(resolve, reject){
+	    setTimeout(function(){
+	      resolve('promise 2');
+	    }, 100);
+	  });
+
+	  Promise.race([promise1, promise2]).then(function(result){
+	    // result === 'promise 2' because it was resolved before promise1
+	    // was resolved.
+	  });
+	  ```
+
+	  `Promise.race` is deterministic in that only the state of the first
+	  settled promise matters. For example, even if other promises given to the
+	  `promises` array argument are resolved, but the first settled promise has
+	  become rejected before the other promises became fulfilled, the returned
+	  promise will become rejected:
+
+	  ```javascript
+	  let promise1 = new Promise(function(resolve, reject){
+	    setTimeout(function(){
+	      resolve('promise 1');
+	    }, 200);
+	  });
+
+	  let promise2 = new Promise(function(resolve, reject){
+	    setTimeout(function(){
+	      reject(new Error('promise 2'));
+	    }, 100);
+	  });
+
+	  Promise.race([promise1, promise2]).then(function(result){
+	    // Code here never runs
+	  }, function(reason){
+	    // reason.message === 'promise 2' because promise 2 became rejected before
+	    // promise 1 became fulfilled
+	  });
+	  ```
+
+	  An example real-world use case is implementing timeouts:
+
+	  ```javascript
+	  Promise.race([ajax('foo.json'), timeout(5000)])
+	  ```
+
+	  @method race
+	  @static
+	  @param {Array} promises array of promises to observe
+	  Useful for tooling.
+	  @return {Promise} a promise which settles in the same way as the first passed
+	  promise to settle.
+	*/
+	function race(entries) {
+	  /*jshint validthis:true */
+	  var Constructor = this;
+
+	  if (!isArray(entries)) {
+	    return new Constructor(function (_, reject) {
+	      return reject(new TypeError('You must pass an array to race.'));
+	    });
+	  } else {
+	    return new Constructor(function (resolve, reject) {
+	      var length = entries.length;
+	      for (var i = 0; i < length; i++) {
+	        Constructor.resolve(entries[i]).then(resolve, reject);
+	      }
+	    });
+	  }
+	}
+
+	/**
+	  `Promise.reject` returns a promise rejected with the passed `reason`.
+	  It is shorthand for the following:
+
+	  ```javascript
+	  let promise = new Promise(function(resolve, reject){
+	    reject(new Error('WHOOPS'));
+	  });
+
+	  promise.then(function(value){
+	    // Code here doesn't run because the promise is rejected!
+	  }, function(reason){
+	    // reason.message === 'WHOOPS'
+	  });
+	  ```
+
+	  Instead of writing the above, your code now simply becomes the following:
+
+	  ```javascript
+	  let promise = Promise.reject(new Error('WHOOPS'));
+
+	  promise.then(function(value){
+	    // Code here doesn't run because the promise is rejected!
+	  }, function(reason){
+	    // reason.message === 'WHOOPS'
+	  });
+	  ```
+
+	  @method reject
+	  @static
+	  @param {Any} reason value that the returned promise will be rejected with.
+	  Useful for tooling.
+	  @return {Promise} a promise rejected with the given `reason`.
+	*/
+	function reject(reason) {
+	  /*jshint validthis:true */
+	  var Constructor = this;
+	  var promise = new Constructor(noop);
+	  _reject(promise, reason);
+	  return promise;
+	}
+
+	function needsResolver() {
+	  throw new TypeError('You must pass a resolver function as the first argument to the promise constructor');
+	}
+
+	function needsNew() {
+	  throw new TypeError("Failed to construct 'Promise': Please use the 'new' operator, this object constructor cannot be called as a function.");
+	}
+
+	/**
+	  Promise objects represent the eventual result of an asynchronous operation. The
+	  primary way of interacting with a promise is through its `then` method, which
+	  registers callbacks to receive either a promise's eventual value or the reason
+	  why the promise cannot be fulfilled.
+
+	  Terminology
+	  -----------
+
+	  - `promise` is an object or function with a `then` method whose behavior conforms to this specification.
+	  - `thenable` is an object or function that defines a `then` method.
+	  - `value` is any legal JavaScript value (including undefined, a thenable, or a promise).
+	  - `exception` is a value that is thrown using the throw statement.
+	  - `reason` is a value that indicates why a promise was rejected.
+	  - `settled` the final resting state of a promise, fulfilled or rejected.
+
+	  A promise can be in one of three states: pending, fulfilled, or rejected.
+
+	  Promises that are fulfilled have a fulfillment value and are in the fulfilled
+	  state.  Promises that are rejected have a rejection reason and are in the
+	  rejected state.  A fulfillment value is never a thenable.
+
+	  Promises can also be said to *resolve* a value.  If this value is also a
+	  promise, then the original promise's settled state will match the value's
+	  settled state.  So a promise that *resolves* a promise that rejects will
+	  itself reject, and a promise that *resolves* a promise that fulfills will
+	  itself fulfill.
 
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(3), (function() { return this; }()), __webpack_require__(4)(module)))
+	  Basic Usage:
+	  ------------
+
+	  ```js
+	  let promise = new Promise(function(resolve, reject) {
+	    // on success
+	    resolve(value);
+
+	    // on failure
+	    reject(reason);
+	  });
+
+	  promise.then(function(value) {
+	    // on fulfillment
+	  }, function(reason) {
+	    // on rejection
+	  });
+	  ```
+
+	  Advanced Usage:
+	  ---------------
+
+	  Promises shine when abstracting away asynchronous interactions such as
+	  `XMLHttpRequest`s.
+
+	  ```js
+	  function getJSON(url) {
+	    return new Promise(function(resolve, reject){
+	      let xhr = new XMLHttpRequest();
+
+	      xhr.open('GET', url);
+	      xhr.onreadystatechange = handler;
+	      xhr.responseType = 'json';
+	      xhr.setRequestHeader('Accept', 'application/json');
+	      xhr.send();
+
+	      function handler() {
+	        if (this.readyState === this.DONE) {
+	          if (this.status === 200) {
+	            resolve(this.response);
+	          } else {
+	            reject(new Error('getJSON: `' + url + '` failed with status: [' + this.status + ']'));
+	          }
+	        }
+	      };
+	    });
+	  }
+
+	  getJSON('/posts.json').then(function(json) {
+	    // on fulfillment
+	  }, function(reason) {
+	    // on rejection
+	  });
+	  ```
+
+	  Unlike callbacks, promises are great composable primitives.
+
+	  ```js
+	  Promise.all([
+	    getJSON('/posts'),
+	    getJSON('/comments')
+	  ]).then(function(values){
+	    values[0] // => postsJSON
+	    values[1] // => commentsJSON
+
+	    return values;
+	  });
+	  ```
+
+	  @class Promise
+	  @param {function} resolver
+	  Useful for tooling.
+	  @constructor
+	*/
+	function Promise(resolver) {
+	  this[PROMISE_ID] = nextId();
+	  this._result = this._state = undefined;
+	  this._subscribers = [];
+
+	  if (noop !== resolver) {
+	    typeof resolver !== 'function' && needsResolver();
+	    this instanceof Promise ? initializePromise(this, resolver) : needsNew();
+	  }
+	}
+
+	Promise.all = all;
+	Promise.race = race;
+	Promise.resolve = resolve;
+	Promise.reject = reject;
+	Promise._setScheduler = setScheduler;
+	Promise._setAsap = setAsap;
+	Promise._asap = asap;
+
+	Promise.prototype = {
+	  constructor: Promise,
+
+	  /**
+	    The primary way of interacting with a promise is through its `then` method,
+	    which registers callbacks to receive either a promise's eventual value or the
+	    reason why the promise cannot be fulfilled.
+	  
+	    ```js
+	    findUser().then(function(user){
+	      // user is available
+	    }, function(reason){
+	      // user is unavailable, and you are given the reason why
+	    });
+	    ```
+	  
+	    Chaining
+	    --------
+	  
+	    The return value of `then` is itself a promise.  This second, 'downstream'
+	    promise is resolved with the return value of the first promise's fulfillment
+	    or rejection handler, or rejected if the handler throws an exception.
+	  
+	    ```js
+	    findUser().then(function (user) {
+	      return user.name;
+	    }, function (reason) {
+	      return 'default name';
+	    }).then(function (userName) {
+	      // If `findUser` fulfilled, `userName` will be the user's name, otherwise it
+	      // will be `'default name'`
+	    });
+	  
+	    findUser().then(function (user) {
+	      throw new Error('Found user, but still unhappy');
+	    }, function (reason) {
+	      throw new Error('`findUser` rejected and we're unhappy');
+	    }).then(function (value) {
+	      // never reached
+	    }, function (reason) {
+	      // if `findUser` fulfilled, `reason` will be 'Found user, but still unhappy'.
+	      // If `findUser` rejected, `reason` will be '`findUser` rejected and we're unhappy'.
+	    });
+	    ```
+	    If the downstream promise does not specify a rejection handler, rejection reasons will be propagated further downstream.
+	  
+	    ```js
+	    findUser().then(function (user) {
+	      throw new PedagogicalException('Upstream error');
+	    }).then(function (value) {
+	      // never reached
+	    }).then(function (value) {
+	      // never reached
+	    }, function (reason) {
+	      // The `PedgagocialException` is propagated all the way down to here
+	    });
+	    ```
+	  
+	    Assimilation
+	    ------------
+	  
+	    Sometimes the value you want to propagate to a downstream promise can only be
+	    retrieved asynchronously. This can be achieved by returning a promise in the
+	    fulfillment or rejection handler. The downstream promise will then be pending
+	    until the returned promise is settled. This is called *assimilation*.
+	  
+	    ```js
+	    findUser().then(function (user) {
+	      return findCommentsByAuthor(user);
+	    }).then(function (comments) {
+	      // The user's comments are now available
+	    });
+	    ```
+	  
+	    If the assimliated promise rejects, then the downstream promise will also reject.
+	  
+	    ```js
+	    findUser().then(function (user) {
+	      return findCommentsByAuthor(user);
+	    }).then(function (comments) {
+	      // If `findCommentsByAuthor` fulfills, we'll have the value here
+	    }, function (reason) {
+	      // If `findCommentsByAuthor` rejects, we'll have the reason here
+	    });
+	    ```
+	  
+	    Simple Example
+	    --------------
+	  
+	    Synchronous Example
+	  
+	    ```javascript
+	    let result;
+	  
+	    try {
+	      result = findResult();
+	      // success
+	    } catch(reason) {
+	      // failure
+	    }
+	    ```
+	  
+	    Errback Example
+	  
+	    ```js
+	    findResult(function(result, err){
+	      if (err) {
+	        // failure
+	      } else {
+	        // success
+	      }
+	    });
+	    ```
+	  
+	    Promise Example;
+	  
+	    ```javascript
+	    findResult().then(function(result){
+	      // success
+	    }, function(reason){
+	      // failure
+	    });
+	    ```
+	  
+	    Advanced Example
+	    --------------
+	  
+	    Synchronous Example
+	  
+	    ```javascript
+	    let author, books;
+	  
+	    try {
+	      author = findAuthor();
+	      books  = findBooksByAuthor(author);
+	      // success
+	    } catch(reason) {
+	      // failure
+	    }
+	    ```
+	  
+	    Errback Example
+	  
+	    ```js
+	  
+	    function foundBooks(books) {
+	  
+	    }
+	  
+	    function failure(reason) {
+	  
+	    }
+	  
+	    findAuthor(function(author, err){
+	      if (err) {
+	        failure(err);
+	        // failure
+	      } else {
+	        try {
+	          findBoooksByAuthor(author, function(books, err) {
+	            if (err) {
+	              failure(err);
+	            } else {
+	              try {
+	                foundBooks(books);
+	              } catch(reason) {
+	                failure(reason);
+	              }
+	            }
+	          });
+	        } catch(error) {
+	          failure(err);
+	        }
+	        // success
+	      }
+	    });
+	    ```
+	  
+	    Promise Example;
+	  
+	    ```javascript
+	    findAuthor().
+	      then(findBooksByAuthor).
+	      then(function(books){
+	        // found books
+	    }).catch(function(reason){
+	      // something went wrong
+	    });
+	    ```
+	  
+	    @method then
+	    @param {Function} onFulfilled
+	    @param {Function} onRejected
+	    Useful for tooling.
+	    @return {Promise}
+	  */
+	  then: then,
+
+	  /**
+	    `catch` is simply sugar for `then(undefined, onRejection)` which makes it the same
+	    as the catch block of a try/catch statement.
+	  
+	    ```js
+	    function findAuthor(){
+	      throw new Error('couldn't find that author');
+	    }
+	  
+	    // synchronous
+	    try {
+	      findAuthor();
+	    } catch(reason) {
+	      // something went wrong
+	    }
+	  
+	    // async with promises
+	    findAuthor().catch(function(reason){
+	      // something went wrong
+	    });
+	    ```
+	  
+	    @method catch
+	    @param {Function} onRejection
+	    Useful for tooling.
+	    @return {Promise}
+	  */
+	  'catch': function _catch(onRejection) {
+	    return this.then(null, onRejection);
+	  }
+	};
+
+	function polyfill() {
+	    var local = undefined;
+
+	    if (typeof global !== 'undefined') {
+	        local = global;
+	    } else if (typeof self !== 'undefined') {
+	        local = self;
+	    } else {
+	        try {
+	            local = Function('return this')();
+	        } catch (e) {
+	            throw new Error('polyfill failed because global object is unavailable in this environment');
+	        }
+	    }
+
+	    var P = local.Promise;
+
+	    if (P) {
+	        var promiseToString = null;
+	        try {
+	            promiseToString = Object.prototype.toString.call(P.resolve());
+	        } catch (e) {
+	            // silently ignored
+	        }
+
+	        if (promiseToString === '[object Promise]' && !P.cast) {
+	            return;
+	        }
+	    }
+
+	    local.Promise = Promise;
+	}
+
+	polyfill();
+	// Strange compat..
+	Promise.polyfill = polyfill;
+	Promise.Promise = Promise;
+
+	return Promise;
+
+	})));
+	//# sourceMappingURL=es6-promise.map
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(3), (function() { return this; }())))
 
 /***/ },
 /* 3 */
@@ -1643,25 +1837,40 @@ var StellarSdk =
 	var cachedSetTimeout;
 	var cachedClearTimeout;
 
+	function defaultSetTimout() {
+	    throw new Error('setTimeout has not been defined');
+	}
+	function defaultClearTimeout () {
+	    throw new Error('clearTimeout has not been defined');
+	}
 	(function () {
 	    try {
-	        cachedSetTimeout = setTimeout;
-	    } catch (e) {
-	        cachedSetTimeout = function () {
-	            throw new Error('setTimeout is not defined');
+	        if (typeof setTimeout === 'function') {
+	            cachedSetTimeout = setTimeout;
+	        } else {
+	            cachedSetTimeout = defaultSetTimout;
 	        }
+	    } catch (e) {
+	        cachedSetTimeout = defaultSetTimout;
 	    }
 	    try {
-	        cachedClearTimeout = clearTimeout;
-	    } catch (e) {
-	        cachedClearTimeout = function () {
-	            throw new Error('clearTimeout is not defined');
+	        if (typeof clearTimeout === 'function') {
+	            cachedClearTimeout = clearTimeout;
+	        } else {
+	            cachedClearTimeout = defaultClearTimeout;
 	        }
+	    } catch (e) {
+	        cachedClearTimeout = defaultClearTimeout;
 	    }
 	} ())
 	function runTimeout(fun) {
 	    if (cachedSetTimeout === setTimeout) {
 	        //normal enviroments in sane situations
+	        return setTimeout(fun, 0);
+	    }
+	    // if setTimeout wasn't available but was latter defined
+	    if ((cachedSetTimeout === defaultSetTimout || !cachedSetTimeout) && setTimeout) {
+	        cachedSetTimeout = setTimeout;
 	        return setTimeout(fun, 0);
 	    }
 	    try {
@@ -1682,6 +1891,11 @@ var StellarSdk =
 	function runClearTimeout(marker) {
 	    if (cachedClearTimeout === clearTimeout) {
 	        //normal enviroments in sane situations
+	        return clearTimeout(marker);
+	    }
+	    // if clearTimeout wasn't available but was latter defined
+	    if ((cachedClearTimeout === defaultClearTimeout || !cachedClearTimeout) && clearTimeout) {
+	        cachedClearTimeout = clearTimeout;
 	        return clearTimeout(marker);
 	    }
 	    try {
@@ -1798,33 +2012,10 @@ var StellarSdk =
 /* 4 */
 /***/ function(module, exports) {
 
-	module.exports = function(module) {
-		if(!module.webpackPolyfill) {
-			module.deprecate = function() {};
-			module.paths = [];
-			// module.parent = undefined by default
-			module.children = [];
-			module.webpackPolyfill = 1;
-		}
-		return module;
-	}
-
-
-/***/ },
-/* 5 */
-/***/ function(module, exports) {
-
 	/* (ignored) */
 
 /***/ },
-/* 6 */
-/***/ function(module, exports) {
-
-	module.exports = function() { throw new Error("define cannot be used indirect"); };
-
-
-/***/ },
-/* 7 */
+/* 5 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -1880,7 +2071,7 @@ var StellarSdk =
 	}
 
 /***/ },
-/* 8 */
+/* 6 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -1896,45 +2087,45 @@ var StellarSdk =
 
 	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-	var _errors = __webpack_require__(7);
+	var _errors = __webpack_require__(5);
 
-	var _account_call_builder = __webpack_require__(9);
+	var _account_call_builder = __webpack_require__(7);
 
-	var _ledger_call_builder = __webpack_require__(183);
+	var _ledger_call_builder = __webpack_require__(111);
 
-	var _transaction_call_builder = __webpack_require__(184);
+	var _transaction_call_builder = __webpack_require__(112);
 
-	var _operation_call_builder = __webpack_require__(186);
+	var _operation_call_builder = __webpack_require__(114);
 
-	var _offer_call_builder = __webpack_require__(187);
+	var _offer_call_builder = __webpack_require__(115);
 
-	var _orderbook_call_builder = __webpack_require__(188);
+	var _orderbook_call_builder = __webpack_require__(116);
 
-	var _path_call_builder = __webpack_require__(189);
+	var _path_call_builder = __webpack_require__(117);
 
-	var _payment_call_builder = __webpack_require__(190);
+	var _payment_call_builder = __webpack_require__(118);
 
-	var _effect_call_builder = __webpack_require__(191);
+	var _effect_call_builder = __webpack_require__(119);
 
-	var _friendbot_builder = __webpack_require__(192);
+	var _friendbot_builder = __webpack_require__(120);
 
-	var _stellarBase = __webpack_require__(193);
+	var _stellarBase = __webpack_require__(121);
 
-	var _lodashIsString = __webpack_require__(429);
+	var _lodashIsString = __webpack_require__(359);
 
 	var _lodashIsString2 = _interopRequireDefault(_lodashIsString);
 
-	var _assets_call_builder = __webpack_require__(430);
+	var _assets_call_builder = __webpack_require__(360);
 
-	var _commission_call_builder = __webpack_require__(431);
+	var _commission_call_builder = __webpack_require__(361);
 
-	var _account_traits_call_builder = __webpack_require__(432);
+	var _account_traits_call_builder = __webpack_require__(362);
 
-	var querystring = __webpack_require__(150);
-	var axios = __webpack_require__(125);
-	var toBluebird = __webpack_require__(181).resolve;
-	var URI = __webpack_require__(120);
-	var URITemplate = __webpack_require__(120).URITemplate;
+	var querystring = __webpack_require__(77);
+	var axios = __webpack_require__(52);
+	var toBluebird = __webpack_require__(109).resolve;
+	var URI = __webpack_require__(47);
+	var URITemplate = __webpack_require__(47).URITemplate;
 
 	var SUBMIT_TRANSACTION_TIMEOUT = 20 * 1000;
 
@@ -2350,13 +2541,13 @@ var StellarSdk =
 	exports.Server = Server;
 
 /***/ },
-/* 9 */
+/* 7 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
 
 	Object.defineProperty(exports, "__esModule", {
-	  value: true
+	    value: true
 	});
 
 	var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
@@ -2367,107 +2558,107 @@ var StellarSdk =
 
 	function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
-	var _call_builder = __webpack_require__(10);
+	var _call_builder = __webpack_require__(8);
 
 	var AccountCallBuilder = (function (_CallBuilder) {
-	  _inherits(AccountCallBuilder, _CallBuilder);
+	    _inherits(AccountCallBuilder, _CallBuilder);
 
-	  /**
-	   * Creates a new {@link AccountCallBuilder} pointed to server defined by serverUrl.
-	   *
-	   * Do not create this object directly, use {@link Server#accounts}.
-	   * @see [All Accounts](https://www.stellar.org/developers/horizon/reference/accounts-all.html)
-	   * @constructor
-	   * @extends CallBuilder
-	   * @param {string} serverUrl Horizon server URL.
-	   */
+	    /**
+	     * Creates a new {@link AccountCallBuilder} pointed to server defined by serverUrl.
+	     *
+	     * Do not create this object directly, use {@link Server#accounts}.
+	     * @see [All Accounts](https://www.stellar.org/developers/horizon/reference/accounts-all.html)
+	     * @constructor
+	     * @extends CallBuilder
+	     * @param {string} serverUrl Horizon server URL.
+	     */
 
-	  function AccountCallBuilder(serverUrl) {
-	    _classCallCheck(this, AccountCallBuilder);
+	    function AccountCallBuilder(serverUrl) {
+	        _classCallCheck(this, AccountCallBuilder);
 
-	    _get(Object.getPrototypeOf(AccountCallBuilder.prototype), "constructor", this).call(this, serverUrl);
-	    this.url.segment('accounts');
-	  }
-
-	  /**
-	   * Returns information and links relating to a single account.
-	   * The balances section in the returned JSON will also list all the trust lines this account has set up.
-	   *
-	   * @deprecated use accountId method instead
-	   */
-
-	  _createClass(AccountCallBuilder, [{
-	    key: "address",
-	    value: function address(id) {
-	      console.warn("AccountCallBuilder#address is deprecated, please use AccountCallBuilder#accountId instead");
-	      return this.accountId(id);
+	        _get(Object.getPrototypeOf(AccountCallBuilder.prototype), "constructor", this).call(this, serverUrl);
+	        this.url.segment('accounts');
 	    }
 
 	    /**
 	     * Returns information and links relating to a single account.
 	     * The balances section in the returned JSON will also list all the trust lines this account has set up.
 	     *
-	     * @see [Account Details](https://www.stellar.org/developers/horizon/reference/accounts-single.html)
-	     * @param {string} id For example: `GDGQVOKHW4VEJRU2TETD6DBRKEO5ERCNF353LW5WBFW3JJWQ2BRQ6KDD`
-	     * @returns {AccountCallBuilder}
+	     * @deprecated use accountId method instead
 	     */
-	  }, {
-	    key: "accountId",
-	    value: function accountId(id) {
-	      this.filter.push(['accounts', id]);
-	      return this;
-	    }
 
-	    /**
-	     * Returns detailed income/outcome statistics relating to a single account.
-	     *
-	     * @see [Account Details] TODO: link to reference
-	     * @param {string} id For example: `GDGQVOKHW4VEJRU2TETD6DBRKEO5ERCNF353LW5WBFW3JJWQ2BRQ6KDD`
-	     * @returns {AccountCallBuilder}
-	     */
-	  }, {
-	    key: "statisticsForAccount",
-	    value: function statisticsForAccount(id) {
-	      this.filter.push(['accounts', id, "statistics"]);
-	      return this;
-	    }
+	    _createClass(AccountCallBuilder, [{
+	        key: "address",
+	        value: function address(id) {
+	            console.warn("AccountCallBuilder#address is deprecated, please use AccountCallBuilder#accountId instead");
+	            return this.accountId(id);
+	        }
 
-	    /**
-	     * Returns limits relating to a single account.
-	     *
-	     * @see [Account Details] TODO: link to reference
-	     * @param {string} id For example: `GDGQVOKHW4VEJRU2TETD6DBRKEO5ERCNF353LW5WBFW3JJWQ2BRQ6KDD`
-	     * @returns {AccountCallBuilder}
-	     */
-	  }, {
-	    key: "limits",
-	    value: function limits(id) {
-	      this.filter.push(['accounts', id, "limits"]);
-	      return this;
-	    }
+	        /**
+	         * Returns information and links relating to a single account.
+	         * The balances section in the returned JSON will also list all the trust lines this account has set up.
+	         *
+	         * @see [Account Details](https://www.stellar.org/developers/horizon/reference/accounts-single.html)
+	         * @param {string} id For example: `GDGQVOKHW4VEJRU2TETD6DBRKEO5ERCNF353LW5WBFW3JJWQ2BRQ6KDD`
+	         * @returns {AccountCallBuilder}
+	         */
+	    }, {
+	        key: "accountId",
+	        value: function accountId(id) {
+	            this.filter.push(['accounts', id]);
+	            return this;
+	        }
 
-	    /**
-	     * Returns restrictions relating to a single account.
-	     *
-	     * @see [Account Details] TODO: link to reference
-	     * @param {string} id For example: `GDGQVOKHW4VEJRU2TETD6DBRKEO5ERCNF353LW5WBFW3JJWQ2BRQ6KDD`
-	     * @returns {AccountCallBuilder}
-	     */
-	  }, {
-	    key: "traits",
-	    value: function traits(id) {
-	      this.filter.push(['accounts', id, "traits"]);
-	      return this;
-	    }
-	  }]);
+	        /**
+	         * Returns detailed income/outcome statistics relating to a single account.
+	         *
+	         * @see [Account Details] TODO: link to reference
+	         * @param {string} id For example: `GDGQVOKHW4VEJRU2TETD6DBRKEO5ERCNF353LW5WBFW3JJWQ2BRQ6KDD`
+	         * @returns {AccountCallBuilder}
+	         */
+	    }, {
+	        key: "statisticsForAccount",
+	        value: function statisticsForAccount(id) {
+	            this.filter.push(['accounts', id, "statistics"]);
+	            return this;
+	        }
 
-	  return AccountCallBuilder;
+	        /**
+	         * Returns limits relating to a single account.
+	         *
+	         * @see [Account Details] TODO: link to reference
+	         * @param {string} id For example: `GDGQVOKHW4VEJRU2TETD6DBRKEO5ERCNF353LW5WBFW3JJWQ2BRQ6KDD`
+	         * @returns {AccountCallBuilder}
+	         */
+	    }, {
+	        key: "limits",
+	        value: function limits(id) {
+	            this.filter.push(['accounts', id, "limits"]);
+	            return this;
+	        }
+
+	        /**
+	         * Returns restrictions relating to a single account.
+	         *
+	         * @see [Account Details] TODO: link to reference
+	         * @param {string} id For example: `GDGQVOKHW4VEJRU2TETD6DBRKEO5ERCNF353LW5WBFW3JJWQ2BRQ6KDD`
+	         * @returns {AccountCallBuilder}
+	         */
+	    }, {
+	        key: "traits",
+	        value: function traits(id) {
+	            this.filter.push(['accounts', id, "traits"]);
+	            return this;
+	        }
+	    }]);
+
+	    return AccountCallBuilder;
 	})(_call_builder.CallBuilder);
 
 	exports.AccountCallBuilder = AccountCallBuilder;
 
 /***/ },
-/* 10 */
+/* 8 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -2482,18 +2673,18 @@ var StellarSdk =
 
 	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-	var _errors = __webpack_require__(7);
+	var _errors = __webpack_require__(5);
 
-	var _lodashForEach = __webpack_require__(11);
+	var _lodashForEach = __webpack_require__(9);
 
 	var _lodashForEach2 = _interopRequireDefault(_lodashForEach);
 
-	var URI = __webpack_require__(120);
-	var URITemplate = __webpack_require__(124);
+	var URI = __webpack_require__(47);
+	var URITemplate = __webpack_require__(51);
 
-	var axios = __webpack_require__(125);
-	var EventSource = typeof window === 'undefined' ? __webpack_require__(142) : window.EventSource;
-	var toBluebird = __webpack_require__(181).resolve;
+	var axios = __webpack_require__(52);
+	var EventSource = typeof window === 'undefined' ? __webpack_require__(69) : window.EventSource;
+	var toBluebird = __webpack_require__(109).resolve;
 
 	/**
 	 * Creates a new {@link CallBuilder} pointed to server defined by serverUrl.
@@ -2733,12 +2924,12 @@ var StellarSdk =
 	exports.CallBuilder = CallBuilder;
 
 /***/ },
-/* 11 */
+/* 9 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var arrayEach = __webpack_require__(12),
-	    baseEach = __webpack_require__(13),
-	    baseIteratee = __webpack_require__(34),
+	var arrayEach = __webpack_require__(10),
+	    baseEach = __webpack_require__(11),
+	    castFunction = __webpack_require__(45),
 	    isArray = __webpack_require__(27);
 
 	/**
@@ -2761,7 +2952,7 @@ var StellarSdk =
 	 * @see _.forEachRight
 	 * @example
 	 *
-	 * _([1, 2]).forEach(function(value) {
+	 * _.forEach([1, 2], function(value) {
 	 *   console.log(value);
 	 * });
 	 * // => Logs `1` then `2`.
@@ -2773,14 +2964,14 @@ var StellarSdk =
 	 */
 	function forEach(collection, iteratee) {
 	  var func = isArray(collection) ? arrayEach : baseEach;
-	  return func(collection, baseIteratee(iteratee, 3));
+	  return func(collection, castFunction(iteratee));
 	}
 
 	module.exports = forEach;
 
 
 /***/ },
-/* 12 */
+/* 10 */
 /***/ function(module, exports) {
 
 	/**
@@ -2794,7 +2985,7 @@ var StellarSdk =
 	 */
 	function arrayEach(array, iteratee) {
 	  var index = -1,
-	      length = array ? array.length : 0;
+	      length = array == null ? 0 : array.length;
 
 	  while (++index < length) {
 	    if (iteratee(array[index], index, array) === false) {
@@ -2808,11 +2999,11 @@ var StellarSdk =
 
 
 /***/ },
-/* 13 */
+/* 11 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var baseForOwn = __webpack_require__(14),
-	    createBaseEach = __webpack_require__(33);
+	var baseForOwn = __webpack_require__(12),
+	    createBaseEach = __webpack_require__(44);
 
 	/**
 	 * The base implementation of `_.forEach` without support for iteratee shorthands.
@@ -2828,11 +3019,11 @@ var StellarSdk =
 
 
 /***/ },
-/* 14 */
+/* 12 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var baseFor = __webpack_require__(15),
-	    keys = __webpack_require__(17);
+	var baseFor = __webpack_require__(13),
+	    keys = __webpack_require__(15);
 
 	/**
 	 * The base implementation of `_.forOwn` without support for iteratee shorthands.
@@ -2850,10 +3041,10 @@ var StellarSdk =
 
 
 /***/ },
-/* 15 */
+/* 13 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var createBaseFor = __webpack_require__(16);
+	var createBaseFor = __webpack_require__(14);
 
 	/**
 	 * The base implementation of `baseForOwn` which iterates over `object`
@@ -2872,7 +3063,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 16 */
+/* 14 */
 /***/ function(module, exports) {
 
 	/**
@@ -2903,12 +3094,12 @@ var StellarSdk =
 
 
 /***/ },
-/* 17 */
+/* 15 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var arrayLikeKeys = __webpack_require__(18),
-	    baseKeys = __webpack_require__(29),
-	    isArrayLike = __webpack_require__(22);
+	var arrayLikeKeys = __webpack_require__(16),
+	    baseKeys = __webpack_require__(37),
+	    isArrayLike = __webpack_require__(41);
 
 	/**
 	 * Creates an array of the own enumerable property names of `object`.
@@ -2946,13 +3137,15 @@ var StellarSdk =
 
 
 /***/ },
-/* 18 */
+/* 16 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var baseTimes = __webpack_require__(19),
-	    isArguments = __webpack_require__(20),
+	var baseTimes = __webpack_require__(17),
+	    isArguments = __webpack_require__(18),
 	    isArray = __webpack_require__(27),
-	    isIndex = __webpack_require__(28);
+	    isBuffer = __webpack_require__(28),
+	    isIndex = __webpack_require__(31),
+	    isTypedArray = __webpack_require__(32);
 
 	/** Used for built-in method references. */
 	var objectProto = Object.prototype;
@@ -2969,18 +3162,26 @@ var StellarSdk =
 	 * @returns {Array} Returns the array of property names.
 	 */
 	function arrayLikeKeys(value, inherited) {
-	  // Safari 8.1 makes `arguments.callee` enumerable in strict mode.
-	  // Safari 9 makes `arguments.length` enumerable in strict mode.
-	  var result = (isArray(value) || isArguments(value))
-	    ? baseTimes(value.length, String)
-	    : [];
-
-	  var length = result.length,
-	      skipIndexes = !!length;
+	  var isArr = isArray(value),
+	      isArg = !isArr && isArguments(value),
+	      isBuff = !isArr && !isArg && isBuffer(value),
+	      isType = !isArr && !isArg && !isBuff && isTypedArray(value),
+	      skipIndexes = isArr || isArg || isBuff || isType,
+	      result = skipIndexes ? baseTimes(value.length, String) : [],
+	      length = result.length;
 
 	  for (var key in value) {
 	    if ((inherited || hasOwnProperty.call(value, key)) &&
-	        !(skipIndexes && (key == 'length' || isIndex(key, length)))) {
+	        !(skipIndexes && (
+	           // Safari 9 has enumerable `arguments.length` in strict mode.
+	           key == 'length' ||
+	           // Node.js 0.10 has enumerable non-index properties on buffers.
+	           (isBuff && (key == 'offset' || key == 'parent')) ||
+	           // PhantomJS 2 has enumerable non-index properties on typed arrays.
+	           (isType && (key == 'buffer' || key == 'byteLength' || key == 'byteOffset')) ||
+	           // Skip index properties.
+	           isIndex(key, length)
+	        ))) {
 	      result.push(key);
 	    }
 	  }
@@ -2991,7 +3192,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 19 */
+/* 17 */
 /***/ function(module, exports) {
 
 	/**
@@ -3017,26 +3218,17 @@ var StellarSdk =
 
 
 /***/ },
-/* 20 */
+/* 18 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var isArrayLikeObject = __webpack_require__(21);
-
-	/** `Object#toString` result references. */
-	var argsTag = '[object Arguments]';
+	var baseIsArguments = __webpack_require__(19),
+	    isObjectLike = __webpack_require__(26);
 
 	/** Used for built-in method references. */
 	var objectProto = Object.prototype;
 
 	/** Used to check objects for own properties. */
 	var hasOwnProperty = objectProto.hasOwnProperty;
-
-	/**
-	 * Used to resolve the
-	 * [`toStringTag`](http://ecma-international.org/ecma-262/7.0/#sec-object.prototype.tostring)
-	 * of values.
-	 */
-	var objectToString = objectProto.toString;
 
 	/** Built-in value references. */
 	var propertyIsEnumerable = objectProto.propertyIsEnumerable;
@@ -3059,102 +3251,166 @@ var StellarSdk =
 	 * _.isArguments([1, 2, 3]);
 	 * // => false
 	 */
-	function isArguments(value) {
-	  // Safari 8.1 makes `arguments.callee` enumerable in strict mode.
-	  return isArrayLikeObject(value) && hasOwnProperty.call(value, 'callee') &&
-	    (!propertyIsEnumerable.call(value, 'callee') || objectToString.call(value) == argsTag);
-	}
+	var isArguments = baseIsArguments(function() { return arguments; }()) ? baseIsArguments : function(value) {
+	  return isObjectLike(value) && hasOwnProperty.call(value, 'callee') &&
+	    !propertyIsEnumerable.call(value, 'callee');
+	};
 
 	module.exports = isArguments;
+
+
+/***/ },
+/* 19 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var baseGetTag = __webpack_require__(20),
+	    isObjectLike = __webpack_require__(26);
+
+	/** `Object#toString` result references. */
+	var argsTag = '[object Arguments]';
+
+	/**
+	 * The base implementation of `_.isArguments`.
+	 *
+	 * @private
+	 * @param {*} value The value to check.
+	 * @returns {boolean} Returns `true` if `value` is an `arguments` object,
+	 */
+	function baseIsArguments(value) {
+	  return isObjectLike(value) && baseGetTag(value) == argsTag;
+	}
+
+	module.exports = baseIsArguments;
+
+
+/***/ },
+/* 20 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var Symbol = __webpack_require__(21),
+	    getRawTag = __webpack_require__(24),
+	    objectToString = __webpack_require__(25);
+
+	/** `Object#toString` result references. */
+	var nullTag = '[object Null]',
+	    undefinedTag = '[object Undefined]';
+
+	/** Built-in value references. */
+	var symToStringTag = Symbol ? Symbol.toStringTag : undefined;
+
+	/**
+	 * The base implementation of `getTag` without fallbacks for buggy environments.
+	 *
+	 * @private
+	 * @param {*} value The value to query.
+	 * @returns {string} Returns the `toStringTag`.
+	 */
+	function baseGetTag(value) {
+	  if (value == null) {
+	    return value === undefined ? undefinedTag : nullTag;
+	  }
+	  value = Object(value);
+	  return (symToStringTag && symToStringTag in value)
+	    ? getRawTag(value)
+	    : objectToString(value);
+	}
+
+	module.exports = baseGetTag;
 
 
 /***/ },
 /* 21 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var isArrayLike = __webpack_require__(22),
-	    isObjectLike = __webpack_require__(26);
+	var root = __webpack_require__(22);
 
-	/**
-	 * This method is like `_.isArrayLike` except that it also checks if `value`
-	 * is an object.
-	 *
-	 * @static
-	 * @memberOf _
-	 * @since 4.0.0
-	 * @category Lang
-	 * @param {*} value The value to check.
-	 * @returns {boolean} Returns `true` if `value` is an array-like object,
-	 *  else `false`.
-	 * @example
-	 *
-	 * _.isArrayLikeObject([1, 2, 3]);
-	 * // => true
-	 *
-	 * _.isArrayLikeObject(document.body.children);
-	 * // => true
-	 *
-	 * _.isArrayLikeObject('abc');
-	 * // => false
-	 *
-	 * _.isArrayLikeObject(_.noop);
-	 * // => false
-	 */
-	function isArrayLikeObject(value) {
-	  return isObjectLike(value) && isArrayLike(value);
-	}
+	/** Built-in value references. */
+	var Symbol = root.Symbol;
 
-	module.exports = isArrayLikeObject;
+	module.exports = Symbol;
 
 
 /***/ },
 /* 22 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var isFunction = __webpack_require__(23),
-	    isLength = __webpack_require__(25);
+	var freeGlobal = __webpack_require__(23);
 
-	/**
-	 * Checks if `value` is array-like. A value is considered array-like if it's
-	 * not a function and has a `value.length` that's an integer greater than or
-	 * equal to `0` and less than or equal to `Number.MAX_SAFE_INTEGER`.
-	 *
-	 * @static
-	 * @memberOf _
-	 * @since 4.0.0
-	 * @category Lang
-	 * @param {*} value The value to check.
-	 * @returns {boolean} Returns `true` if `value` is array-like, else `false`.
-	 * @example
-	 *
-	 * _.isArrayLike([1, 2, 3]);
-	 * // => true
-	 *
-	 * _.isArrayLike(document.body.children);
-	 * // => true
-	 *
-	 * _.isArrayLike('abc');
-	 * // => true
-	 *
-	 * _.isArrayLike(_.noop);
-	 * // => false
-	 */
-	function isArrayLike(value) {
-	  return value != null && isLength(value.length) && !isFunction(value);
-	}
+	/** Detect free variable `self`. */
+	var freeSelf = typeof self == 'object' && self && self.Object === Object && self;
 
-	module.exports = isArrayLike;
+	/** Used as a reference to the global object. */
+	var root = freeGlobal || freeSelf || Function('return this')();
+
+	module.exports = root;
 
 
 /***/ },
 /* 23 */
+/***/ function(module, exports) {
+
+	/* WEBPACK VAR INJECTION */(function(global) {/** Detect free variable `global` from Node.js. */
+	var freeGlobal = typeof global == 'object' && global && global.Object === Object && global;
+
+	module.exports = freeGlobal;
+
+	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
+
+/***/ },
+/* 24 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var isObject = __webpack_require__(24);
+	var Symbol = __webpack_require__(21);
 
-	/** `Object#toString` result references. */
-	var funcTag = '[object Function]',
-	    genTag = '[object GeneratorFunction]';
+	/** Used for built-in method references. */
+	var objectProto = Object.prototype;
+
+	/** Used to check objects for own properties. */
+	var hasOwnProperty = objectProto.hasOwnProperty;
+
+	/**
+	 * Used to resolve the
+	 * [`toStringTag`](http://ecma-international.org/ecma-262/7.0/#sec-object.prototype.tostring)
+	 * of values.
+	 */
+	var nativeObjectToString = objectProto.toString;
+
+	/** Built-in value references. */
+	var symToStringTag = Symbol ? Symbol.toStringTag : undefined;
+
+	/**
+	 * A specialized version of `baseGetTag` which ignores `Symbol.toStringTag` values.
+	 *
+	 * @private
+	 * @param {*} value The value to query.
+	 * @returns {string} Returns the raw `toStringTag`.
+	 */
+	function getRawTag(value) {
+	  var isOwn = hasOwnProperty.call(value, symToStringTag),
+	      tag = value[symToStringTag];
+
+	  try {
+	    value[symToStringTag] = undefined;
+	    var unmasked = true;
+	  } catch (e) {}
+
+	  var result = nativeObjectToString.call(value);
+	  if (unmasked) {
+	    if (isOwn) {
+	      value[symToStringTag] = tag;
+	    } else {
+	      delete value[symToStringTag];
+	    }
+	  }
+	  return result;
+	}
+
+	module.exports = getRawTag;
+
+
+/***/ },
+/* 25 */
+/***/ function(module, exports) {
 
 	/** Used for built-in method references. */
 	var objectProto = Object.prototype;
@@ -3164,111 +3420,20 @@ var StellarSdk =
 	 * [`toStringTag`](http://ecma-international.org/ecma-262/7.0/#sec-object.prototype.tostring)
 	 * of values.
 	 */
-	var objectToString = objectProto.toString;
+	var nativeObjectToString = objectProto.toString;
 
 	/**
-	 * Checks if `value` is classified as a `Function` object.
+	 * Converts `value` to a string using `Object.prototype.toString`.
 	 *
-	 * @static
-	 * @memberOf _
-	 * @since 0.1.0
-	 * @category Lang
-	 * @param {*} value The value to check.
-	 * @returns {boolean} Returns `true` if `value` is a function, else `false`.
-	 * @example
-	 *
-	 * _.isFunction(_);
-	 * // => true
-	 *
-	 * _.isFunction(/abc/);
-	 * // => false
+	 * @private
+	 * @param {*} value The value to convert.
+	 * @returns {string} Returns the converted string.
 	 */
-	function isFunction(value) {
-	  // The use of `Object#toString` avoids issues with the `typeof` operator
-	  // in Safari 8-9 which returns 'object' for typed array and other constructors.
-	  var tag = isObject(value) ? objectToString.call(value) : '';
-	  return tag == funcTag || tag == genTag;
+	function objectToString(value) {
+	  return nativeObjectToString.call(value);
 	}
 
-	module.exports = isFunction;
-
-
-/***/ },
-/* 24 */
-/***/ function(module, exports) {
-
-	/**
-	 * Checks if `value` is the
-	 * [language type](http://www.ecma-international.org/ecma-262/7.0/#sec-ecmascript-language-types)
-	 * of `Object`. (e.g. arrays, functions, objects, regexes, `new Number(0)`, and `new String('')`)
-	 *
-	 * @static
-	 * @memberOf _
-	 * @since 0.1.0
-	 * @category Lang
-	 * @param {*} value The value to check.
-	 * @returns {boolean} Returns `true` if `value` is an object, else `false`.
-	 * @example
-	 *
-	 * _.isObject({});
-	 * // => true
-	 *
-	 * _.isObject([1, 2, 3]);
-	 * // => true
-	 *
-	 * _.isObject(_.noop);
-	 * // => true
-	 *
-	 * _.isObject(null);
-	 * // => false
-	 */
-	function isObject(value) {
-	  var type = typeof value;
-	  return !!value && (type == 'object' || type == 'function');
-	}
-
-	module.exports = isObject;
-
-
-/***/ },
-/* 25 */
-/***/ function(module, exports) {
-
-	/** Used as references for various `Number` constants. */
-	var MAX_SAFE_INTEGER = 9007199254740991;
-
-	/**
-	 * Checks if `value` is a valid array-like length.
-	 *
-	 * **Note:** This method is loosely based on
-	 * [`ToLength`](http://ecma-international.org/ecma-262/7.0/#sec-tolength).
-	 *
-	 * @static
-	 * @memberOf _
-	 * @since 4.0.0
-	 * @category Lang
-	 * @param {*} value The value to check.
-	 * @returns {boolean} Returns `true` if `value` is a valid length, else `false`.
-	 * @example
-	 *
-	 * _.isLength(3);
-	 * // => true
-	 *
-	 * _.isLength(Number.MIN_VALUE);
-	 * // => false
-	 *
-	 * _.isLength(Infinity);
-	 * // => false
-	 *
-	 * _.isLength('3');
-	 * // => false
-	 */
-	function isLength(value) {
-	  return typeof value == 'number' &&
-	    value > -1 && value % 1 == 0 && value <= MAX_SAFE_INTEGER;
-	}
-
-	module.exports = isLength;
+	module.exports = objectToString;
 
 
 /***/ },
@@ -3300,7 +3465,7 @@ var StellarSdk =
 	 * // => false
 	 */
 	function isObjectLike(value) {
-	  return !!value && typeof value == 'object';
+	  return value != null && typeof value == 'object';
 	}
 
 	module.exports = isObjectLike;
@@ -3340,6 +3505,91 @@ var StellarSdk =
 
 /***/ },
 /* 28 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/* WEBPACK VAR INJECTION */(function(module) {var root = __webpack_require__(22),
+	    stubFalse = __webpack_require__(30);
+
+	/** Detect free variable `exports`. */
+	var freeExports = typeof exports == 'object' && exports && !exports.nodeType && exports;
+
+	/** Detect free variable `module`. */
+	var freeModule = freeExports && typeof module == 'object' && module && !module.nodeType && module;
+
+	/** Detect the popular CommonJS extension `module.exports`. */
+	var moduleExports = freeModule && freeModule.exports === freeExports;
+
+	/** Built-in value references. */
+	var Buffer = moduleExports ? root.Buffer : undefined;
+
+	/* Built-in method references for those with the same name as other `lodash` methods. */
+	var nativeIsBuffer = Buffer ? Buffer.isBuffer : undefined;
+
+	/**
+	 * Checks if `value` is a buffer.
+	 *
+	 * @static
+	 * @memberOf _
+	 * @since 4.3.0
+	 * @category Lang
+	 * @param {*} value The value to check.
+	 * @returns {boolean} Returns `true` if `value` is a buffer, else `false`.
+	 * @example
+	 *
+	 * _.isBuffer(new Buffer(2));
+	 * // => true
+	 *
+	 * _.isBuffer(new Uint8Array(2));
+	 * // => false
+	 */
+	var isBuffer = nativeIsBuffer || stubFalse;
+
+	module.exports = isBuffer;
+
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(29)(module)))
+
+/***/ },
+/* 29 */
+/***/ function(module, exports) {
+
+	module.exports = function(module) {
+		if(!module.webpackPolyfill) {
+			module.deprecate = function() {};
+			module.paths = [];
+			// module.parent = undefined by default
+			module.children = [];
+			module.webpackPolyfill = 1;
+		}
+		return module;
+	}
+
+
+/***/ },
+/* 30 */
+/***/ function(module, exports) {
+
+	/**
+	 * This method returns `false`.
+	 *
+	 * @static
+	 * @memberOf _
+	 * @since 4.13.0
+	 * @category Util
+	 * @returns {boolean} Returns `false`.
+	 * @example
+	 *
+	 * _.times(2, _.stubFalse);
+	 * // => [false, false]
+	 */
+	function stubFalse() {
+	  return false;
+	}
+
+	module.exports = stubFalse;
+
+
+/***/ },
+/* 31 */
 /***/ function(module, exports) {
 
 	/** Used as references for various `Number` constants. */
@@ -3367,2046 +3617,12 @@ var StellarSdk =
 
 
 /***/ },
-/* 29 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var isPrototype = __webpack_require__(30),
-	    nativeKeys = __webpack_require__(31);
-
-	/** Used for built-in method references. */
-	var objectProto = Object.prototype;
-
-	/** Used to check objects for own properties. */
-	var hasOwnProperty = objectProto.hasOwnProperty;
-
-	/**
-	 * The base implementation of `_.keys` which doesn't treat sparse arrays as dense.
-	 *
-	 * @private
-	 * @param {Object} object The object to query.
-	 * @returns {Array} Returns the array of property names.
-	 */
-	function baseKeys(object) {
-	  if (!isPrototype(object)) {
-	    return nativeKeys(object);
-	  }
-	  var result = [];
-	  for (var key in Object(object)) {
-	    if (hasOwnProperty.call(object, key) && key != 'constructor') {
-	      result.push(key);
-	    }
-	  }
-	  return result;
-	}
-
-	module.exports = baseKeys;
-
-
-/***/ },
-/* 30 */
-/***/ function(module, exports) {
-
-	/** Used for built-in method references. */
-	var objectProto = Object.prototype;
-
-	/**
-	 * Checks if `value` is likely a prototype object.
-	 *
-	 * @private
-	 * @param {*} value The value to check.
-	 * @returns {boolean} Returns `true` if `value` is a prototype, else `false`.
-	 */
-	function isPrototype(value) {
-	  var Ctor = value && value.constructor,
-	      proto = (typeof Ctor == 'function' && Ctor.prototype) || objectProto;
-
-	  return value === proto;
-	}
-
-	module.exports = isPrototype;
-
-
-/***/ },
-/* 31 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var overArg = __webpack_require__(32);
-
-	/* Built-in method references for those with the same name as other `lodash` methods. */
-	var nativeKeys = overArg(Object.keys, Object);
-
-	module.exports = nativeKeys;
-
-
-/***/ },
 /* 32 */
-/***/ function(module, exports) {
-
-	/**
-	 * Creates a unary function that invokes `func` with its argument transformed.
-	 *
-	 * @private
-	 * @param {Function} func The function to wrap.
-	 * @param {Function} transform The argument transform.
-	 * @returns {Function} Returns the new function.
-	 */
-	function overArg(func, transform) {
-	  return function(arg) {
-	    return func(transform(arg));
-	  };
-	}
-
-	module.exports = overArg;
-
-
-/***/ },
-/* 33 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var isArrayLike = __webpack_require__(22);
-
-	/**
-	 * Creates a `baseEach` or `baseEachRight` function.
-	 *
-	 * @private
-	 * @param {Function} eachFunc The function to iterate over a collection.
-	 * @param {boolean} [fromRight] Specify iterating from right to left.
-	 * @returns {Function} Returns the new base function.
-	 */
-	function createBaseEach(eachFunc, fromRight) {
-	  return function(collection, iteratee) {
-	    if (collection == null) {
-	      return collection;
-	    }
-	    if (!isArrayLike(collection)) {
-	      return eachFunc(collection, iteratee);
-	    }
-	    var length = collection.length,
-	        index = fromRight ? length : -1,
-	        iterable = Object(collection);
-
-	    while ((fromRight ? index-- : ++index < length)) {
-	      if (iteratee(iterable[index], index, iterable) === false) {
-	        break;
-	      }
-	    }
-	    return collection;
-	  };
-	}
-
-	module.exports = createBaseEach;
-
-
-/***/ },
-/* 34 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var baseMatches = __webpack_require__(35),
-	    baseMatchesProperty = __webpack_require__(102),
-	    identity = __webpack_require__(116),
-	    isArray = __webpack_require__(27),
-	    property = __webpack_require__(117);
-
-	/**
-	 * The base implementation of `_.iteratee`.
-	 *
-	 * @private
-	 * @param {*} [value=_.identity] The value to convert to an iteratee.
-	 * @returns {Function} Returns the iteratee.
-	 */
-	function baseIteratee(value) {
-	  // Don't store the `typeof` result in a variable to avoid a JIT bug in Safari 9.
-	  // See https://bugs.webkit.org/show_bug.cgi?id=156034 for more details.
-	  if (typeof value == 'function') {
-	    return value;
-	  }
-	  if (value == null) {
-	    return identity;
-	  }
-	  if (typeof value == 'object') {
-	    return isArray(value)
-	      ? baseMatchesProperty(value[0], value[1])
-	      : baseMatches(value);
-	  }
-	  return property(value);
-	}
-
-	module.exports = baseIteratee;
-
-
-/***/ },
-/* 35 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var baseIsMatch = __webpack_require__(36),
-	    getMatchData = __webpack_require__(99),
-	    matchesStrictComparable = __webpack_require__(101);
-
-	/**
-	 * The base implementation of `_.matches` which doesn't clone `source`.
-	 *
-	 * @private
-	 * @param {Object} source The object of property values to match.
-	 * @returns {Function} Returns the new spec function.
-	 */
-	function baseMatches(source) {
-	  var matchData = getMatchData(source);
-	  if (matchData.length == 1 && matchData[0][2]) {
-	    return matchesStrictComparable(matchData[0][0], matchData[0][1]);
-	  }
-	  return function(object) {
-	    return object === source || baseIsMatch(object, source, matchData);
-	  };
-	}
-
-	module.exports = baseMatches;
-
-
-/***/ },
-/* 36 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var Stack = __webpack_require__(37),
-	    baseIsEqual = __webpack_require__(76);
-
-	/** Used to compose bitmasks for comparison styles. */
-	var UNORDERED_COMPARE_FLAG = 1,
-	    PARTIAL_COMPARE_FLAG = 2;
-
-	/**
-	 * The base implementation of `_.isMatch` without support for iteratee shorthands.
-	 *
-	 * @private
-	 * @param {Object} object The object to inspect.
-	 * @param {Object} source The object of property values to match.
-	 * @param {Array} matchData The property names, values, and compare flags to match.
-	 * @param {Function} [customizer] The function to customize comparisons.
-	 * @returns {boolean} Returns `true` if `object` is a match, else `false`.
-	 */
-	function baseIsMatch(object, source, matchData, customizer) {
-	  var index = matchData.length,
-	      length = index,
-	      noCustomizer = !customizer;
-
-	  if (object == null) {
-	    return !length;
-	  }
-	  object = Object(object);
-	  while (index--) {
-	    var data = matchData[index];
-	    if ((noCustomizer && data[2])
-	          ? data[1] !== object[data[0]]
-	          : !(data[0] in object)
-	        ) {
-	      return false;
-	    }
-	  }
-	  while (++index < length) {
-	    data = matchData[index];
-	    var key = data[0],
-	        objValue = object[key],
-	        srcValue = data[1];
-
-	    if (noCustomizer && data[2]) {
-	      if (objValue === undefined && !(key in object)) {
-	        return false;
-	      }
-	    } else {
-	      var stack = new Stack;
-	      if (customizer) {
-	        var result = customizer(objValue, srcValue, key, object, source, stack);
-	      }
-	      if (!(result === undefined
-	            ? baseIsEqual(srcValue, objValue, customizer, UNORDERED_COMPARE_FLAG | PARTIAL_COMPARE_FLAG, stack)
-	            : result
-	          )) {
-	        return false;
-	      }
-	    }
-	  }
-	  return true;
-	}
-
-	module.exports = baseIsMatch;
-
-
-/***/ },
-/* 37 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var ListCache = __webpack_require__(38),
-	    stackClear = __webpack_require__(46),
-	    stackDelete = __webpack_require__(47),
-	    stackGet = __webpack_require__(48),
-	    stackHas = __webpack_require__(49),
-	    stackSet = __webpack_require__(50);
-
-	/**
-	 * Creates a stack cache object to store key-value pairs.
-	 *
-	 * @private
-	 * @constructor
-	 * @param {Array} [entries] The key-value pairs to cache.
-	 */
-	function Stack(entries) {
-	  this.__data__ = new ListCache(entries);
-	}
-
-	// Add methods to `Stack`.
-	Stack.prototype.clear = stackClear;
-	Stack.prototype['delete'] = stackDelete;
-	Stack.prototype.get = stackGet;
-	Stack.prototype.has = stackHas;
-	Stack.prototype.set = stackSet;
-
-	module.exports = Stack;
-
-
-/***/ },
-/* 38 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var listCacheClear = __webpack_require__(39),
-	    listCacheDelete = __webpack_require__(40),
-	    listCacheGet = __webpack_require__(43),
-	    listCacheHas = __webpack_require__(44),
-	    listCacheSet = __webpack_require__(45);
-
-	/**
-	 * Creates an list cache object.
-	 *
-	 * @private
-	 * @constructor
-	 * @param {Array} [entries] The key-value pairs to cache.
-	 */
-	function ListCache(entries) {
-	  var index = -1,
-	      length = entries ? entries.length : 0;
-
-	  this.clear();
-	  while (++index < length) {
-	    var entry = entries[index];
-	    this.set(entry[0], entry[1]);
-	  }
-	}
-
-	// Add methods to `ListCache`.
-	ListCache.prototype.clear = listCacheClear;
-	ListCache.prototype['delete'] = listCacheDelete;
-	ListCache.prototype.get = listCacheGet;
-	ListCache.prototype.has = listCacheHas;
-	ListCache.prototype.set = listCacheSet;
-
-	module.exports = ListCache;
-
-
-/***/ },
-/* 39 */
-/***/ function(module, exports) {
-
-	/**
-	 * Removes all key-value entries from the list cache.
-	 *
-	 * @private
-	 * @name clear
-	 * @memberOf ListCache
-	 */
-	function listCacheClear() {
-	  this.__data__ = [];
-	}
-
-	module.exports = listCacheClear;
-
-
-/***/ },
-/* 40 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var assocIndexOf = __webpack_require__(41);
-
-	/** Used for built-in method references. */
-	var arrayProto = Array.prototype;
-
-	/** Built-in value references. */
-	var splice = arrayProto.splice;
-
-	/**
-	 * Removes `key` and its value from the list cache.
-	 *
-	 * @private
-	 * @name delete
-	 * @memberOf ListCache
-	 * @param {string} key The key of the value to remove.
-	 * @returns {boolean} Returns `true` if the entry was removed, else `false`.
-	 */
-	function listCacheDelete(key) {
-	  var data = this.__data__,
-	      index = assocIndexOf(data, key);
-
-	  if (index < 0) {
-	    return false;
-	  }
-	  var lastIndex = data.length - 1;
-	  if (index == lastIndex) {
-	    data.pop();
-	  } else {
-	    splice.call(data, index, 1);
-	  }
-	  return true;
-	}
-
-	module.exports = listCacheDelete;
-
-
-/***/ },
-/* 41 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var eq = __webpack_require__(42);
-
-	/**
-	 * Gets the index at which the `key` is found in `array` of key-value pairs.
-	 *
-	 * @private
-	 * @param {Array} array The array to inspect.
-	 * @param {*} key The key to search for.
-	 * @returns {number} Returns the index of the matched value, else `-1`.
-	 */
-	function assocIndexOf(array, key) {
-	  var length = array.length;
-	  while (length--) {
-	    if (eq(array[length][0], key)) {
-	      return length;
-	    }
-	  }
-	  return -1;
-	}
-
-	module.exports = assocIndexOf;
-
-
-/***/ },
-/* 42 */
-/***/ function(module, exports) {
-
-	/**
-	 * Performs a
-	 * [`SameValueZero`](http://ecma-international.org/ecma-262/7.0/#sec-samevaluezero)
-	 * comparison between two values to determine if they are equivalent.
-	 *
-	 * @static
-	 * @memberOf _
-	 * @since 4.0.0
-	 * @category Lang
-	 * @param {*} value The value to compare.
-	 * @param {*} other The other value to compare.
-	 * @returns {boolean} Returns `true` if the values are equivalent, else `false`.
-	 * @example
-	 *
-	 * var object = { 'a': 1 };
-	 * var other = { 'a': 1 };
-	 *
-	 * _.eq(object, object);
-	 * // => true
-	 *
-	 * _.eq(object, other);
-	 * // => false
-	 *
-	 * _.eq('a', 'a');
-	 * // => true
-	 *
-	 * _.eq('a', Object('a'));
-	 * // => false
-	 *
-	 * _.eq(NaN, NaN);
-	 * // => true
-	 */
-	function eq(value, other) {
-	  return value === other || (value !== value && other !== other);
-	}
-
-	module.exports = eq;
-
-
-/***/ },
-/* 43 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var assocIndexOf = __webpack_require__(41);
-
-	/**
-	 * Gets the list cache value for `key`.
-	 *
-	 * @private
-	 * @name get
-	 * @memberOf ListCache
-	 * @param {string} key The key of the value to get.
-	 * @returns {*} Returns the entry value.
-	 */
-	function listCacheGet(key) {
-	  var data = this.__data__,
-	      index = assocIndexOf(data, key);
-
-	  return index < 0 ? undefined : data[index][1];
-	}
-
-	module.exports = listCacheGet;
-
-
-/***/ },
-/* 44 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var assocIndexOf = __webpack_require__(41);
-
-	/**
-	 * Checks if a list cache value for `key` exists.
-	 *
-	 * @private
-	 * @name has
-	 * @memberOf ListCache
-	 * @param {string} key The key of the entry to check.
-	 * @returns {boolean} Returns `true` if an entry for `key` exists, else `false`.
-	 */
-	function listCacheHas(key) {
-	  return assocIndexOf(this.__data__, key) > -1;
-	}
-
-	module.exports = listCacheHas;
-
-
-/***/ },
-/* 45 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var assocIndexOf = __webpack_require__(41);
-
-	/**
-	 * Sets the list cache `key` to `value`.
-	 *
-	 * @private
-	 * @name set
-	 * @memberOf ListCache
-	 * @param {string} key The key of the value to set.
-	 * @param {*} value The value to set.
-	 * @returns {Object} Returns the list cache instance.
-	 */
-	function listCacheSet(key, value) {
-	  var data = this.__data__,
-	      index = assocIndexOf(data, key);
-
-	  if (index < 0) {
-	    data.push([key, value]);
-	  } else {
-	    data[index][1] = value;
-	  }
-	  return this;
-	}
-
-	module.exports = listCacheSet;
-
-
-/***/ },
-/* 46 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var ListCache = __webpack_require__(38);
-
-	/**
-	 * Removes all key-value entries from the stack.
-	 *
-	 * @private
-	 * @name clear
-	 * @memberOf Stack
-	 */
-	function stackClear() {
-	  this.__data__ = new ListCache;
-	}
-
-	module.exports = stackClear;
-
-
-/***/ },
-/* 47 */
-/***/ function(module, exports) {
-
-	/**
-	 * Removes `key` and its value from the stack.
-	 *
-	 * @private
-	 * @name delete
-	 * @memberOf Stack
-	 * @param {string} key The key of the value to remove.
-	 * @returns {boolean} Returns `true` if the entry was removed, else `false`.
-	 */
-	function stackDelete(key) {
-	  return this.__data__['delete'](key);
-	}
-
-	module.exports = stackDelete;
-
-
-/***/ },
-/* 48 */
-/***/ function(module, exports) {
-
-	/**
-	 * Gets the stack value for `key`.
-	 *
-	 * @private
-	 * @name get
-	 * @memberOf Stack
-	 * @param {string} key The key of the value to get.
-	 * @returns {*} Returns the entry value.
-	 */
-	function stackGet(key) {
-	  return this.__data__.get(key);
-	}
-
-	module.exports = stackGet;
-
-
-/***/ },
-/* 49 */
-/***/ function(module, exports) {
-
-	/**
-	 * Checks if a stack value for `key` exists.
-	 *
-	 * @private
-	 * @name has
-	 * @memberOf Stack
-	 * @param {string} key The key of the entry to check.
-	 * @returns {boolean} Returns `true` if an entry for `key` exists, else `false`.
-	 */
-	function stackHas(key) {
-	  return this.__data__.has(key);
-	}
-
-	module.exports = stackHas;
-
-
-/***/ },
-/* 50 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var ListCache = __webpack_require__(38),
-	    Map = __webpack_require__(51),
-	    MapCache = __webpack_require__(61);
-
-	/** Used as the size to enable large array optimizations. */
-	var LARGE_ARRAY_SIZE = 200;
-
-	/**
-	 * Sets the stack `key` to `value`.
-	 *
-	 * @private
-	 * @name set
-	 * @memberOf Stack
-	 * @param {string} key The key of the value to set.
-	 * @param {*} value The value to set.
-	 * @returns {Object} Returns the stack cache instance.
-	 */
-	function stackSet(key, value) {
-	  var cache = this.__data__;
-	  if (cache instanceof ListCache) {
-	    var pairs = cache.__data__;
-	    if (!Map || (pairs.length < LARGE_ARRAY_SIZE - 1)) {
-	      pairs.push([key, value]);
-	      return this;
-	    }
-	    cache = this.__data__ = new MapCache(pairs);
-	  }
-	  cache.set(key, value);
-	  return this;
-	}
-
-	module.exports = stackSet;
-
-
-/***/ },
-/* 51 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var getNative = __webpack_require__(52),
-	    root = __webpack_require__(57);
-
-	/* Built-in method references that are verified to be native. */
-	var Map = getNative(root, 'Map');
-
-	module.exports = Map;
-
-
-/***/ },
-/* 52 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var baseIsNative = __webpack_require__(53),
-	    getValue = __webpack_require__(60);
-
-	/**
-	 * Gets the native function at `key` of `object`.
-	 *
-	 * @private
-	 * @param {Object} object The object to query.
-	 * @param {string} key The key of the method to get.
-	 * @returns {*} Returns the function if it's native, else `undefined`.
-	 */
-	function getNative(object, key) {
-	  var value = getValue(object, key);
-	  return baseIsNative(value) ? value : undefined;
-	}
-
-	module.exports = getNative;
-
-
-/***/ },
-/* 53 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var isFunction = __webpack_require__(23),
-	    isHostObject = __webpack_require__(54),
-	    isMasked = __webpack_require__(55),
-	    isObject = __webpack_require__(24),
-	    toSource = __webpack_require__(59);
-
-	/**
-	 * Used to match `RegExp`
-	 * [syntax characters](http://ecma-international.org/ecma-262/7.0/#sec-patterns).
-	 */
-	var reRegExpChar = /[\\^$.*+?()[\]{}|]/g;
-
-	/** Used to detect host constructors (Safari). */
-	var reIsHostCtor = /^\[object .+?Constructor\]$/;
-
-	/** Used for built-in method references. */
-	var funcProto = Function.prototype,
-	    objectProto = Object.prototype;
-
-	/** Used to resolve the decompiled source of functions. */
-	var funcToString = funcProto.toString;
-
-	/** Used to check objects for own properties. */
-	var hasOwnProperty = objectProto.hasOwnProperty;
-
-	/** Used to detect if a method is native. */
-	var reIsNative = RegExp('^' +
-	  funcToString.call(hasOwnProperty).replace(reRegExpChar, '\\$&')
-	  .replace(/hasOwnProperty|(function).*?(?=\\\()| for .+?(?=\\\])/g, '$1.*?') + '$'
-	);
-
-	/**
-	 * The base implementation of `_.isNative` without bad shim checks.
-	 *
-	 * @private
-	 * @param {*} value The value to check.
-	 * @returns {boolean} Returns `true` if `value` is a native function,
-	 *  else `false`.
-	 */
-	function baseIsNative(value) {
-	  if (!isObject(value) || isMasked(value)) {
-	    return false;
-	  }
-	  var pattern = (isFunction(value) || isHostObject(value)) ? reIsNative : reIsHostCtor;
-	  return pattern.test(toSource(value));
-	}
-
-	module.exports = baseIsNative;
-
-
-/***/ },
-/* 54 */
-/***/ function(module, exports) {
-
-	/**
-	 * Checks if `value` is a host object in IE < 9.
-	 *
-	 * @private
-	 * @param {*} value The value to check.
-	 * @returns {boolean} Returns `true` if `value` is a host object, else `false`.
-	 */
-	function isHostObject(value) {
-	  // Many host objects are `Object` objects that can coerce to strings
-	  // despite having improperly defined `toString` methods.
-	  var result = false;
-	  if (value != null && typeof value.toString != 'function') {
-	    try {
-	      result = !!(value + '');
-	    } catch (e) {}
-	  }
-	  return result;
-	}
-
-	module.exports = isHostObject;
-
-
-/***/ },
-/* 55 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var coreJsData = __webpack_require__(56);
-
-	/** Used to detect methods masquerading as native. */
-	var maskSrcKey = (function() {
-	  var uid = /[^.]+$/.exec(coreJsData && coreJsData.keys && coreJsData.keys.IE_PROTO || '');
-	  return uid ? ('Symbol(src)_1.' + uid) : '';
-	}());
-
-	/**
-	 * Checks if `func` has its source masked.
-	 *
-	 * @private
-	 * @param {Function} func The function to check.
-	 * @returns {boolean} Returns `true` if `func` is masked, else `false`.
-	 */
-	function isMasked(func) {
-	  return !!maskSrcKey && (maskSrcKey in func);
-	}
-
-	module.exports = isMasked;
-
-
-/***/ },
-/* 56 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var root = __webpack_require__(57);
-
-	/** Used to detect overreaching core-js shims. */
-	var coreJsData = root['__core-js_shared__'];
-
-	module.exports = coreJsData;
-
-
-/***/ },
-/* 57 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var freeGlobal = __webpack_require__(58);
-
-	/** Detect free variable `self`. */
-	var freeSelf = typeof self == 'object' && self && self.Object === Object && self;
-
-	/** Used as a reference to the global object. */
-	var root = freeGlobal || freeSelf || Function('return this')();
-
-	module.exports = root;
-
-
-/***/ },
-/* 58 */
-/***/ function(module, exports) {
-
-	/* WEBPACK VAR INJECTION */(function(global) {/** Detect free variable `global` from Node.js. */
-	var freeGlobal = typeof global == 'object' && global && global.Object === Object && global;
-
-	module.exports = freeGlobal;
-
-	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
-
-/***/ },
-/* 59 */
-/***/ function(module, exports) {
-
-	/** Used for built-in method references. */
-	var funcProto = Function.prototype;
-
-	/** Used to resolve the decompiled source of functions. */
-	var funcToString = funcProto.toString;
-
-	/**
-	 * Converts `func` to its source code.
-	 *
-	 * @private
-	 * @param {Function} func The function to process.
-	 * @returns {string} Returns the source code.
-	 */
-	function toSource(func) {
-	  if (func != null) {
-	    try {
-	      return funcToString.call(func);
-	    } catch (e) {}
-	    try {
-	      return (func + '');
-	    } catch (e) {}
-	  }
-	  return '';
-	}
-
-	module.exports = toSource;
-
-
-/***/ },
-/* 60 */
-/***/ function(module, exports) {
-
-	/**
-	 * Gets the value at `key` of `object`.
-	 *
-	 * @private
-	 * @param {Object} [object] The object to query.
-	 * @param {string} key The key of the property to get.
-	 * @returns {*} Returns the property value.
-	 */
-	function getValue(object, key) {
-	  return object == null ? undefined : object[key];
-	}
-
-	module.exports = getValue;
-
-
-/***/ },
-/* 61 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var mapCacheClear = __webpack_require__(62),
-	    mapCacheDelete = __webpack_require__(70),
-	    mapCacheGet = __webpack_require__(73),
-	    mapCacheHas = __webpack_require__(74),
-	    mapCacheSet = __webpack_require__(75);
-
-	/**
-	 * Creates a map cache object to store key-value pairs.
-	 *
-	 * @private
-	 * @constructor
-	 * @param {Array} [entries] The key-value pairs to cache.
-	 */
-	function MapCache(entries) {
-	  var index = -1,
-	      length = entries ? entries.length : 0;
-
-	  this.clear();
-	  while (++index < length) {
-	    var entry = entries[index];
-	    this.set(entry[0], entry[1]);
-	  }
-	}
-
-	// Add methods to `MapCache`.
-	MapCache.prototype.clear = mapCacheClear;
-	MapCache.prototype['delete'] = mapCacheDelete;
-	MapCache.prototype.get = mapCacheGet;
-	MapCache.prototype.has = mapCacheHas;
-	MapCache.prototype.set = mapCacheSet;
-
-	module.exports = MapCache;
-
-
-/***/ },
-/* 62 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var Hash = __webpack_require__(63),
-	    ListCache = __webpack_require__(38),
-	    Map = __webpack_require__(51);
-
-	/**
-	 * Removes all key-value entries from the map.
-	 *
-	 * @private
-	 * @name clear
-	 * @memberOf MapCache
-	 */
-	function mapCacheClear() {
-	  this.__data__ = {
-	    'hash': new Hash,
-	    'map': new (Map || ListCache),
-	    'string': new Hash
-	  };
-	}
-
-	module.exports = mapCacheClear;
-
-
-/***/ },
-/* 63 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var hashClear = __webpack_require__(64),
-	    hashDelete = __webpack_require__(66),
-	    hashGet = __webpack_require__(67),
-	    hashHas = __webpack_require__(68),
-	    hashSet = __webpack_require__(69);
-
-	/**
-	 * Creates a hash object.
-	 *
-	 * @private
-	 * @constructor
-	 * @param {Array} [entries] The key-value pairs to cache.
-	 */
-	function Hash(entries) {
-	  var index = -1,
-	      length = entries ? entries.length : 0;
-
-	  this.clear();
-	  while (++index < length) {
-	    var entry = entries[index];
-	    this.set(entry[0], entry[1]);
-	  }
-	}
-
-	// Add methods to `Hash`.
-	Hash.prototype.clear = hashClear;
-	Hash.prototype['delete'] = hashDelete;
-	Hash.prototype.get = hashGet;
-	Hash.prototype.has = hashHas;
-	Hash.prototype.set = hashSet;
-
-	module.exports = Hash;
-
-
-/***/ },
-/* 64 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var nativeCreate = __webpack_require__(65);
-
-	/**
-	 * Removes all key-value entries from the hash.
-	 *
-	 * @private
-	 * @name clear
-	 * @memberOf Hash
-	 */
-	function hashClear() {
-	  this.__data__ = nativeCreate ? nativeCreate(null) : {};
-	}
-
-	module.exports = hashClear;
-
-
-/***/ },
-/* 65 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var getNative = __webpack_require__(52);
-
-	/* Built-in method references that are verified to be native. */
-	var nativeCreate = getNative(Object, 'create');
-
-	module.exports = nativeCreate;
-
-
-/***/ },
-/* 66 */
-/***/ function(module, exports) {
-
-	/**
-	 * Removes `key` and its value from the hash.
-	 *
-	 * @private
-	 * @name delete
-	 * @memberOf Hash
-	 * @param {Object} hash The hash to modify.
-	 * @param {string} key The key of the value to remove.
-	 * @returns {boolean} Returns `true` if the entry was removed, else `false`.
-	 */
-	function hashDelete(key) {
-	  return this.has(key) && delete this.__data__[key];
-	}
-
-	module.exports = hashDelete;
-
-
-/***/ },
-/* 67 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var nativeCreate = __webpack_require__(65);
-
-	/** Used to stand-in for `undefined` hash values. */
-	var HASH_UNDEFINED = '__lodash_hash_undefined__';
-
-	/** Used for built-in method references. */
-	var objectProto = Object.prototype;
-
-	/** Used to check objects for own properties. */
-	var hasOwnProperty = objectProto.hasOwnProperty;
-
-	/**
-	 * Gets the hash value for `key`.
-	 *
-	 * @private
-	 * @name get
-	 * @memberOf Hash
-	 * @param {string} key The key of the value to get.
-	 * @returns {*} Returns the entry value.
-	 */
-	function hashGet(key) {
-	  var data = this.__data__;
-	  if (nativeCreate) {
-	    var result = data[key];
-	    return result === HASH_UNDEFINED ? undefined : result;
-	  }
-	  return hasOwnProperty.call(data, key) ? data[key] : undefined;
-	}
-
-	module.exports = hashGet;
-
-
-/***/ },
-/* 68 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var nativeCreate = __webpack_require__(65);
-
-	/** Used for built-in method references. */
-	var objectProto = Object.prototype;
-
-	/** Used to check objects for own properties. */
-	var hasOwnProperty = objectProto.hasOwnProperty;
-
-	/**
-	 * Checks if a hash value for `key` exists.
-	 *
-	 * @private
-	 * @name has
-	 * @memberOf Hash
-	 * @param {string} key The key of the entry to check.
-	 * @returns {boolean} Returns `true` if an entry for `key` exists, else `false`.
-	 */
-	function hashHas(key) {
-	  var data = this.__data__;
-	  return nativeCreate ? data[key] !== undefined : hasOwnProperty.call(data, key);
-	}
-
-	module.exports = hashHas;
-
-
-/***/ },
-/* 69 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var nativeCreate = __webpack_require__(65);
-
-	/** Used to stand-in for `undefined` hash values. */
-	var HASH_UNDEFINED = '__lodash_hash_undefined__';
-
-	/**
-	 * Sets the hash `key` to `value`.
-	 *
-	 * @private
-	 * @name set
-	 * @memberOf Hash
-	 * @param {string} key The key of the value to set.
-	 * @param {*} value The value to set.
-	 * @returns {Object} Returns the hash instance.
-	 */
-	function hashSet(key, value) {
-	  var data = this.__data__;
-	  data[key] = (nativeCreate && value === undefined) ? HASH_UNDEFINED : value;
-	  return this;
-	}
-
-	module.exports = hashSet;
-
-
-/***/ },
-/* 70 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var getMapData = __webpack_require__(71);
-
-	/**
-	 * Removes `key` and its value from the map.
-	 *
-	 * @private
-	 * @name delete
-	 * @memberOf MapCache
-	 * @param {string} key The key of the value to remove.
-	 * @returns {boolean} Returns `true` if the entry was removed, else `false`.
-	 */
-	function mapCacheDelete(key) {
-	  return getMapData(this, key)['delete'](key);
-	}
-
-	module.exports = mapCacheDelete;
-
-
-/***/ },
-/* 71 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var isKeyable = __webpack_require__(72);
-
-	/**
-	 * Gets the data for `map`.
-	 *
-	 * @private
-	 * @param {Object} map The map to query.
-	 * @param {string} key The reference key.
-	 * @returns {*} Returns the map data.
-	 */
-	function getMapData(map, key) {
-	  var data = map.__data__;
-	  return isKeyable(key)
-	    ? data[typeof key == 'string' ? 'string' : 'hash']
-	    : data.map;
-	}
-
-	module.exports = getMapData;
-
-
-/***/ },
-/* 72 */
-/***/ function(module, exports) {
-
-	/**
-	 * Checks if `value` is suitable for use as unique object key.
-	 *
-	 * @private
-	 * @param {*} value The value to check.
-	 * @returns {boolean} Returns `true` if `value` is suitable, else `false`.
-	 */
-	function isKeyable(value) {
-	  var type = typeof value;
-	  return (type == 'string' || type == 'number' || type == 'symbol' || type == 'boolean')
-	    ? (value !== '__proto__')
-	    : (value === null);
-	}
-
-	module.exports = isKeyable;
-
-
-/***/ },
-/* 73 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var getMapData = __webpack_require__(71);
-
-	/**
-	 * Gets the map value for `key`.
-	 *
-	 * @private
-	 * @name get
-	 * @memberOf MapCache
-	 * @param {string} key The key of the value to get.
-	 * @returns {*} Returns the entry value.
-	 */
-	function mapCacheGet(key) {
-	  return getMapData(this, key).get(key);
-	}
-
-	module.exports = mapCacheGet;
-
-
-/***/ },
-/* 74 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var getMapData = __webpack_require__(71);
-
-	/**
-	 * Checks if a map value for `key` exists.
-	 *
-	 * @private
-	 * @name has
-	 * @memberOf MapCache
-	 * @param {string} key The key of the entry to check.
-	 * @returns {boolean} Returns `true` if an entry for `key` exists, else `false`.
-	 */
-	function mapCacheHas(key) {
-	  return getMapData(this, key).has(key);
-	}
-
-	module.exports = mapCacheHas;
-
-
-/***/ },
-/* 75 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var getMapData = __webpack_require__(71);
-
-	/**
-	 * Sets the map `key` to `value`.
-	 *
-	 * @private
-	 * @name set
-	 * @memberOf MapCache
-	 * @param {string} key The key of the value to set.
-	 * @param {*} value The value to set.
-	 * @returns {Object} Returns the map cache instance.
-	 */
-	function mapCacheSet(key, value) {
-	  getMapData(this, key).set(key, value);
-	  return this;
-	}
-
-	module.exports = mapCacheSet;
-
-
-/***/ },
-/* 76 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var baseIsEqualDeep = __webpack_require__(77),
-	    isObject = __webpack_require__(24),
-	    isObjectLike = __webpack_require__(26);
-
-	/**
-	 * The base implementation of `_.isEqual` which supports partial comparisons
-	 * and tracks traversed objects.
-	 *
-	 * @private
-	 * @param {*} value The value to compare.
-	 * @param {*} other The other value to compare.
-	 * @param {Function} [customizer] The function to customize comparisons.
-	 * @param {boolean} [bitmask] The bitmask of comparison flags.
-	 *  The bitmask may be composed of the following flags:
-	 *     1 - Unordered comparison
-	 *     2 - Partial comparison
-	 * @param {Object} [stack] Tracks traversed `value` and `other` objects.
-	 * @returns {boolean} Returns `true` if the values are equivalent, else `false`.
-	 */
-	function baseIsEqual(value, other, customizer, bitmask, stack) {
-	  if (value === other) {
-	    return true;
-	  }
-	  if (value == null || other == null || (!isObject(value) && !isObjectLike(other))) {
-	    return value !== value && other !== other;
-	  }
-	  return baseIsEqualDeep(value, other, baseIsEqual, customizer, bitmask, stack);
-	}
-
-	module.exports = baseIsEqual;
-
-
-/***/ },
-/* 77 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var Stack = __webpack_require__(37),
-	    equalArrays = __webpack_require__(78),
-	    equalByTag = __webpack_require__(83),
-	    equalObjects = __webpack_require__(88),
-	    getTag = __webpack_require__(89),
-	    isArray = __webpack_require__(27),
-	    isHostObject = __webpack_require__(54),
-	    isTypedArray = __webpack_require__(95);
-
-	/** Used to compose bitmasks for comparison styles. */
-	var PARTIAL_COMPARE_FLAG = 2;
-
-	/** `Object#toString` result references. */
-	var argsTag = '[object Arguments]',
-	    arrayTag = '[object Array]',
-	    objectTag = '[object Object]';
-
-	/** Used for built-in method references. */
-	var objectProto = Object.prototype;
-
-	/** Used to check objects for own properties. */
-	var hasOwnProperty = objectProto.hasOwnProperty;
-
-	/**
-	 * A specialized version of `baseIsEqual` for arrays and objects which performs
-	 * deep comparisons and tracks traversed objects enabling objects with circular
-	 * references to be compared.
-	 *
-	 * @private
-	 * @param {Object} object The object to compare.
-	 * @param {Object} other The other object to compare.
-	 * @param {Function} equalFunc The function to determine equivalents of values.
-	 * @param {Function} [customizer] The function to customize comparisons.
-	 * @param {number} [bitmask] The bitmask of comparison flags. See `baseIsEqual`
-	 *  for more details.
-	 * @param {Object} [stack] Tracks traversed `object` and `other` objects.
-	 * @returns {boolean} Returns `true` if the objects are equivalent, else `false`.
-	 */
-	function baseIsEqualDeep(object, other, equalFunc, customizer, bitmask, stack) {
-	  var objIsArr = isArray(object),
-	      othIsArr = isArray(other),
-	      objTag = arrayTag,
-	      othTag = arrayTag;
-
-	  if (!objIsArr) {
-	    objTag = getTag(object);
-	    objTag = objTag == argsTag ? objectTag : objTag;
-	  }
-	  if (!othIsArr) {
-	    othTag = getTag(other);
-	    othTag = othTag == argsTag ? objectTag : othTag;
-	  }
-	  var objIsObj = objTag == objectTag && !isHostObject(object),
-	      othIsObj = othTag == objectTag && !isHostObject(other),
-	      isSameTag = objTag == othTag;
-
-	  if (isSameTag && !objIsObj) {
-	    stack || (stack = new Stack);
-	    return (objIsArr || isTypedArray(object))
-	      ? equalArrays(object, other, equalFunc, customizer, bitmask, stack)
-	      : equalByTag(object, other, objTag, equalFunc, customizer, bitmask, stack);
-	  }
-	  if (!(bitmask & PARTIAL_COMPARE_FLAG)) {
-	    var objIsWrapped = objIsObj && hasOwnProperty.call(object, '__wrapped__'),
-	        othIsWrapped = othIsObj && hasOwnProperty.call(other, '__wrapped__');
-
-	    if (objIsWrapped || othIsWrapped) {
-	      var objUnwrapped = objIsWrapped ? object.value() : object,
-	          othUnwrapped = othIsWrapped ? other.value() : other;
-
-	      stack || (stack = new Stack);
-	      return equalFunc(objUnwrapped, othUnwrapped, customizer, bitmask, stack);
-	    }
-	  }
-	  if (!isSameTag) {
-	    return false;
-	  }
-	  stack || (stack = new Stack);
-	  return equalObjects(object, other, equalFunc, customizer, bitmask, stack);
-	}
-
-	module.exports = baseIsEqualDeep;
-
-
-/***/ },
-/* 78 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var SetCache = __webpack_require__(79),
-	    arraySome = __webpack_require__(82);
-
-	/** Used to compose bitmasks for comparison styles. */
-	var UNORDERED_COMPARE_FLAG = 1,
-	    PARTIAL_COMPARE_FLAG = 2;
-
-	/**
-	 * A specialized version of `baseIsEqualDeep` for arrays with support for
-	 * partial deep comparisons.
-	 *
-	 * @private
-	 * @param {Array} array The array to compare.
-	 * @param {Array} other The other array to compare.
-	 * @param {Function} equalFunc The function to determine equivalents of values.
-	 * @param {Function} customizer The function to customize comparisons.
-	 * @param {number} bitmask The bitmask of comparison flags. See `baseIsEqual`
-	 *  for more details.
-	 * @param {Object} stack Tracks traversed `array` and `other` objects.
-	 * @returns {boolean} Returns `true` if the arrays are equivalent, else `false`.
-	 */
-	function equalArrays(array, other, equalFunc, customizer, bitmask, stack) {
-	  var isPartial = bitmask & PARTIAL_COMPARE_FLAG,
-	      arrLength = array.length,
-	      othLength = other.length;
-
-	  if (arrLength != othLength && !(isPartial && othLength > arrLength)) {
-	    return false;
-	  }
-	  // Assume cyclic values are equal.
-	  var stacked = stack.get(array);
-	  if (stacked && stack.get(other)) {
-	    return stacked == other;
-	  }
-	  var index = -1,
-	      result = true,
-	      seen = (bitmask & UNORDERED_COMPARE_FLAG) ? new SetCache : undefined;
-
-	  stack.set(array, other);
-	  stack.set(other, array);
-
-	  // Ignore non-index properties.
-	  while (++index < arrLength) {
-	    var arrValue = array[index],
-	        othValue = other[index];
-
-	    if (customizer) {
-	      var compared = isPartial
-	        ? customizer(othValue, arrValue, index, other, array, stack)
-	        : customizer(arrValue, othValue, index, array, other, stack);
-	    }
-	    if (compared !== undefined) {
-	      if (compared) {
-	        continue;
-	      }
-	      result = false;
-	      break;
-	    }
-	    // Recursively compare arrays (susceptible to call stack limits).
-	    if (seen) {
-	      if (!arraySome(other, function(othValue, othIndex) {
-	            if (!seen.has(othIndex) &&
-	                (arrValue === othValue || equalFunc(arrValue, othValue, customizer, bitmask, stack))) {
-	              return seen.add(othIndex);
-	            }
-	          })) {
-	        result = false;
-	        break;
-	      }
-	    } else if (!(
-	          arrValue === othValue ||
-	            equalFunc(arrValue, othValue, customizer, bitmask, stack)
-	        )) {
-	      result = false;
-	      break;
-	    }
-	  }
-	  stack['delete'](array);
-	  stack['delete'](other);
-	  return result;
-	}
-
-	module.exports = equalArrays;
-
-
-/***/ },
-/* 79 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var MapCache = __webpack_require__(61),
-	    setCacheAdd = __webpack_require__(80),
-	    setCacheHas = __webpack_require__(81);
-
-	/**
-	 *
-	 * Creates an array cache object to store unique values.
-	 *
-	 * @private
-	 * @constructor
-	 * @param {Array} [values] The values to cache.
-	 */
-	function SetCache(values) {
-	  var index = -1,
-	      length = values ? values.length : 0;
-
-	  this.__data__ = new MapCache;
-	  while (++index < length) {
-	    this.add(values[index]);
-	  }
-	}
-
-	// Add methods to `SetCache`.
-	SetCache.prototype.add = SetCache.prototype.push = setCacheAdd;
-	SetCache.prototype.has = setCacheHas;
-
-	module.exports = SetCache;
-
-
-/***/ },
-/* 80 */
-/***/ function(module, exports) {
-
-	/** Used to stand-in for `undefined` hash values. */
-	var HASH_UNDEFINED = '__lodash_hash_undefined__';
-
-	/**
-	 * Adds `value` to the array cache.
-	 *
-	 * @private
-	 * @name add
-	 * @memberOf SetCache
-	 * @alias push
-	 * @param {*} value The value to cache.
-	 * @returns {Object} Returns the cache instance.
-	 */
-	function setCacheAdd(value) {
-	  this.__data__.set(value, HASH_UNDEFINED);
-	  return this;
-	}
-
-	module.exports = setCacheAdd;
-
-
-/***/ },
-/* 81 */
-/***/ function(module, exports) {
-
-	/**
-	 * Checks if `value` is in the array cache.
-	 *
-	 * @private
-	 * @name has
-	 * @memberOf SetCache
-	 * @param {*} value The value to search for.
-	 * @returns {number} Returns `true` if `value` is found, else `false`.
-	 */
-	function setCacheHas(value) {
-	  return this.__data__.has(value);
-	}
-
-	module.exports = setCacheHas;
-
-
-/***/ },
-/* 82 */
-/***/ function(module, exports) {
-
-	/**
-	 * A specialized version of `_.some` for arrays without support for iteratee
-	 * shorthands.
-	 *
-	 * @private
-	 * @param {Array} [array] The array to iterate over.
-	 * @param {Function} predicate The function invoked per iteration.
-	 * @returns {boolean} Returns `true` if any element passes the predicate check,
-	 *  else `false`.
-	 */
-	function arraySome(array, predicate) {
-	  var index = -1,
-	      length = array ? array.length : 0;
-
-	  while (++index < length) {
-	    if (predicate(array[index], index, array)) {
-	      return true;
-	    }
-	  }
-	  return false;
-	}
-
-	module.exports = arraySome;
-
-
-/***/ },
-/* 83 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var Symbol = __webpack_require__(84),
-	    Uint8Array = __webpack_require__(85),
-	    eq = __webpack_require__(42),
-	    equalArrays = __webpack_require__(78),
-	    mapToArray = __webpack_require__(86),
-	    setToArray = __webpack_require__(87);
-
-	/** Used to compose bitmasks for comparison styles. */
-	var UNORDERED_COMPARE_FLAG = 1,
-	    PARTIAL_COMPARE_FLAG = 2;
-
-	/** `Object#toString` result references. */
-	var boolTag = '[object Boolean]',
-	    dateTag = '[object Date]',
-	    errorTag = '[object Error]',
-	    mapTag = '[object Map]',
-	    numberTag = '[object Number]',
-	    regexpTag = '[object RegExp]',
-	    setTag = '[object Set]',
-	    stringTag = '[object String]',
-	    symbolTag = '[object Symbol]';
-
-	var arrayBufferTag = '[object ArrayBuffer]',
-	    dataViewTag = '[object DataView]';
-
-	/** Used to convert symbols to primitives and strings. */
-	var symbolProto = Symbol ? Symbol.prototype : undefined,
-	    symbolValueOf = symbolProto ? symbolProto.valueOf : undefined;
-
-	/**
-	 * A specialized version of `baseIsEqualDeep` for comparing objects of
-	 * the same `toStringTag`.
-	 *
-	 * **Note:** This function only supports comparing values with tags of
-	 * `Boolean`, `Date`, `Error`, `Number`, `RegExp`, or `String`.
-	 *
-	 * @private
-	 * @param {Object} object The object to compare.
-	 * @param {Object} other The other object to compare.
-	 * @param {string} tag The `toStringTag` of the objects to compare.
-	 * @param {Function} equalFunc The function to determine equivalents of values.
-	 * @param {Function} customizer The function to customize comparisons.
-	 * @param {number} bitmask The bitmask of comparison flags. See `baseIsEqual`
-	 *  for more details.
-	 * @param {Object} stack Tracks traversed `object` and `other` objects.
-	 * @returns {boolean} Returns `true` if the objects are equivalent, else `false`.
-	 */
-	function equalByTag(object, other, tag, equalFunc, customizer, bitmask, stack) {
-	  switch (tag) {
-	    case dataViewTag:
-	      if ((object.byteLength != other.byteLength) ||
-	          (object.byteOffset != other.byteOffset)) {
-	        return false;
-	      }
-	      object = object.buffer;
-	      other = other.buffer;
-
-	    case arrayBufferTag:
-	      if ((object.byteLength != other.byteLength) ||
-	          !equalFunc(new Uint8Array(object), new Uint8Array(other))) {
-	        return false;
-	      }
-	      return true;
-
-	    case boolTag:
-	    case dateTag:
-	    case numberTag:
-	      // Coerce booleans to `1` or `0` and dates to milliseconds.
-	      // Invalid dates are coerced to `NaN`.
-	      return eq(+object, +other);
-
-	    case errorTag:
-	      return object.name == other.name && object.message == other.message;
-
-	    case regexpTag:
-	    case stringTag:
-	      // Coerce regexes to strings and treat strings, primitives and objects,
-	      // as equal. See http://www.ecma-international.org/ecma-262/7.0/#sec-regexp.prototype.tostring
-	      // for more details.
-	      return object == (other + '');
-
-	    case mapTag:
-	      var convert = mapToArray;
-
-	    case setTag:
-	      var isPartial = bitmask & PARTIAL_COMPARE_FLAG;
-	      convert || (convert = setToArray);
-
-	      if (object.size != other.size && !isPartial) {
-	        return false;
-	      }
-	      // Assume cyclic values are equal.
-	      var stacked = stack.get(object);
-	      if (stacked) {
-	        return stacked == other;
-	      }
-	      bitmask |= UNORDERED_COMPARE_FLAG;
-
-	      // Recursively compare objects (susceptible to call stack limits).
-	      stack.set(object, other);
-	      var result = equalArrays(convert(object), convert(other), equalFunc, customizer, bitmask, stack);
-	      stack['delete'](object);
-	      return result;
-
-	    case symbolTag:
-	      if (symbolValueOf) {
-	        return symbolValueOf.call(object) == symbolValueOf.call(other);
-	      }
-	  }
-	  return false;
-	}
-
-	module.exports = equalByTag;
-
-
-/***/ },
-/* 84 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var root = __webpack_require__(57);
-
-	/** Built-in value references. */
-	var Symbol = root.Symbol;
-
-	module.exports = Symbol;
-
-
-/***/ },
-/* 85 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var root = __webpack_require__(57);
-
-	/** Built-in value references. */
-	var Uint8Array = root.Uint8Array;
-
-	module.exports = Uint8Array;
-
-
-/***/ },
-/* 86 */
-/***/ function(module, exports) {
-
-	/**
-	 * Converts `map` to its key-value pairs.
-	 *
-	 * @private
-	 * @param {Object} map The map to convert.
-	 * @returns {Array} Returns the key-value pairs.
-	 */
-	function mapToArray(map) {
-	  var index = -1,
-	      result = Array(map.size);
-
-	  map.forEach(function(value, key) {
-	    result[++index] = [key, value];
-	  });
-	  return result;
-	}
-
-	module.exports = mapToArray;
-
-
-/***/ },
-/* 87 */
-/***/ function(module, exports) {
-
-	/**
-	 * Converts `set` to an array of its values.
-	 *
-	 * @private
-	 * @param {Object} set The set to convert.
-	 * @returns {Array} Returns the values.
-	 */
-	function setToArray(set) {
-	  var index = -1,
-	      result = Array(set.size);
-
-	  set.forEach(function(value) {
-	    result[++index] = value;
-	  });
-	  return result;
-	}
-
-	module.exports = setToArray;
-
-
-/***/ },
-/* 88 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var keys = __webpack_require__(17);
-
-	/** Used to compose bitmasks for comparison styles. */
-	var PARTIAL_COMPARE_FLAG = 2;
-
-	/** Used for built-in method references. */
-	var objectProto = Object.prototype;
-
-	/** Used to check objects for own properties. */
-	var hasOwnProperty = objectProto.hasOwnProperty;
-
-	/**
-	 * A specialized version of `baseIsEqualDeep` for objects with support for
-	 * partial deep comparisons.
-	 *
-	 * @private
-	 * @param {Object} object The object to compare.
-	 * @param {Object} other The other object to compare.
-	 * @param {Function} equalFunc The function to determine equivalents of values.
-	 * @param {Function} customizer The function to customize comparisons.
-	 * @param {number} bitmask The bitmask of comparison flags. See `baseIsEqual`
-	 *  for more details.
-	 * @param {Object} stack Tracks traversed `object` and `other` objects.
-	 * @returns {boolean} Returns `true` if the objects are equivalent, else `false`.
-	 */
-	function equalObjects(object, other, equalFunc, customizer, bitmask, stack) {
-	  var isPartial = bitmask & PARTIAL_COMPARE_FLAG,
-	      objProps = keys(object),
-	      objLength = objProps.length,
-	      othProps = keys(other),
-	      othLength = othProps.length;
-
-	  if (objLength != othLength && !isPartial) {
-	    return false;
-	  }
-	  var index = objLength;
-	  while (index--) {
-	    var key = objProps[index];
-	    if (!(isPartial ? key in other : hasOwnProperty.call(other, key))) {
-	      return false;
-	    }
-	  }
-	  // Assume cyclic values are equal.
-	  var stacked = stack.get(object);
-	  if (stacked && stack.get(other)) {
-	    return stacked == other;
-	  }
-	  var result = true;
-	  stack.set(object, other);
-	  stack.set(other, object);
-
-	  var skipCtor = isPartial;
-	  while (++index < objLength) {
-	    key = objProps[index];
-	    var objValue = object[key],
-	        othValue = other[key];
-
-	    if (customizer) {
-	      var compared = isPartial
-	        ? customizer(othValue, objValue, key, other, object, stack)
-	        : customizer(objValue, othValue, key, object, other, stack);
-	    }
-	    // Recursively compare objects (susceptible to call stack limits).
-	    if (!(compared === undefined
-	          ? (objValue === othValue || equalFunc(objValue, othValue, customizer, bitmask, stack))
-	          : compared
-	        )) {
-	      result = false;
-	      break;
-	    }
-	    skipCtor || (skipCtor = key == 'constructor');
-	  }
-	  if (result && !skipCtor) {
-	    var objCtor = object.constructor,
-	        othCtor = other.constructor;
-
-	    // Non `Object` object instances with different constructors are not equal.
-	    if (objCtor != othCtor &&
-	        ('constructor' in object && 'constructor' in other) &&
-	        !(typeof objCtor == 'function' && objCtor instanceof objCtor &&
-	          typeof othCtor == 'function' && othCtor instanceof othCtor)) {
-	      result = false;
-	    }
-	  }
-	  stack['delete'](object);
-	  stack['delete'](other);
-	  return result;
-	}
-
-	module.exports = equalObjects;
-
-
-/***/ },
-/* 89 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var DataView = __webpack_require__(90),
-	    Map = __webpack_require__(51),
-	    Promise = __webpack_require__(91),
-	    Set = __webpack_require__(92),
-	    WeakMap = __webpack_require__(93),
-	    baseGetTag = __webpack_require__(94),
-	    toSource = __webpack_require__(59);
-
-	/** `Object#toString` result references. */
-	var mapTag = '[object Map]',
-	    objectTag = '[object Object]',
-	    promiseTag = '[object Promise]',
-	    setTag = '[object Set]',
-	    weakMapTag = '[object WeakMap]';
-
-	var dataViewTag = '[object DataView]';
-
-	/** Used for built-in method references. */
-	var objectProto = Object.prototype;
-
-	/**
-	 * Used to resolve the
-	 * [`toStringTag`](http://ecma-international.org/ecma-262/7.0/#sec-object.prototype.tostring)
-	 * of values.
-	 */
-	var objectToString = objectProto.toString;
-
-	/** Used to detect maps, sets, and weakmaps. */
-	var dataViewCtorString = toSource(DataView),
-	    mapCtorString = toSource(Map),
-	    promiseCtorString = toSource(Promise),
-	    setCtorString = toSource(Set),
-	    weakMapCtorString = toSource(WeakMap);
-
-	/**
-	 * Gets the `toStringTag` of `value`.
-	 *
-	 * @private
-	 * @param {*} value The value to query.
-	 * @returns {string} Returns the `toStringTag`.
-	 */
-	var getTag = baseGetTag;
-
-	// Fallback for data views, maps, sets, and weak maps in IE 11,
-	// for data views in Edge < 14, and promises in Node.js.
-	if ((DataView && getTag(new DataView(new ArrayBuffer(1))) != dataViewTag) ||
-	    (Map && getTag(new Map) != mapTag) ||
-	    (Promise && getTag(Promise.resolve()) != promiseTag) ||
-	    (Set && getTag(new Set) != setTag) ||
-	    (WeakMap && getTag(new WeakMap) != weakMapTag)) {
-	  getTag = function(value) {
-	    var result = objectToString.call(value),
-	        Ctor = result == objectTag ? value.constructor : undefined,
-	        ctorString = Ctor ? toSource(Ctor) : undefined;
-
-	    if (ctorString) {
-	      switch (ctorString) {
-	        case dataViewCtorString: return dataViewTag;
-	        case mapCtorString: return mapTag;
-	        case promiseCtorString: return promiseTag;
-	        case setCtorString: return setTag;
-	        case weakMapCtorString: return weakMapTag;
-	      }
-	    }
-	    return result;
-	  };
-	}
-
-	module.exports = getTag;
-
-
-/***/ },
-/* 90 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var getNative = __webpack_require__(52),
-	    root = __webpack_require__(57);
-
-	/* Built-in method references that are verified to be native. */
-	var DataView = getNative(root, 'DataView');
-
-	module.exports = DataView;
-
-
-/***/ },
-/* 91 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var getNative = __webpack_require__(52),
-	    root = __webpack_require__(57);
-
-	/* Built-in method references that are verified to be native. */
-	var Promise = getNative(root, 'Promise');
-
-	module.exports = Promise;
-
-
-/***/ },
-/* 92 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var getNative = __webpack_require__(52),
-	    root = __webpack_require__(57);
-
-	/* Built-in method references that are verified to be native. */
-	var Set = getNative(root, 'Set');
-
-	module.exports = Set;
-
-
-/***/ },
-/* 93 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var getNative = __webpack_require__(52),
-	    root = __webpack_require__(57);
-
-	/* Built-in method references that are verified to be native. */
-	var WeakMap = getNative(root, 'WeakMap');
-
-	module.exports = WeakMap;
-
-
-/***/ },
-/* 94 */
-/***/ function(module, exports) {
-
-	/** Used for built-in method references. */
-	var objectProto = Object.prototype;
-
-	/**
-	 * Used to resolve the
-	 * [`toStringTag`](http://ecma-international.org/ecma-262/7.0/#sec-object.prototype.tostring)
-	 * of values.
-	 */
-	var objectToString = objectProto.toString;
-
-	/**
-	 * The base implementation of `getTag`.
-	 *
-	 * @private
-	 * @param {*} value The value to query.
-	 * @returns {string} Returns the `toStringTag`.
-	 */
-	function baseGetTag(value) {
-	  return objectToString.call(value);
-	}
-
-	module.exports = baseGetTag;
-
-
-/***/ },
-/* 95 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var baseIsTypedArray = __webpack_require__(96),
-	    baseUnary = __webpack_require__(97),
-	    nodeUtil = __webpack_require__(98);
+	var baseIsTypedArray = __webpack_require__(33),
+	    baseUnary = __webpack_require__(35),
+	    nodeUtil = __webpack_require__(36);
 
 	/* Node.js helper references. */
 	var nodeIsTypedArray = nodeUtil && nodeUtil.isTypedArray;
@@ -5434,10 +3650,11 @@ var StellarSdk =
 
 
 /***/ },
-/* 96 */
+/* 33 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var isLength = __webpack_require__(25),
+	var baseGetTag = __webpack_require__(20),
+	    isLength = __webpack_require__(34),
 	    isObjectLike = __webpack_require__(26);
 
 	/** `Object#toString` result references. */
@@ -5483,16 +3700,6 @@ var StellarSdk =
 	typedArrayTags[setTag] = typedArrayTags[stringTag] =
 	typedArrayTags[weakMapTag] = false;
 
-	/** Used for built-in method references. */
-	var objectProto = Object.prototype;
-
-	/**
-	 * Used to resolve the
-	 * [`toStringTag`](http://ecma-international.org/ecma-262/7.0/#sec-object.prototype.tostring)
-	 * of values.
-	 */
-	var objectToString = objectProto.toString;
-
 	/**
 	 * The base implementation of `_.isTypedArray` without Node.js optimizations.
 	 *
@@ -5502,14 +3709,55 @@ var StellarSdk =
 	 */
 	function baseIsTypedArray(value) {
 	  return isObjectLike(value) &&
-	    isLength(value.length) && !!typedArrayTags[objectToString.call(value)];
+	    isLength(value.length) && !!typedArrayTags[baseGetTag(value)];
 	}
 
 	module.exports = baseIsTypedArray;
 
 
 /***/ },
-/* 97 */
+/* 34 */
+/***/ function(module, exports) {
+
+	/** Used as references for various `Number` constants. */
+	var MAX_SAFE_INTEGER = 9007199254740991;
+
+	/**
+	 * Checks if `value` is a valid array-like length.
+	 *
+	 * **Note:** This method is loosely based on
+	 * [`ToLength`](http://ecma-international.org/ecma-262/7.0/#sec-tolength).
+	 *
+	 * @static
+	 * @memberOf _
+	 * @since 4.0.0
+	 * @category Lang
+	 * @param {*} value The value to check.
+	 * @returns {boolean} Returns `true` if `value` is a valid length, else `false`.
+	 * @example
+	 *
+	 * _.isLength(3);
+	 * // => true
+	 *
+	 * _.isLength(Number.MIN_VALUE);
+	 * // => false
+	 *
+	 * _.isLength(Infinity);
+	 * // => false
+	 *
+	 * _.isLength('3');
+	 * // => false
+	 */
+	function isLength(value) {
+	  return typeof value == 'number' &&
+	    value > -1 && value % 1 == 0 && value <= MAX_SAFE_INTEGER;
+	}
+
+	module.exports = isLength;
+
+
+/***/ },
+/* 35 */
 /***/ function(module, exports) {
 
 	/**
@@ -5529,10 +3777,10 @@ var StellarSdk =
 
 
 /***/ },
-/* 98 */
+/* 36 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(module) {var freeGlobal = __webpack_require__(58);
+	/* WEBPACK VAR INJECTION */(function(module) {var freeGlobal = __webpack_require__(23);
 
 	/** Detect free variable `exports`. */
 	var freeExports = typeof exports == 'object' && exports && !exports.nodeType && exports;
@@ -5555,615 +3803,280 @@ var StellarSdk =
 
 	module.exports = nodeUtil;
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(4)(module)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(29)(module)))
 
 /***/ },
-/* 99 */
+/* 37 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var isStrictComparable = __webpack_require__(100),
-	    keys = __webpack_require__(17);
+	var isPrototype = __webpack_require__(38),
+	    nativeKeys = __webpack_require__(39);
+
+	/** Used for built-in method references. */
+	var objectProto = Object.prototype;
+
+	/** Used to check objects for own properties. */
+	var hasOwnProperty = objectProto.hasOwnProperty;
 
 	/**
-	 * Gets the property names, values, and compare flags of `object`.
+	 * The base implementation of `_.keys` which doesn't treat sparse arrays as dense.
 	 *
 	 * @private
 	 * @param {Object} object The object to query.
-	 * @returns {Array} Returns the match data of `object`.
+	 * @returns {Array} Returns the array of property names.
 	 */
-	function getMatchData(object) {
-	  var result = keys(object),
-	      length = result.length;
-
-	  while (length--) {
-	    var key = result[length],
-	        value = object[key];
-
-	    result[length] = [key, value, isStrictComparable(value)];
+	function baseKeys(object) {
+	  if (!isPrototype(object)) {
+	    return nativeKeys(object);
 	  }
-	  return result;
-	}
-
-	module.exports = getMatchData;
-
-
-/***/ },
-/* 100 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var isObject = __webpack_require__(24);
-
-	/**
-	 * Checks if `value` is suitable for strict equality comparisons, i.e. `===`.
-	 *
-	 * @private
-	 * @param {*} value The value to check.
-	 * @returns {boolean} Returns `true` if `value` if suitable for strict
-	 *  equality comparisons, else `false`.
-	 */
-	function isStrictComparable(value) {
-	  return value === value && !isObject(value);
-	}
-
-	module.exports = isStrictComparable;
-
-
-/***/ },
-/* 101 */
-/***/ function(module, exports) {
-
-	/**
-	 * A specialized version of `matchesProperty` for source values suitable
-	 * for strict equality comparisons, i.e. `===`.
-	 *
-	 * @private
-	 * @param {string} key The key of the property to get.
-	 * @param {*} srcValue The value to match.
-	 * @returns {Function} Returns the new spec function.
-	 */
-	function matchesStrictComparable(key, srcValue) {
-	  return function(object) {
-	    if (object == null) {
-	      return false;
-	    }
-	    return object[key] === srcValue &&
-	      (srcValue !== undefined || (key in Object(object)));
-	  };
-	}
-
-	module.exports = matchesStrictComparable;
-
-
-/***/ },
-/* 102 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var baseIsEqual = __webpack_require__(76),
-	    get = __webpack_require__(103),
-	    hasIn = __webpack_require__(113),
-	    isKey = __webpack_require__(111),
-	    isStrictComparable = __webpack_require__(100),
-	    matchesStrictComparable = __webpack_require__(101),
-	    toKey = __webpack_require__(112);
-
-	/** Used to compose bitmasks for comparison styles. */
-	var UNORDERED_COMPARE_FLAG = 1,
-	    PARTIAL_COMPARE_FLAG = 2;
-
-	/**
-	 * The base implementation of `_.matchesProperty` which doesn't clone `srcValue`.
-	 *
-	 * @private
-	 * @param {string} path The path of the property to get.
-	 * @param {*} srcValue The value to match.
-	 * @returns {Function} Returns the new spec function.
-	 */
-	function baseMatchesProperty(path, srcValue) {
-	  if (isKey(path) && isStrictComparable(srcValue)) {
-	    return matchesStrictComparable(toKey(path), srcValue);
-	  }
-	  return function(object) {
-	    var objValue = get(object, path);
-	    return (objValue === undefined && objValue === srcValue)
-	      ? hasIn(object, path)
-	      : baseIsEqual(srcValue, objValue, undefined, UNORDERED_COMPARE_FLAG | PARTIAL_COMPARE_FLAG);
-	  };
-	}
-
-	module.exports = baseMatchesProperty;
-
-
-/***/ },
-/* 103 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var baseGet = __webpack_require__(104);
-
-	/**
-	 * Gets the value at `path` of `object`. If the resolved value is
-	 * `undefined`, the `defaultValue` is returned in its place.
-	 *
-	 * @static
-	 * @memberOf _
-	 * @since 3.7.0
-	 * @category Object
-	 * @param {Object} object The object to query.
-	 * @param {Array|string} path The path of the property to get.
-	 * @param {*} [defaultValue] The value returned for `undefined` resolved values.
-	 * @returns {*} Returns the resolved value.
-	 * @example
-	 *
-	 * var object = { 'a': [{ 'b': { 'c': 3 } }] };
-	 *
-	 * _.get(object, 'a[0].b.c');
-	 * // => 3
-	 *
-	 * _.get(object, ['a', '0', 'b', 'c']);
-	 * // => 3
-	 *
-	 * _.get(object, 'a.b.c', 'default');
-	 * // => 'default'
-	 */
-	function get(object, path, defaultValue) {
-	  var result = object == null ? undefined : baseGet(object, path);
-	  return result === undefined ? defaultValue : result;
-	}
-
-	module.exports = get;
-
-
-/***/ },
-/* 104 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var castPath = __webpack_require__(105),
-	    isKey = __webpack_require__(111),
-	    toKey = __webpack_require__(112);
-
-	/**
-	 * The base implementation of `_.get` without support for default values.
-	 *
-	 * @private
-	 * @param {Object} object The object to query.
-	 * @param {Array|string} path The path of the property to get.
-	 * @returns {*} Returns the resolved value.
-	 */
-	function baseGet(object, path) {
-	  path = isKey(path, object) ? [path] : castPath(path);
-
-	  var index = 0,
-	      length = path.length;
-
-	  while (object != null && index < length) {
-	    object = object[toKey(path[index++])];
-	  }
-	  return (index && index == length) ? object : undefined;
-	}
-
-	module.exports = baseGet;
-
-
-/***/ },
-/* 105 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var isArray = __webpack_require__(27),
-	    stringToPath = __webpack_require__(106);
-
-	/**
-	 * Casts `value` to a path array if it's not one.
-	 *
-	 * @private
-	 * @param {*} value The value to inspect.
-	 * @returns {Array} Returns the cast property path array.
-	 */
-	function castPath(value) {
-	  return isArray(value) ? value : stringToPath(value);
-	}
-
-	module.exports = castPath;
-
-
-/***/ },
-/* 106 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var memoize = __webpack_require__(107),
-	    toString = __webpack_require__(108);
-
-	/** Used to match property names within property paths. */
-	var reLeadingDot = /^\./,
-	    rePropName = /[^.[\]]+|\[(?:(-?\d+(?:\.\d+)?)|(["'])((?:(?!\2)[^\\]|\\.)*?)\2)\]|(?=(?:\.|\[\])(?:\.|\[\]|$))/g;
-
-	/** Used to match backslashes in property paths. */
-	var reEscapeChar = /\\(\\)?/g;
-
-	/**
-	 * Converts `string` to a property path array.
-	 *
-	 * @private
-	 * @param {string} string The string to convert.
-	 * @returns {Array} Returns the property path array.
-	 */
-	var stringToPath = memoize(function(string) {
-	  string = toString(string);
-
 	  var result = [];
-	  if (reLeadingDot.test(string)) {
-	    result.push('');
-	  }
-	  string.replace(rePropName, function(match, number, quote, string) {
-	    result.push(quote ? string.replace(reEscapeChar, '$1') : (number || match));
-	  });
-	  return result;
-	});
-
-	module.exports = stringToPath;
-
-
-/***/ },
-/* 107 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var MapCache = __webpack_require__(61);
-
-	/** Used as the `TypeError` message for "Functions" methods. */
-	var FUNC_ERROR_TEXT = 'Expected a function';
-
-	/**
-	 * Creates a function that memoizes the result of `func`. If `resolver` is
-	 * provided, it determines the cache key for storing the result based on the
-	 * arguments provided to the memoized function. By default, the first argument
-	 * provided to the memoized function is used as the map cache key. The `func`
-	 * is invoked with the `this` binding of the memoized function.
-	 *
-	 * **Note:** The cache is exposed as the `cache` property on the memoized
-	 * function. Its creation may be customized by replacing the `_.memoize.Cache`
-	 * constructor with one whose instances implement the
-	 * [`Map`](http://ecma-international.org/ecma-262/7.0/#sec-properties-of-the-map-prototype-object)
-	 * method interface of `delete`, `get`, `has`, and `set`.
-	 *
-	 * @static
-	 * @memberOf _
-	 * @since 0.1.0
-	 * @category Function
-	 * @param {Function} func The function to have its output memoized.
-	 * @param {Function} [resolver] The function to resolve the cache key.
-	 * @returns {Function} Returns the new memoized function.
-	 * @example
-	 *
-	 * var object = { 'a': 1, 'b': 2 };
-	 * var other = { 'c': 3, 'd': 4 };
-	 *
-	 * var values = _.memoize(_.values);
-	 * values(object);
-	 * // => [1, 2]
-	 *
-	 * values(other);
-	 * // => [3, 4]
-	 *
-	 * object.a = 2;
-	 * values(object);
-	 * // => [1, 2]
-	 *
-	 * // Modify the result cache.
-	 * values.cache.set(object, ['a', 'b']);
-	 * values(object);
-	 * // => ['a', 'b']
-	 *
-	 * // Replace `_.memoize.Cache`.
-	 * _.memoize.Cache = WeakMap;
-	 */
-	function memoize(func, resolver) {
-	  if (typeof func != 'function' || (resolver && typeof resolver != 'function')) {
-	    throw new TypeError(FUNC_ERROR_TEXT);
-	  }
-	  var memoized = function() {
-	    var args = arguments,
-	        key = resolver ? resolver.apply(this, args) : args[0],
-	        cache = memoized.cache;
-
-	    if (cache.has(key)) {
-	      return cache.get(key);
+	  for (var key in Object(object)) {
+	    if (hasOwnProperty.call(object, key) && key != 'constructor') {
+	      result.push(key);
 	    }
-	    var result = func.apply(this, args);
-	    memoized.cache = cache.set(key, result);
-	    return result;
-	  };
-	  memoized.cache = new (memoize.Cache || MapCache);
-	  return memoized;
-	}
-
-	// Assign cache to `_.memoize`.
-	memoize.Cache = MapCache;
-
-	module.exports = memoize;
-
-
-/***/ },
-/* 108 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var baseToString = __webpack_require__(109);
-
-	/**
-	 * Converts `value` to a string. An empty string is returned for `null`
-	 * and `undefined` values. The sign of `-0` is preserved.
-	 *
-	 * @static
-	 * @memberOf _
-	 * @since 4.0.0
-	 * @category Lang
-	 * @param {*} value The value to process.
-	 * @returns {string} Returns the string.
-	 * @example
-	 *
-	 * _.toString(null);
-	 * // => ''
-	 *
-	 * _.toString(-0);
-	 * // => '-0'
-	 *
-	 * _.toString([1, 2, 3]);
-	 * // => '1,2,3'
-	 */
-	function toString(value) {
-	  return value == null ? '' : baseToString(value);
-	}
-
-	module.exports = toString;
-
-
-/***/ },
-/* 109 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var Symbol = __webpack_require__(84),
-	    isSymbol = __webpack_require__(110);
-
-	/** Used as references for various `Number` constants. */
-	var INFINITY = 1 / 0;
-
-	/** Used to convert symbols to primitives and strings. */
-	var symbolProto = Symbol ? Symbol.prototype : undefined,
-	    symbolToString = symbolProto ? symbolProto.toString : undefined;
-
-	/**
-	 * The base implementation of `_.toString` which doesn't convert nullish
-	 * values to empty strings.
-	 *
-	 * @private
-	 * @param {*} value The value to process.
-	 * @returns {string} Returns the string.
-	 */
-	function baseToString(value) {
-	  // Exit early for strings to avoid a performance hit in some environments.
-	  if (typeof value == 'string') {
-	    return value;
 	  }
-	  if (isSymbol(value)) {
-	    return symbolToString ? symbolToString.call(value) : '';
-	  }
-	  var result = (value + '');
-	  return (result == '0' && (1 / value) == -INFINITY) ? '-0' : result;
+	  return result;
 	}
 
-	module.exports = baseToString;
+	module.exports = baseKeys;
 
 
 /***/ },
-/* 110 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var isObjectLike = __webpack_require__(26);
-
-	/** `Object#toString` result references. */
-	var symbolTag = '[object Symbol]';
+/* 38 */
+/***/ function(module, exports) {
 
 	/** Used for built-in method references. */
 	var objectProto = Object.prototype;
 
 	/**
-	 * Used to resolve the
-	 * [`toStringTag`](http://ecma-international.org/ecma-262/7.0/#sec-object.prototype.tostring)
-	 * of values.
+	 * Checks if `value` is likely a prototype object.
+	 *
+	 * @private
+	 * @param {*} value The value to check.
+	 * @returns {boolean} Returns `true` if `value` is a prototype, else `false`.
 	 */
-	var objectToString = objectProto.toString;
+	function isPrototype(value) {
+	  var Ctor = value && value.constructor,
+	      proto = (typeof Ctor == 'function' && Ctor.prototype) || objectProto;
+
+	  return value === proto;
+	}
+
+	module.exports = isPrototype;
+
+
+/***/ },
+/* 39 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var overArg = __webpack_require__(40);
+
+	/* Built-in method references for those with the same name as other `lodash` methods. */
+	var nativeKeys = overArg(Object.keys, Object);
+
+	module.exports = nativeKeys;
+
+
+/***/ },
+/* 40 */
+/***/ function(module, exports) {
 
 	/**
-	 * Checks if `value` is classified as a `Symbol` primitive or object.
+	 * Creates a unary function that invokes `func` with its argument transformed.
+	 *
+	 * @private
+	 * @param {Function} func The function to wrap.
+	 * @param {Function} transform The argument transform.
+	 * @returns {Function} Returns the new function.
+	 */
+	function overArg(func, transform) {
+	  return function(arg) {
+	    return func(transform(arg));
+	  };
+	}
+
+	module.exports = overArg;
+
+
+/***/ },
+/* 41 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var isFunction = __webpack_require__(42),
+	    isLength = __webpack_require__(34);
+
+	/**
+	 * Checks if `value` is array-like. A value is considered array-like if it's
+	 * not a function and has a `value.length` that's an integer greater than or
+	 * equal to `0` and less than or equal to `Number.MAX_SAFE_INTEGER`.
 	 *
 	 * @static
 	 * @memberOf _
 	 * @since 4.0.0
 	 * @category Lang
 	 * @param {*} value The value to check.
-	 * @returns {boolean} Returns `true` if `value` is a symbol, else `false`.
+	 * @returns {boolean} Returns `true` if `value` is array-like, else `false`.
 	 * @example
 	 *
-	 * _.isSymbol(Symbol.iterator);
+	 * _.isArrayLike([1, 2, 3]);
 	 * // => true
 	 *
-	 * _.isSymbol('abc');
+	 * _.isArrayLike(document.body.children);
+	 * // => true
+	 *
+	 * _.isArrayLike('abc');
+	 * // => true
+	 *
+	 * _.isArrayLike(_.noop);
 	 * // => false
 	 */
-	function isSymbol(value) {
-	  return typeof value == 'symbol' ||
-	    (isObjectLike(value) && objectToString.call(value) == symbolTag);
+	function isArrayLike(value) {
+	  return value != null && isLength(value.length) && !isFunction(value);
 	}
 
-	module.exports = isSymbol;
+	module.exports = isArrayLike;
 
 
 /***/ },
-/* 111 */
+/* 42 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var isArray = __webpack_require__(27),
-	    isSymbol = __webpack_require__(110);
+	var baseGetTag = __webpack_require__(20),
+	    isObject = __webpack_require__(43);
 
-	/** Used to match property names within property paths. */
-	var reIsDeepProp = /\.|\[(?:[^[\]]*|(["'])(?:(?!\1)[^\\]|\\.)*?\1)\]/,
-	    reIsPlainProp = /^\w*$/;
-
-	/**
-	 * Checks if `value` is a property name and not a property path.
-	 *
-	 * @private
-	 * @param {*} value The value to check.
-	 * @param {Object} [object] The object to query keys on.
-	 * @returns {boolean} Returns `true` if `value` is a property name, else `false`.
-	 */
-	function isKey(value, object) {
-	  if (isArray(value)) {
-	    return false;
-	  }
-	  var type = typeof value;
-	  if (type == 'number' || type == 'symbol' || type == 'boolean' ||
-	      value == null || isSymbol(value)) {
-	    return true;
-	  }
-	  return reIsPlainProp.test(value) || !reIsDeepProp.test(value) ||
-	    (object != null && value in Object(object));
-	}
-
-	module.exports = isKey;
-
-
-/***/ },
-/* 112 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var isSymbol = __webpack_require__(110);
-
-	/** Used as references for various `Number` constants. */
-	var INFINITY = 1 / 0;
+	/** `Object#toString` result references. */
+	var asyncTag = '[object AsyncFunction]',
+	    funcTag = '[object Function]',
+	    genTag = '[object GeneratorFunction]',
+	    proxyTag = '[object Proxy]';
 
 	/**
-	 * Converts `value` to a string key if it's not a string or symbol.
-	 *
-	 * @private
-	 * @param {*} value The value to inspect.
-	 * @returns {string|symbol} Returns the key.
-	 */
-	function toKey(value) {
-	  if (typeof value == 'string' || isSymbol(value)) {
-	    return value;
-	  }
-	  var result = (value + '');
-	  return (result == '0' && (1 / value) == -INFINITY) ? '-0' : result;
-	}
-
-	module.exports = toKey;
-
-
-/***/ },
-/* 113 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var baseHasIn = __webpack_require__(114),
-	    hasPath = __webpack_require__(115);
-
-	/**
-	 * Checks if `path` is a direct or inherited property of `object`.
+	 * Checks if `value` is classified as a `Function` object.
 	 *
 	 * @static
 	 * @memberOf _
-	 * @since 4.0.0
-	 * @category Object
-	 * @param {Object} object The object to query.
-	 * @param {Array|string} path The path to check.
-	 * @returns {boolean} Returns `true` if `path` exists, else `false`.
+	 * @since 0.1.0
+	 * @category Lang
+	 * @param {*} value The value to check.
+	 * @returns {boolean} Returns `true` if `value` is a function, else `false`.
 	 * @example
 	 *
-	 * var object = _.create({ 'a': _.create({ 'b': 2 }) });
-	 *
-	 * _.hasIn(object, 'a');
+	 * _.isFunction(_);
 	 * // => true
 	 *
-	 * _.hasIn(object, 'a.b');
-	 * // => true
-	 *
-	 * _.hasIn(object, ['a', 'b']);
-	 * // => true
-	 *
-	 * _.hasIn(object, 'b');
+	 * _.isFunction(/abc/);
 	 * // => false
 	 */
-	function hasIn(object, path) {
-	  return object != null && hasPath(object, path, baseHasIn);
+	function isFunction(value) {
+	  if (!isObject(value)) {
+	    return false;
+	  }
+	  // The use of `Object#toString` avoids issues with the `typeof` operator
+	  // in Safari 9 which returns 'object' for typed arrays and other constructors.
+	  var tag = baseGetTag(value);
+	  return tag == funcTag || tag == genTag || tag == asyncTag || tag == proxyTag;
 	}
 
-	module.exports = hasIn;
+	module.exports = isFunction;
 
 
 /***/ },
-/* 114 */
+/* 43 */
 /***/ function(module, exports) {
 
 	/**
-	 * The base implementation of `_.hasIn` without support for deep paths.
+	 * Checks if `value` is the
+	 * [language type](http://www.ecma-international.org/ecma-262/7.0/#sec-ecmascript-language-types)
+	 * of `Object`. (e.g. arrays, functions, objects, regexes, `new Number(0)`, and `new String('')`)
 	 *
-	 * @private
-	 * @param {Object} [object] The object to query.
-	 * @param {Array|string} key The key to check.
-	 * @returns {boolean} Returns `true` if `key` exists, else `false`.
+	 * @static
+	 * @memberOf _
+	 * @since 0.1.0
+	 * @category Lang
+	 * @param {*} value The value to check.
+	 * @returns {boolean} Returns `true` if `value` is an object, else `false`.
+	 * @example
+	 *
+	 * _.isObject({});
+	 * // => true
+	 *
+	 * _.isObject([1, 2, 3]);
+	 * // => true
+	 *
+	 * _.isObject(_.noop);
+	 * // => true
+	 *
+	 * _.isObject(null);
+	 * // => false
 	 */
-	function baseHasIn(object, key) {
-	  return object != null && key in Object(object);
+	function isObject(value) {
+	  var type = typeof value;
+	  return value != null && (type == 'object' || type == 'function');
 	}
 
-	module.exports = baseHasIn;
+	module.exports = isObject;
 
 
 /***/ },
-/* 115 */
+/* 44 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var castPath = __webpack_require__(105),
-	    isArguments = __webpack_require__(20),
-	    isArray = __webpack_require__(27),
-	    isIndex = __webpack_require__(28),
-	    isKey = __webpack_require__(111),
-	    isLength = __webpack_require__(25),
-	    toKey = __webpack_require__(112);
+	var isArrayLike = __webpack_require__(41);
 
 	/**
-	 * Checks if `path` exists on `object`.
+	 * Creates a `baseEach` or `baseEachRight` function.
 	 *
 	 * @private
-	 * @param {Object} object The object to query.
-	 * @param {Array|string} path The path to check.
-	 * @param {Function} hasFunc The function to check properties.
-	 * @returns {boolean} Returns `true` if `path` exists, else `false`.
+	 * @param {Function} eachFunc The function to iterate over a collection.
+	 * @param {boolean} [fromRight] Specify iterating from right to left.
+	 * @returns {Function} Returns the new base function.
 	 */
-	function hasPath(object, path, hasFunc) {
-	  path = isKey(path, object) ? [path] : castPath(path);
-
-	  var result,
-	      index = -1,
-	      length = path.length;
-
-	  while (++index < length) {
-	    var key = toKey(path[index]);
-	    if (!(result = object != null && hasFunc(object, key))) {
-	      break;
+	function createBaseEach(eachFunc, fromRight) {
+	  return function(collection, iteratee) {
+	    if (collection == null) {
+	      return collection;
 	    }
-	    object = object[key];
-	  }
-	  if (result) {
-	    return result;
-	  }
-	  var length = object ? object.length : 0;
-	  return !!length && isLength(length) && isIndex(key, length) &&
-	    (isArray(object) || isArguments(object));
+	    if (!isArrayLike(collection)) {
+	      return eachFunc(collection, iteratee);
+	    }
+	    var length = collection.length,
+	        index = fromRight ? length : -1,
+	        iterable = Object(collection);
+
+	    while ((fromRight ? index-- : ++index < length)) {
+	      if (iteratee(iterable[index], index, iterable) === false) {
+	        break;
+	      }
+	    }
+	    return collection;
+	  };
 	}
 
-	module.exports = hasPath;
+	module.exports = createBaseEach;
 
 
 /***/ },
-/* 116 */
+/* 45 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var identity = __webpack_require__(46);
+
+	/**
+	 * Casts `value` to `identity` if it's not a function.
+	 *
+	 * @private
+	 * @param {*} value The value to inspect.
+	 * @returns {Function} Returns cast function.
+	 */
+	function castFunction(value) {
+	  return typeof value == 'function' ? value : identity;
+	}
+
+	module.exports = castFunction;
+
+
+/***/ },
+/* 46 */
 /***/ function(module, exports) {
 
 	/**
@@ -6190,93 +4103,13 @@ var StellarSdk =
 
 
 /***/ },
-/* 117 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var baseProperty = __webpack_require__(118),
-	    basePropertyDeep = __webpack_require__(119),
-	    isKey = __webpack_require__(111),
-	    toKey = __webpack_require__(112);
-
-	/**
-	 * Creates a function that returns the value at `path` of a given object.
-	 *
-	 * @static
-	 * @memberOf _
-	 * @since 2.4.0
-	 * @category Util
-	 * @param {Array|string} path The path of the property to get.
-	 * @returns {Function} Returns the new accessor function.
-	 * @example
-	 *
-	 * var objects = [
-	 *   { 'a': { 'b': 2 } },
-	 *   { 'a': { 'b': 1 } }
-	 * ];
-	 *
-	 * _.map(objects, _.property('a.b'));
-	 * // => [2, 1]
-	 *
-	 * _.map(_.sortBy(objects, _.property(['a', 'b'])), 'a.b');
-	 * // => [1, 2]
-	 */
-	function property(path) {
-	  return isKey(path) ? baseProperty(toKey(path)) : basePropertyDeep(path);
-	}
-
-	module.exports = property;
-
-
-/***/ },
-/* 118 */
-/***/ function(module, exports) {
-
-	/**
-	 * The base implementation of `_.property` without support for deep paths.
-	 *
-	 * @private
-	 * @param {string} key The key of the property to get.
-	 * @returns {Function} Returns the new accessor function.
-	 */
-	function baseProperty(key) {
-	  return function(object) {
-	    return object == null ? undefined : object[key];
-	  };
-	}
-
-	module.exports = baseProperty;
-
-
-/***/ },
-/* 119 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var baseGet = __webpack_require__(104);
-
-	/**
-	 * A specialized version of `baseProperty` which supports deep paths.
-	 *
-	 * @private
-	 * @param {Array|string} path The path of the property to get.
-	 * @returns {Function} Returns the new accessor function.
-	 */
-	function basePropertyDeep(path) {
-	  return function(object) {
-	    return baseGet(object, path);
-	  };
-	}
-
-	module.exports = basePropertyDeep;
-
-
-/***/ },
-/* 120 */
+/* 47 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/*!
 	 * URI.js - Mutating URLs
 	 *
-	 * Version: 1.18.1
+	 * Version: 1.18.2
 	 *
 	 * Author: Rodney Rehm
 	 * Web: http://medialize.github.io/URI.js/
@@ -6290,7 +4123,7 @@ var StellarSdk =
 	  // https://github.com/umdjs/umd/blob/master/returnExports.js
 	  if (true) {
 	    // Node
-	    module.exports = factory(__webpack_require__(121), __webpack_require__(122), __webpack_require__(123));
+	    module.exports = factory(__webpack_require__(48), __webpack_require__(49), __webpack_require__(50));
 	  } else if (typeof define === 'function' && define.amd) {
 	    // AMD. Register as an anonymous module.
 	    define(['./punycode', './IPv6', './SecondLevelDomains'], factory);
@@ -6346,7 +4179,7 @@ var StellarSdk =
 	    return this;
 	  }
 
-	  URI.version = '1.18.1';
+	  URI.version = '1.18.2';
 
 	  var p = URI.prototype;
 	  var hasOwn = Object.prototype.hasOwnProperty;
@@ -7243,6 +5076,12 @@ var StellarSdk =
 
 	      end = start + slice.length;
 	      var result = callback(slice, start, end, string);
+	      if (result === undefined) {
+	        _start.lastIndex = end;
+	        continue;
+	      }
+
+	      result = String(result);
 	      string = string.slice(0, start) + result + string.slice(end);
 	      _start.lastIndex = start + result.length;
 	    }
@@ -8330,15 +6169,17 @@ var StellarSdk =
 	      if (!resolved._parts.query) {
 	        resolved._parts.query = base._parts.query;
 	      }
-	    } else if (resolved._parts.path.substring(-2) === '..') {
-	      resolved._parts.path += '/';
-	    }
+	    } else {
+	      if (resolved._parts.path.substring(-2) === '..') {
+	        resolved._parts.path += '/';
+	      }
 
-	    if (resolved.path().charAt(0) !== '/') {
-	      basedir = base.directory();
-	      basedir = basedir ? basedir : base.path().indexOf('/') === 0 ? '/' : '';
-	      resolved._parts.path = (basedir ? (basedir + '/') : '') + resolved._parts.path;
-	      resolved.normalizePath();
+	      if (resolved.path().charAt(0) !== '/') {
+	        basedir = base.directory();
+	        basedir = basedir ? basedir : base.path().indexOf('/') === 0 ? '/' : '';
+	        resolved._parts.path = (basedir ? (basedir + '/') : '') + resolved._parts.path;
+	        resolved.normalizePath();
+	      }
 	    }
 
 	    resolved.build();
@@ -8486,7 +6327,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 121 */
+/* 48 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var __WEBPACK_AMD_DEFINE_RESULT__;/* WEBPACK VAR INJECTION */(function(module, global) {/*! https://mths.be/punycode v1.4.0 by @mathias */
@@ -9021,17 +6862,17 @@ var StellarSdk =
 
 	}(this));
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(4)(module), (function() { return this; }())))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(29)(module), (function() { return this; }())))
 
 /***/ },
-/* 122 */
+/* 49 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/*!
 	 * URI.js - Mutating URLs
 	 * IPv6 Support
 	 *
-	 * Version: 1.18.1
+	 * Version: 1.18.2
 	 *
 	 * Author: Rodney Rehm
 	 * Web: http://medialize.github.io/URI.js/
@@ -9215,14 +7056,14 @@ var StellarSdk =
 
 
 /***/ },
-/* 123 */
+/* 50 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/*!
 	 * URI.js - Mutating URLs
 	 * Second Level Domain (SLD) Support
 	 *
-	 * Version: 1.18.1
+	 * Version: 1.18.2
 	 *
 	 * Author: Rodney Rehm
 	 * Web: http://medialize.github.io/URI.js/
@@ -9461,14 +7302,14 @@ var StellarSdk =
 
 
 /***/ },
-/* 124 */
+/* 51 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/*!
 	 * URI.js - Mutating URLs
 	 * URI Template Support - http://tools.ietf.org/html/rfc6570
 	 *
-	 * Version: 1.18.1
+	 * Version: 1.18.2
 	 *
 	 * Author: Rodney Rehm
 	 * Web: http://medialize.github.io/URI.js/
@@ -9482,7 +7323,7 @@ var StellarSdk =
 	  // https://github.com/umdjs/umd/blob/master/returnExports.js
 	  if (true) {
 	    // Node
-	    module.exports = factory(__webpack_require__(120));
+	    module.exports = factory(__webpack_require__(47));
 	  } else if (typeof define === 'function' && define.amd) {
 	    // AMD. Register as an anonymous module.
 	    define(['./URI'], factory);
@@ -9980,25 +7821,25 @@ var StellarSdk =
 
 
 /***/ },
-/* 125 */
+/* 52 */
 /***/ function(module, exports, __webpack_require__) {
 
-	module.exports = __webpack_require__(126);
+	module.exports = __webpack_require__(53);
 
 /***/ },
-/* 126 */
+/* 53 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	var defaults = __webpack_require__(127);
-	var utils = __webpack_require__(128);
-	var dispatchRequest = __webpack_require__(129);
-	var InterceptorManager = __webpack_require__(137);
-	var isAbsoluteURL = __webpack_require__(138);
-	var combineURLs = __webpack_require__(139);
-	var bind = __webpack_require__(140);
-	var transformData = __webpack_require__(133);
+	var defaults = __webpack_require__(54);
+	var utils = __webpack_require__(55);
+	var dispatchRequest = __webpack_require__(56);
+	var InterceptorManager = __webpack_require__(64);
+	var isAbsoluteURL = __webpack_require__(65);
+	var combineURLs = __webpack_require__(66);
+	var bind = __webpack_require__(67);
+	var transformData = __webpack_require__(60);
 
 	function Axios(defaultConfig) {
 	  this.defaults = utils.merge({}, defaultConfig);
@@ -10081,7 +7922,7 @@ var StellarSdk =
 	axios.all = function all(promises) {
 	  return Promise.all(promises);
 	};
-	axios.spread = __webpack_require__(141);
+	axios.spread = __webpack_require__(68);
 
 	// Expose interceptors
 	axios.interceptors = defaultInstance.interceptors;
@@ -10112,12 +7953,12 @@ var StellarSdk =
 
 
 /***/ },
-/* 127 */
+/* 54 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	var utils = __webpack_require__(128);
+	var utils = __webpack_require__(55);
 
 	var PROTECTION_PREFIX = /^\)\]\}',?\n/;
 	var DEFAULT_CONTENT_TYPE = {
@@ -10181,7 +8022,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 128 */
+/* 55 */
 /***/ function(module, exports) {
 
 	'use strict';
@@ -10431,7 +8272,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 129 */
+/* 56 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {'use strict';
@@ -10453,10 +8294,10 @@ var StellarSdk =
 	        adapter = config.adapter;
 	      } else if (typeof XMLHttpRequest !== 'undefined') {
 	        // For browsers use XHR adapter
-	        adapter = __webpack_require__(130);
+	        adapter = __webpack_require__(57);
 	      } else if (typeof process !== 'undefined') {
 	        // For node use HTTP adapter
-	        adapter = __webpack_require__(130);
+	        adapter = __webpack_require__(57);
 	      }
 
 	      if (typeof adapter === 'function') {
@@ -10472,17 +8313,17 @@ var StellarSdk =
 	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(3)))
 
 /***/ },
-/* 130 */
+/* 57 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	var utils = __webpack_require__(128);
-	var buildURL = __webpack_require__(131);
-	var parseHeaders = __webpack_require__(132);
-	var transformData = __webpack_require__(133);
-	var isURLSameOrigin = __webpack_require__(134);
-	var btoa = window.btoa || __webpack_require__(135);
+	var utils = __webpack_require__(55);
+	var buildURL = __webpack_require__(58);
+	var parseHeaders = __webpack_require__(59);
+	var transformData = __webpack_require__(60);
+	var isURLSameOrigin = __webpack_require__(61);
+	var btoa = window.btoa || __webpack_require__(62);
 
 	module.exports = function xhrAdapter(resolve, reject, config) {
 	  var requestData = config.data;
@@ -10557,7 +8398,7 @@ var StellarSdk =
 	  // This is only done if running in a standard browser environment.
 	  // Specifically not if we're in a web worker, or react-native.
 	  if (utils.isStandardBrowserEnv()) {
-	    var cookies = __webpack_require__(136);
+	    var cookies = __webpack_require__(63);
 
 	    // Add xsrf header
 	    var xsrfValue = config.withCredentials || isURLSameOrigin(config.url) ?
@@ -10608,12 +8449,12 @@ var StellarSdk =
 
 
 /***/ },
-/* 131 */
+/* 58 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	var utils = __webpack_require__(128);
+	var utils = __webpack_require__(55);
 
 	function encode(val) {
 	  return encodeURIComponent(val).
@@ -10681,12 +8522,12 @@ var StellarSdk =
 
 
 /***/ },
-/* 132 */
+/* 59 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	var utils = __webpack_require__(128);
+	var utils = __webpack_require__(55);
 
 	/**
 	 * Parse headers into an object
@@ -10724,12 +8565,12 @@ var StellarSdk =
 
 
 /***/ },
-/* 133 */
+/* 60 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	var utils = __webpack_require__(128);
+	var utils = __webpack_require__(55);
 
 	/**
 	 * Transform the data for a request or a response
@@ -10750,12 +8591,12 @@ var StellarSdk =
 
 
 /***/ },
-/* 134 */
+/* 61 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	var utils = __webpack_require__(128);
+	var utils = __webpack_require__(55);
 
 	module.exports = (
 	  utils.isStandardBrowserEnv() ?
@@ -10824,7 +8665,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 135 */
+/* 62 */
 /***/ function(module, exports) {
 
 	'use strict';
@@ -10866,12 +8707,12 @@ var StellarSdk =
 
 
 /***/ },
-/* 136 */
+/* 63 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	var utils = __webpack_require__(128);
+	var utils = __webpack_require__(55);
 
 	module.exports = (
 	  utils.isStandardBrowserEnv() ?
@@ -10925,12 +8766,12 @@ var StellarSdk =
 
 
 /***/ },
-/* 137 */
+/* 64 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	var utils = __webpack_require__(128);
+	var utils = __webpack_require__(55);
 
 	function InterceptorManager() {
 	  this.handlers = [];
@@ -10983,7 +8824,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 138 */
+/* 65 */
 /***/ function(module, exports) {
 
 	'use strict';
@@ -11003,7 +8844,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 139 */
+/* 66 */
 /***/ function(module, exports) {
 
 	'use strict';
@@ -11021,7 +8862,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 140 */
+/* 67 */
 /***/ function(module, exports) {
 
 	'use strict';
@@ -11038,7 +8879,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 141 */
+/* 68 */
 /***/ function(module, exports) {
 
 	'use strict';
@@ -11071,15 +8912,15 @@ var StellarSdk =
 
 
 /***/ },
-/* 142 */
+/* 69 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(process) {var original = __webpack_require__(143)
-	  , parse = __webpack_require__(148).parse
-	  , events = __webpack_require__(153)
-	  , https = __webpack_require__(154)
-	  , http = __webpack_require__(155)
-	  , util = __webpack_require__(178);
+	/* WEBPACK VAR INJECTION */(function(process) {var original = __webpack_require__(70)
+	  , parse = __webpack_require__(75).parse
+	  , events = __webpack_require__(80)
+	  , https = __webpack_require__(81)
+	  , http = __webpack_require__(82)
+	  , util = __webpack_require__(105);
 
 	function isPlainObject(obj) {
 	  return Object.getPrototypeOf(obj) === Object.prototype;
@@ -11390,12 +9231,12 @@ var StellarSdk =
 	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(3)))
 
 /***/ },
-/* 143 */
+/* 70 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	var parse = __webpack_require__(144);
+	var parse = __webpack_require__(71);
 
 	/**
 	 * Transform an URL to a valid origin value.
@@ -11442,14 +9283,14 @@ var StellarSdk =
 
 
 /***/ },
-/* 144 */
+/* 71 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	var required = __webpack_require__(145)
-	  , lolcation = __webpack_require__(146)
-	  , qs = __webpack_require__(147)
+	var required = __webpack_require__(72)
+	  , lolcation = __webpack_require__(73)
+	  , qs = __webpack_require__(74)
 	  , relativere = /^\/(?!\/)/;
 
 	/**
@@ -11676,7 +9517,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 145 */
+/* 72 */
 /***/ function(module, exports) {
 
 	'use strict';
@@ -11720,7 +9561,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 146 */
+/* 73 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(global) {'use strict';
@@ -11750,7 +9591,7 @@ var StellarSdk =
 	 */
 	module.exports = function lolcation(loc) {
 	  loc = loc || global.location || {};
-	  URL = URL || __webpack_require__(144);
+	  URL = URL || __webpack_require__(71);
 
 	  var finaldestination = {}
 	    , type = typeof loc
@@ -11772,7 +9613,7 @@ var StellarSdk =
 	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
 
 /***/ },
-/* 147 */
+/* 74 */
 /***/ function(module, exports) {
 
 	'use strict';
@@ -11839,7 +9680,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 148 */
+/* 75 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Copyright Joyent, Inc. and other Node contributors.
@@ -11863,7 +9704,7 @@ var StellarSdk =
 	// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 	// USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-	var punycode = __webpack_require__(149);
+	var punycode = __webpack_require__(76);
 
 	exports.parse = urlParse;
 	exports.resolve = urlResolve;
@@ -11935,7 +9776,7 @@ var StellarSdk =
 	      'gopher:': true,
 	      'file:': true
 	    },
-	    querystring = __webpack_require__(150);
+	    querystring = __webpack_require__(77);
 
 	function urlParse(url, parseQueryString, slashesDenoteHost) {
 	  if (url && isObject(url) && url instanceof Url) return url;
@@ -12552,7 +10393,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 149 */
+/* 76 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var __WEBPACK_AMD_DEFINE_RESULT__;/* WEBPACK VAR INJECTION */(function(module, global) {/*! https://mths.be/punycode v1.3.2 by @mathias */
@@ -13084,20 +10925,20 @@ var StellarSdk =
 
 	}(this));
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(4)(module), (function() { return this; }())))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(29)(module), (function() { return this; }())))
 
 /***/ },
-/* 150 */
+/* 77 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	exports.decode = exports.parse = __webpack_require__(151);
-	exports.encode = exports.stringify = __webpack_require__(152);
+	exports.decode = exports.parse = __webpack_require__(78);
+	exports.encode = exports.stringify = __webpack_require__(79);
 
 
 /***/ },
-/* 151 */
+/* 78 */
 /***/ function(module, exports) {
 
 	// Copyright Joyent, Inc. and other Node contributors.
@@ -13183,7 +11024,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 152 */
+/* 79 */
 /***/ function(module, exports) {
 
 	// Copyright Joyent, Inc. and other Node contributors.
@@ -13253,7 +11094,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 153 */
+/* 80 */
 /***/ function(module, exports) {
 
 	// Copyright Joyent, Inc. and other Node contributors.
@@ -13561,10 +11402,10 @@ var StellarSdk =
 
 
 /***/ },
-/* 154 */
+/* 81 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var http = __webpack_require__(155);
+	var http = __webpack_require__(82);
 
 	var https = module.exports;
 
@@ -13580,13 +11421,13 @@ var StellarSdk =
 
 
 /***/ },
-/* 155 */
+/* 82 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var http = module.exports;
-	var EventEmitter = __webpack_require__(153).EventEmitter;
-	var Request = __webpack_require__(156);
-	var url = __webpack_require__(148)
+	var EventEmitter = __webpack_require__(80).EventEmitter;
+	var Request = __webpack_require__(83);
+	var url = __webpack_require__(75)
 
 	http.request = function (params, cb) {
 	    if (typeof params === 'string') {
@@ -13730,13 +11571,13 @@ var StellarSdk =
 	};
 
 /***/ },
-/* 156 */
+/* 83 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var Stream = __webpack_require__(157);
-	var Response = __webpack_require__(177);
-	var Base64 = __webpack_require__(180);
-	var inherits = __webpack_require__(158);
+	var Stream = __webpack_require__(84);
+	var Response = __webpack_require__(104);
+	var Base64 = __webpack_require__(108);
+	var inherits = __webpack_require__(85);
 
 	var Request = module.exports = function (xhr, params) {
 	    var self = this;
@@ -13945,7 +11786,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 157 */
+/* 84 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Copyright Joyent, Inc. and other Node contributors.
@@ -13971,15 +11812,15 @@ var StellarSdk =
 
 	module.exports = Stream;
 
-	var EE = __webpack_require__(153).EventEmitter;
-	var inherits = __webpack_require__(158);
+	var EE = __webpack_require__(80).EventEmitter;
+	var inherits = __webpack_require__(85);
 
 	inherits(Stream, EE);
-	Stream.Readable = __webpack_require__(159);
-	Stream.Writable = __webpack_require__(173);
-	Stream.Duplex = __webpack_require__(174);
-	Stream.Transform = __webpack_require__(175);
-	Stream.PassThrough = __webpack_require__(176);
+	Stream.Readable = __webpack_require__(86);
+	Stream.Writable = __webpack_require__(100);
+	Stream.Duplex = __webpack_require__(101);
+	Stream.Transform = __webpack_require__(102);
+	Stream.PassThrough = __webpack_require__(103);
 
 	// Backwards-compat with node 0.4.x
 	Stream.Stream = Stream;
@@ -14078,7 +11919,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 158 */
+/* 85 */
 /***/ function(module, exports) {
 
 	if (typeof Object.create === 'function') {
@@ -14107,24 +11948,24 @@ var StellarSdk =
 
 
 /***/ },
-/* 159 */
+/* 86 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(process) {exports = module.exports = __webpack_require__(160);
-	exports.Stream = __webpack_require__(157);
+	/* WEBPACK VAR INJECTION */(function(process) {exports = module.exports = __webpack_require__(87);
+	exports.Stream = __webpack_require__(84);
 	exports.Readable = exports;
-	exports.Writable = __webpack_require__(169);
-	exports.Duplex = __webpack_require__(168);
-	exports.Transform = __webpack_require__(171);
-	exports.PassThrough = __webpack_require__(172);
+	exports.Writable = __webpack_require__(96);
+	exports.Duplex = __webpack_require__(95);
+	exports.Transform = __webpack_require__(98);
+	exports.PassThrough = __webpack_require__(99);
 	if (!process.browser && process.env.READABLE_STREAM === 'disable') {
-	  module.exports = __webpack_require__(157);
+	  module.exports = __webpack_require__(84);
 	}
 
 	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(3)))
 
 /***/ },
-/* 160 */
+/* 87 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {// Copyright Joyent, Inc. and other Node contributors.
@@ -14151,17 +11992,17 @@ var StellarSdk =
 	module.exports = Readable;
 
 	/*<replacement>*/
-	var isArray = __webpack_require__(161);
+	var isArray = __webpack_require__(88);
 	/*</replacement>*/
 
 
 	/*<replacement>*/
-	var Buffer = __webpack_require__(162).Buffer;
+	var Buffer = __webpack_require__(89).Buffer;
 	/*</replacement>*/
 
 	Readable.ReadableState = ReadableState;
 
-	var EE = __webpack_require__(153).EventEmitter;
+	var EE = __webpack_require__(80).EventEmitter;
 
 	/*<replacement>*/
 	if (!EE.listenerCount) EE.listenerCount = function(emitter, type) {
@@ -14169,18 +12010,18 @@ var StellarSdk =
 	};
 	/*</replacement>*/
 
-	var Stream = __webpack_require__(157);
+	var Stream = __webpack_require__(84);
 
 	/*<replacement>*/
-	var util = __webpack_require__(166);
-	util.inherits = __webpack_require__(158);
+	var util = __webpack_require__(93);
+	util.inherits = __webpack_require__(85);
 	/*</replacement>*/
 
 	var StringDecoder;
 
 
 	/*<replacement>*/
-	var debug = __webpack_require__(167);
+	var debug = __webpack_require__(94);
 	if (debug && debug.debuglog) {
 	  debug = debug.debuglog('stream');
 	} else {
@@ -14192,7 +12033,7 @@ var StellarSdk =
 	util.inherits(Readable, Stream);
 
 	function ReadableState(options, stream) {
-	  var Duplex = __webpack_require__(168);
+	  var Duplex = __webpack_require__(95);
 
 	  options = options || {};
 
@@ -14253,14 +12094,14 @@ var StellarSdk =
 	  this.encoding = null;
 	  if (options.encoding) {
 	    if (!StringDecoder)
-	      StringDecoder = __webpack_require__(170).StringDecoder;
+	      StringDecoder = __webpack_require__(97).StringDecoder;
 	    this.decoder = new StringDecoder(options.encoding);
 	    this.encoding = options.encoding;
 	  }
 	}
 
 	function Readable(options) {
-	  var Duplex = __webpack_require__(168);
+	  var Duplex = __webpack_require__(95);
 
 	  if (!(this instanceof Readable))
 	    return new Readable(options);
@@ -14363,7 +12204,7 @@ var StellarSdk =
 	// backwards compatibility.
 	Readable.prototype.setEncoding = function(enc) {
 	  if (!StringDecoder)
-	    StringDecoder = __webpack_require__(170).StringDecoder;
+	    StringDecoder = __webpack_require__(97).StringDecoder;
 	  this._readableState.decoder = new StringDecoder(enc);
 	  this._readableState.encoding = enc;
 	  return this;
@@ -15082,7 +12923,7 @@ var StellarSdk =
 	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(3)))
 
 /***/ },
-/* 161 */
+/* 88 */
 /***/ function(module, exports) {
 
 	module.exports = Array.isArray || function (arr) {
@@ -15091,7 +12932,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 162 */
+/* 89 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer, global) {/*!
@@ -15104,9 +12945,9 @@ var StellarSdk =
 
 	'use strict'
 
-	var base64 = __webpack_require__(163)
-	var ieee754 = __webpack_require__(164)
-	var isArray = __webpack_require__(165)
+	var base64 = __webpack_require__(90)
+	var ieee754 = __webpack_require__(91)
+	var isArray = __webpack_require__(92)
 
 	exports.Buffer = Buffer
 	exports.SlowBuffer = SlowBuffer
@@ -16884,14 +14725,15 @@ var StellarSdk =
 	  return val !== val // eslint-disable-line no-self-compare
 	}
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(162).Buffer, (function() { return this; }())))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(89).Buffer, (function() { return this; }())))
 
 /***/ },
-/* 163 */
+/* 90 */
 /***/ function(module, exports) {
 
 	'use strict'
 
+	exports.byteLength = byteLength
 	exports.toByteArray = toByteArray
 	exports.fromByteArray = fromByteArray
 
@@ -16899,23 +14741,17 @@ var StellarSdk =
 	var revLookup = []
 	var Arr = typeof Uint8Array !== 'undefined' ? Uint8Array : Array
 
-	function init () {
-	  var code = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
-	  for (var i = 0, len = code.length; i < len; ++i) {
-	    lookup[i] = code[i]
-	    revLookup[code.charCodeAt(i)] = i
-	  }
-
-	  revLookup['-'.charCodeAt(0)] = 62
-	  revLookup['_'.charCodeAt(0)] = 63
+	var code = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+	for (var i = 0, len = code.length; i < len; ++i) {
+	  lookup[i] = code[i]
+	  revLookup[code.charCodeAt(i)] = i
 	}
 
-	init()
+	revLookup['-'.charCodeAt(0)] = 62
+	revLookup['_'.charCodeAt(0)] = 63
 
-	function toByteArray (b64) {
-	  var i, j, l, tmp, placeHolders, arr
+	function placeHoldersCount (b64) {
 	  var len = b64.length
-
 	  if (len % 4 > 0) {
 	    throw new Error('Invalid string. Length must be a multiple of 4')
 	  }
@@ -16925,9 +14761,19 @@ var StellarSdk =
 	  // represent one byte
 	  // if there is only one, then the three characters before it represent 2 bytes
 	  // this is just a cheap hack to not do indexOf twice
-	  placeHolders = b64[len - 2] === '=' ? 2 : b64[len - 1] === '=' ? 1 : 0
+	  return b64[len - 2] === '=' ? 2 : b64[len - 1] === '=' ? 1 : 0
+	}
 
+	function byteLength (b64) {
 	  // base64 is 4/3 + up to two characters of the original data
+	  return b64.length * 3 / 4 - placeHoldersCount(b64)
+	}
+
+	function toByteArray (b64) {
+	  var i, j, l, tmp, placeHolders, arr
+	  var len = b64.length
+	  placeHolders = placeHoldersCount(b64)
+
 	  arr = new Arr(len * 3 / 4 - placeHolders)
 
 	  // if there are placeholders, only get up to the last complete 4 chars
@@ -17002,7 +14848,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 164 */
+/* 91 */
 /***/ function(module, exports) {
 
 	exports.read = function (buffer, offset, isLE, mLen, nBytes) {
@@ -17092,7 +14938,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 165 */
+/* 92 */
 /***/ function(module, exports) {
 
 	var toString = {}.toString;
@@ -17103,7 +14949,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 166 */
+/* 93 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {// Copyright Joyent, Inc. and other Node contributors.
@@ -17214,16 +15060,16 @@ var StellarSdk =
 	  return Object.prototype.toString.call(o);
 	}
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(162).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(89).Buffer))
 
 /***/ },
-/* 167 */
+/* 94 */
 /***/ function(module, exports) {
 
 	/* (ignored) */
 
 /***/ },
-/* 168 */
+/* 95 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {// Copyright Joyent, Inc. and other Node contributors.
@@ -17264,12 +15110,12 @@ var StellarSdk =
 
 
 	/*<replacement>*/
-	var util = __webpack_require__(166);
-	util.inherits = __webpack_require__(158);
+	var util = __webpack_require__(93);
+	util.inherits = __webpack_require__(85);
 	/*</replacement>*/
 
-	var Readable = __webpack_require__(160);
-	var Writable = __webpack_require__(169);
+	var Readable = __webpack_require__(87);
+	var Writable = __webpack_require__(96);
 
 	util.inherits(Duplex, Readable);
 
@@ -17319,7 +15165,7 @@ var StellarSdk =
 	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(3)))
 
 /***/ },
-/* 169 */
+/* 96 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {// Copyright Joyent, Inc. and other Node contributors.
@@ -17350,18 +15196,18 @@ var StellarSdk =
 	module.exports = Writable;
 
 	/*<replacement>*/
-	var Buffer = __webpack_require__(162).Buffer;
+	var Buffer = __webpack_require__(89).Buffer;
 	/*</replacement>*/
 
 	Writable.WritableState = WritableState;
 
 
 	/*<replacement>*/
-	var util = __webpack_require__(166);
-	util.inherits = __webpack_require__(158);
+	var util = __webpack_require__(93);
+	util.inherits = __webpack_require__(85);
 	/*</replacement>*/
 
-	var Stream = __webpack_require__(157);
+	var Stream = __webpack_require__(84);
 
 	util.inherits(Writable, Stream);
 
@@ -17372,7 +15218,7 @@ var StellarSdk =
 	}
 
 	function WritableState(options, stream) {
-	  var Duplex = __webpack_require__(168);
+	  var Duplex = __webpack_require__(95);
 
 	  options = options || {};
 
@@ -17460,7 +15306,7 @@ var StellarSdk =
 	}
 
 	function Writable(options) {
-	  var Duplex = __webpack_require__(168);
+	  var Duplex = __webpack_require__(95);
 
 	  // Writable ctor is applied to Duplexes, though they're not
 	  // instanceof Writable, they're instanceof Readable.
@@ -17803,7 +15649,7 @@ var StellarSdk =
 	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(3)))
 
 /***/ },
-/* 170 */
+/* 97 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Copyright Joyent, Inc. and other Node contributors.
@@ -17827,7 +15673,7 @@ var StellarSdk =
 	// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 	// USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-	var Buffer = __webpack_require__(162).Buffer;
+	var Buffer = __webpack_require__(89).Buffer;
 
 	var isBufferEncoding = Buffer.isEncoding
 	  || function(encoding) {
@@ -18030,7 +15876,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 171 */
+/* 98 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Copyright Joyent, Inc. and other Node contributors.
@@ -18099,11 +15945,11 @@ var StellarSdk =
 
 	module.exports = Transform;
 
-	var Duplex = __webpack_require__(168);
+	var Duplex = __webpack_require__(95);
 
 	/*<replacement>*/
-	var util = __webpack_require__(166);
-	util.inherits = __webpack_require__(158);
+	var util = __webpack_require__(93);
+	util.inherits = __webpack_require__(85);
 	/*</replacement>*/
 
 	util.inherits(Transform, Duplex);
@@ -18245,7 +16091,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 172 */
+/* 99 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Copyright Joyent, Inc. and other Node contributors.
@@ -18275,11 +16121,11 @@ var StellarSdk =
 
 	module.exports = PassThrough;
 
-	var Transform = __webpack_require__(171);
+	var Transform = __webpack_require__(98);
 
 	/*<replacement>*/
-	var util = __webpack_require__(166);
-	util.inherits = __webpack_require__(158);
+	var util = __webpack_require__(93);
+	util.inherits = __webpack_require__(85);
 	/*</replacement>*/
 
 	util.inherits(PassThrough, Transform);
@@ -18297,39 +16143,39 @@ var StellarSdk =
 
 
 /***/ },
-/* 173 */
+/* 100 */
 /***/ function(module, exports, __webpack_require__) {
 
-	module.exports = __webpack_require__(169)
+	module.exports = __webpack_require__(96)
 
 
 /***/ },
-/* 174 */
+/* 101 */
 /***/ function(module, exports, __webpack_require__) {
 
-	module.exports = __webpack_require__(168)
+	module.exports = __webpack_require__(95)
 
 
 /***/ },
-/* 175 */
+/* 102 */
 /***/ function(module, exports, __webpack_require__) {
 
-	module.exports = __webpack_require__(171)
+	module.exports = __webpack_require__(98)
 
 
 /***/ },
-/* 176 */
+/* 103 */
 /***/ function(module, exports, __webpack_require__) {
 
-	module.exports = __webpack_require__(172)
+	module.exports = __webpack_require__(99)
 
 
 /***/ },
-/* 177 */
+/* 104 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var Stream = __webpack_require__(157);
-	var util = __webpack_require__(178);
+	var Stream = __webpack_require__(84);
+	var util = __webpack_require__(105);
 
 	var Response = module.exports = function (res) {
 	    this.offset = 0;
@@ -18451,7 +16297,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 178 */
+/* 105 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(global, process) {// Copyright Joyent, Inc. and other Node contributors.
@@ -18979,7 +16825,7 @@ var StellarSdk =
 	}
 	exports.isPrimitive = isPrimitive;
 
-	exports.isBuffer = __webpack_require__(179);
+	exports.isBuffer = __webpack_require__(106);
 
 	function objectToString(o) {
 	  return Object.prototype.toString.call(o);
@@ -19023,7 +16869,7 @@ var StellarSdk =
 	 *     prototype.
 	 * @param {function} superCtor Constructor function to inherit prototype from.
 	 */
-	exports.inherits = __webpack_require__(158);
+	exports.inherits = __webpack_require__(107);
 
 	exports._extend = function(origin, add) {
 	  // Don't do anything if add isn't an object
@@ -19044,7 +16890,7 @@ var StellarSdk =
 	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }()), __webpack_require__(3)))
 
 /***/ },
-/* 179 */
+/* 106 */
 /***/ function(module, exports) {
 
 	module.exports = function isBuffer(arg) {
@@ -19055,7 +16901,36 @@ var StellarSdk =
 	}
 
 /***/ },
-/* 180 */
+/* 107 */
+/***/ function(module, exports) {
+
+	if (typeof Object.create === 'function') {
+	  // implementation from standard node.js 'util' module
+	  module.exports = function inherits(ctor, superCtor) {
+	    ctor.super_ = superCtor
+	    ctor.prototype = Object.create(superCtor.prototype, {
+	      constructor: {
+	        value: ctor,
+	        enumerable: false,
+	        writable: true,
+	        configurable: true
+	      }
+	    });
+	  };
+	} else {
+	  // old school shim for old browsers
+	  module.exports = function inherits(ctor, superCtor) {
+	    ctor.super_ = superCtor
+	    var TempCtor = function () {}
+	    TempCtor.prototype = superCtor.prototype
+	    ctor.prototype = new TempCtor()
+	    ctor.prototype.constructor = ctor
+	  }
+	}
+
+
+/***/ },
+/* 108 */
 /***/ function(module, exports, __webpack_require__) {
 
 	;(function () {
@@ -19121,7 +16996,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 181 */
+/* 109 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process, global, setImmediate) {/* @preserve
@@ -19149,7 +17024,7 @@ var StellarSdk =
 	 * 
 	 */
 	/**
-	 * bluebird build version 3.4.1
+	 * bluebird build version 3.4.6
 	 * Features enabled: core, race, call_get, generators, map, nodeify, promisify, props, reduce, settle, some, using, timers, filter, any, each
 	*/
 	!function(e){if(true)module.exports=e();else if("function"==typeof define&&define.amd)define([],e);else{var f;"undefined"!=typeof window?f=window:"undefined"!=typeof global?f=global:"undefined"!=typeof self&&(f=self),f.Promise=e()}}(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof _dereq_=="function"&&_dereq_;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof _dereq_=="function"&&_dereq_;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(_dereq_,module,exports){
@@ -19563,7 +17438,7 @@ var StellarSdk =
 
 	    var promise = this;
 	    var child = promise;
-	    while (promise.isCancellable()) {
+	    while (promise._isCancellable()) {
 	        if (!promise._cancelBy(child)) {
 	            if (child._isFollowing()) {
 	                child._followee().cancel();
@@ -19574,7 +17449,7 @@ var StellarSdk =
 	        }
 
 	        var parent = promise._cancellationParent;
-	        if (parent == null || !parent.isCancellable()) {
+	        if (parent == null || !parent._isCancellable()) {
 	            if (promise._isFollowing()) {
 	                promise._followee().cancel();
 	            } else {
@@ -19583,6 +17458,7 @@ var StellarSdk =
 	            break;
 	        } else {
 	            if (promise._isFollowing()) promise._followee().cancel();
+	            promise._setWillBeCancelled();
 	            child = promise;
 	            promise = parent;
 	        }
@@ -19620,8 +17496,7 @@ var StellarSdk =
 	};
 
 	Promise.prototype._cancel = function() {
-	    if (!this.isCancellable()) return;
-
+	    if (!this._isCancellable()) return;
 	    this._setCancelled();
 	    async.invoke(this._cancelPromises, this, undefined);
 	};
@@ -19632,6 +17507,10 @@ var StellarSdk =
 
 	Promise.prototype._unsetOnCancel = function() {
 	    this._onCancelField = undefined;
+	};
+
+	Promise.prototype._isCancellable = function() {
+	    return this.isPending() && !this._isCancelled();
 	};
 
 	Promise.prototype.isCancellable = function() {
@@ -19665,7 +17544,7 @@ var StellarSdk =
 	};
 
 	Promise.prototype._invokeInternalOnCancel = function() {
-	    if (this.isCancellable()) {
+	    if (this._isCancellable()) {
 	        this._doInvokeOnCancel(this._onCancel(), true);
 	        this._unsetOnCancel();
 	    }
@@ -19804,6 +17683,8 @@ var StellarSdk =
 	var possiblyUnhandledRejection;
 	var bluebirdFramePattern =
 	    /[\\\/]bluebird[\\\/]js[\\\/](release|debug|instrumented)/;
+	var nodeFramePattern = /\((?:timers\.js):\d+:\d+\)/;
+	var parseLinePattern = /[\/<\(](.+?):(\d+):(\d+)\)?\s*$/;
 	var stackFramePattern = null;
 	var formatStack = null;
 	var indentStackFrames = false;
@@ -19891,14 +17772,16 @@ var StellarSdk =
 	Promise.onPossiblyUnhandledRejection = function (fn) {
 	    var domain = getDomain();
 	    possiblyUnhandledRejection =
-	        typeof fn === "function" ? (domain === null ? fn : domain.bind(fn))
+	        typeof fn === "function" ? (domain === null ?
+	                                            fn : util.domainBind(domain, fn))
 	                                 : undefined;
 	};
 
 	Promise.onUnhandledRejectionHandled = function (fn) {
 	    var domain = getDomain();
 	    unhandledRejectionHandled =
-	        typeof fn === "function" ? (domain === null ? fn : domain.bind(fn))
+	        typeof fn === "function" ? (domain === null ?
+	                                            fn : util.domainBind(domain, fn))
 	                                 : undefined;
 	};
 
@@ -19934,14 +17817,37 @@ var StellarSdk =
 
 	var fireDomEvent = (function() {
 	    try {
-	        var event = document.createEvent("CustomEvent");
-	        event.initCustomEvent("testingtheevent", false, true, {});
-	        util.global.dispatchEvent(event);
-	        return function(name, event) {
-	            var domEvent = document.createEvent("CustomEvent");
-	            domEvent.initCustomEvent(name.toLowerCase(), false, true, event);
-	            return !util.global.dispatchEvent(domEvent);
-	        };
+	        if (typeof CustomEvent === "function") {
+	            var event = new CustomEvent("CustomEvent");
+	            util.global.dispatchEvent(event);
+	            return function(name, event) {
+	                var domEvent = new CustomEvent(name.toLowerCase(), {
+	                    detail: event,
+	                    cancelable: true
+	                });
+	                return !util.global.dispatchEvent(domEvent);
+	            };
+	        } else if (typeof Event === "function") {
+	            var event = new Event("CustomEvent");
+	            util.global.dispatchEvent(event);
+	            return function(name, event) {
+	                var domEvent = new Event(name.toLowerCase(), {
+	                    cancelable: true
+	                });
+	                domEvent.detail = event;
+	                return !util.global.dispatchEvent(domEvent);
+	            };
+	        } else {
+	            var event = document.createEvent("CustomEvent");
+	            event.initCustomEvent("testingtheevent", false, true, {});
+	            util.global.dispatchEvent(event);
+	            return function(name, event) {
+	                var domEvent = document.createEvent("CustomEvent");
+	                domEvent.initCustomEvent(name.toLowerCase(), false, true,
+	                    event);
+	                return !util.global.dispatchEvent(domEvent);
+	            };
+	        }
 	    } catch (e) {}
 	    return function() {
 	        return false;
@@ -20098,7 +18004,7 @@ var StellarSdk =
 	}
 
 	function cancellationAttachCancellationCallback(onCancel) {
-	    if (!this.isCancellable()) return this;
+	    if (!this._isCancellable()) return this;
 
 	    var previousOnCancel = this._onCancel();
 	    if (previousOnCancel !== undefined) {
@@ -20189,8 +18095,41 @@ var StellarSdk =
 	        if ((promise._bitField & 65535) === 0) return;
 
 	        if (name) name = name + " ";
+	        var handlerLine = "";
+	        var creatorLine = "";
+	        if (promiseCreated._trace) {
+	            var traceLines = promiseCreated._trace.stack.split("\n");
+	            var stack = cleanStack(traceLines);
+	            for (var i = stack.length - 1; i >= 0; --i) {
+	                var line = stack[i];
+	                if (!nodeFramePattern.test(line)) {
+	                    var lineMatches = line.match(parseLinePattern);
+	                    if (lineMatches) {
+	                        handlerLine  = "at " + lineMatches[1] +
+	                            ":" + lineMatches[2] + ":" + lineMatches[3] + " ";
+	                    }
+	                    break;
+	                }
+	            }
+
+	            if (stack.length > 0) {
+	                var firstUserLine = stack[0];
+	                for (var i = 0; i < traceLines.length; ++i) {
+
+	                    if (traceLines[i] === firstUserLine) {
+	                        if (i > 0) {
+	                            creatorLine = "\n" + traceLines[i - 1];
+	                        }
+	                        break;
+	                    }
+	                }
+
+	            }
+	        }
 	        var msg = "a promise was created in a " + name +
-	            "handler but was not returned from it";
+	            "handler " + handlerLine + "but was not returned from it, " +
+	            "see http://goo.gl/rRqMUw" +
+	            creatorLine;
 	        promise._warn(msg, true, promiseCreated);
 	    }
 	}
@@ -20712,8 +18651,8 @@ var StellarSdk =
 	}
 
 	Promise.prototype.each = function (fn) {
-	    return this.mapSeries(fn)
-	            ._then(promiseAllThis, undefined, undefined, this, undefined);
+	    return PromiseReduce(this, fn, INTERNAL, 0)
+	              ._then(promiseAllThis, undefined, undefined, this, undefined);
 	};
 
 	Promise.prototype.mapSeries = function (fn) {
@@ -20721,12 +18660,13 @@ var StellarSdk =
 	};
 
 	Promise.each = function (promises, fn) {
-	    return PromiseMapSeries(promises, fn)
-	            ._then(promiseAllThis, undefined, undefined, promises, undefined);
+	    return PromiseReduce(promises, fn, INTERNAL, 0)
+	              ._then(promiseAllThis, undefined, undefined, promises, undefined);
 	};
 
 	Promise.mapSeries = PromiseMapSeries;
 	};
+
 
 	},{}],12:[function(_dereq_,module,exports){
 	"use strict";
@@ -21004,7 +18944,7 @@ var StellarSdk =
 	            var maybePromise = tryConvertToPromise(ret, promise);
 	            if (maybePromise instanceof Promise) {
 	                if (this.cancelPromise != null) {
-	                    if (maybePromise.isCancelled()) {
+	                    if (maybePromise._isCancelled()) {
 	                        var reason =
 	                            new CancellationError("late cancellation observer");
 	                        promise._attachExtraTrace(reason);
@@ -21230,9 +19170,13 @@ var StellarSdk =
 	            this._yieldedPromise = maybePromise;
 	            maybePromise._proxy(this, null);
 	        } else if (((bitField & 33554432) !== 0)) {
-	            this._promiseFulfilled(maybePromise._value());
+	            Promise._async.invoke(
+	                this._promiseFulfilled, this, maybePromise._value()
+	            );
 	        } else if (((bitField & 16777216) !== 0)) {
-	            this._promiseRejected(maybePromise._reason());
+	            Promise._async.invoke(
+	                this._promiseRejected, this, maybePromise._reason()
+	            );
 	        } else {
 	            this._promiseCancelled();
 	        }
@@ -21279,7 +19223,8 @@ var StellarSdk =
 	},{"./errors":12,"./util":36}],17:[function(_dereq_,module,exports){
 	"use strict";
 	module.exports =
-	function(Promise, PromiseArray, tryConvertToPromise, INTERNAL) {
+	function(Promise, PromiseArray, tryConvertToPromise, INTERNAL, async,
+	         getDomain) {
 	var util = _dereq_("./util");
 	var canEvaluate = util.canEvaluate;
 	var tryCatch = util.tryCatch;
@@ -21321,25 +19266,35 @@ var StellarSdk =
 	        var name = "Holder$" + total;
 
 
-	        var code = "return function(tryCatch, errorObj, Promise) {           \n\
+	        var code = "return function(tryCatch, errorObj, Promise, async) {    \n\
 	            'use strict';                                                    \n\
 	            function [TheName](fn) {                                         \n\
 	                [TheProperties]                                              \n\
 	                this.fn = fn;                                                \n\
+	                this.asyncNeeded = true;                                     \n\
 	                this.now = 0;                                                \n\
 	            }                                                                \n\
+	                                                                             \n\
+	            [TheName].prototype._callFunction = function(promise) {          \n\
+	                promise._pushContext();                                      \n\
+	                var ret = tryCatch(this.fn)([ThePassedArguments]);           \n\
+	                promise._popContext();                                       \n\
+	                if (ret === errorObj) {                                      \n\
+	                    promise._rejectCallback(ret.e, false);                   \n\
+	                } else {                                                     \n\
+	                    promise._resolveCallback(ret);                           \n\
+	                }                                                            \n\
+	            };                                                               \n\
+	                                                                             \n\
 	            [TheName].prototype.checkFulfillment = function(promise) {       \n\
 	                var now = ++this.now;                                        \n\
 	                if (now === [TheTotal]) {                                    \n\
-	                    promise._pushContext();                                  \n\
-	                    var callback = this.fn;                                  \n\
-	                    var ret = tryCatch(callback)([ThePassedArguments]);      \n\
-	                    promise._popContext();                                   \n\
-	                    if (ret === errorObj) {                                  \n\
-	                        promise._rejectCallback(ret.e, false);               \n\
+	                    if (this.asyncNeeded) {                                  \n\
+	                        async.invoke(this._callFunction, this, promise);     \n\
 	                    } else {                                                 \n\
-	                        promise._resolveCallback(ret);                       \n\
+	                        this._callFunction(promise);                         \n\
 	                    }                                                        \n\
+	                                                                             \n\
 	                }                                                            \n\
 	            };                                                               \n\
 	                                                                             \n\
@@ -21348,7 +19303,7 @@ var StellarSdk =
 	            };                                                               \n\
 	                                                                             \n\
 	            return [TheName];                                                \n\
-	        }(tryCatch, errorObj, Promise);                                      \n\
+	        }(tryCatch, errorObj, Promise, async);                               \n\
 	        ";
 
 	        code = code.replace(/\[TheName\]/g, name)
@@ -21357,8 +19312,8 @@ var StellarSdk =
 	            .replace(/\[TheProperties\]/g, assignment)
 	            .replace(/\[CancellationCode\]/g, cancellationCode);
 
-	        return new Function("tryCatch", "errorObj", "Promise", code)
-	                           (tryCatch, errorObj, Promise);
+	        return new Function("tryCatch", "errorObj", "Promise", "async", code)
+	                           (tryCatch, errorObj, Promise, async);
 	    };
 
 	    var holderClasses = [];
@@ -21399,6 +19354,7 @@ var StellarSdk =
 	                            maybePromise._then(callbacks[i], reject,
 	                                               undefined, ret, holder);
 	                            promiseSetters[i](maybePromise, holder);
+	                            holder.asyncNeeded = false;
 	                        } else if (((bitField & 33554432) !== 0)) {
 	                            callbacks[i].call(ret,
 	                                              maybePromise._value(), holder);
@@ -21411,7 +19367,14 @@ var StellarSdk =
 	                        callbacks[i].call(ret, maybePromise, holder);
 	                    }
 	                }
+
 	                if (!ret._isFateSealed()) {
+	                    if (holder.asyncNeeded) {
+	                        var domain = getDomain();
+	                        if (domain !== null) {
+	                            holder.fn = util.domainBind(domain, holder.fn);
+	                        }
+	                    }
 	                    ret._setAsyncGuaranteed();
 	                    ret._setOnCancel(holder);
 	                }
@@ -21439,22 +19402,26 @@ var StellarSdk =
 	var util = _dereq_("./util");
 	var tryCatch = util.tryCatch;
 	var errorObj = util.errorObj;
-	var EMPTY_ARRAY = [];
+	var async = Promise._async;
 
 	function MappingPromiseArray(promises, fn, limit, _filter) {
 	    this.constructor$(promises);
 	    this._promise._captureStackTrace();
 	    var domain = getDomain();
-	    this._callback = domain === null ? fn : domain.bind(fn);
+	    this._callback = domain === null ? fn : util.domainBind(domain, fn);
 	    this._preservedValues = _filter === INTERNAL
 	        ? new Array(this.length())
 	        : null;
 	    this._limit = limit;
 	    this._inFlight = 0;
-	    this._queue = limit >= 1 ? [] : EMPTY_ARRAY;
-	    this._init$(undefined, -2);
+	    this._queue = [];
+	    async.invoke(this._asyncInit, this, undefined);
 	}
 	util.inherits(MappingPromiseArray, PromiseArray);
+
+	MappingPromiseArray.prototype._asyncInit = function() {
+	    this._init$(undefined, -2);
+	};
 
 	MappingPromiseArray.prototype._init = function () {};
 
@@ -21860,7 +19827,8 @@ var StellarSdk =
 	            if (util.isObject(item)) {
 	                catchInstances[j++] = item;
 	            } else {
-	                return apiRejection("expecting an object but got " + util.classString(item));
+	                return apiRejection("expecting an object but got " +
+	                    "A catch statement predicate " + util.classString(item));
 	            }
 	        }
 	        catchInstances.length = j;
@@ -22024,7 +19992,8 @@ var StellarSdk =
 
 	        async.invoke(settler, target, {
 	            handler: domain === null ? handler
-	                : (typeof handler === "function" && domain.bind(handler)),
+	                : (typeof handler === "function" &&
+	                    util.domainBind(domain, handler)),
 	            promise: promise,
 	            receiver: receiver,
 	            value: value
@@ -22083,6 +20052,10 @@ var StellarSdk =
 	Promise.prototype._setCancelled = function() {
 	    this._bitField = this._bitField | 65536;
 	    this._fireEvent("promiseCancelled", this);
+	};
+
+	Promise.prototype._setWillBeCancelled = function() {
+	    this._bitField = this._bitField | 8388608;
 	};
 
 	Promise.prototype._setAsyncGuaranteed = function() {
@@ -22156,11 +20129,11 @@ var StellarSdk =
 	        this._receiver0 = receiver;
 	        if (typeof fulfill === "function") {
 	            this._fulfillmentHandler0 =
-	                domain === null ? fulfill : domain.bind(fulfill);
+	                domain === null ? fulfill : util.domainBind(domain, fulfill);
 	        }
 	        if (typeof reject === "function") {
 	            this._rejectionHandler0 =
-	                domain === null ? reject : domain.bind(reject);
+	                domain === null ? reject : util.domainBind(domain, reject);
 	        }
 	    } else {
 	        var base = index * 4 - 4;
@@ -22168,11 +20141,11 @@ var StellarSdk =
 	        this[base + 3] = receiver;
 	        if (typeof fulfill === "function") {
 	            this[base + 0] =
-	                domain === null ? fulfill : domain.bind(fulfill);
+	                domain === null ? fulfill : util.domainBind(domain, fulfill);
 	        }
 	        if (typeof reject === "function") {
 	            this[base + 1] =
-	                domain === null ? reject : domain.bind(reject);
+	                domain === null ? reject : util.domainBind(domain, reject);
 	        }
 	    }
 	    this._setLength(index + 1);
@@ -22489,9 +20462,9 @@ var StellarSdk =
 	_dereq_("./direct_resolve")(Promise);
 	_dereq_("./synchronous_inspection")(Promise);
 	_dereq_("./join")(
-	    Promise, PromiseArray, tryConvertToPromise, INTERNAL, debug);
+	    Promise, PromiseArray, tryConvertToPromise, INTERNAL, async, getDomain);
 	Promise.Promise = Promise;
-	Promise.version = "3.4.0";
+	Promise.version = "3.4.6";
 	_dereq_('./map.js')(Promise, PromiseArray, apiRejection, tryConvertToPromise, INTERNAL, debug);
 	_dereq_('./call_get.js')(Promise);
 	_dereq_('./using.js')(Promise, apiRejection, tryConvertToPromise, createContext, INTERNAL, debug);
@@ -22661,7 +20634,7 @@ var StellarSdk =
 	};
 
 	PromiseArray.prototype._cancel = function() {
-	    if (this._isResolved() || !this._promise.isCancellable()) return;
+	    if (this._isResolved() || !this._promise._isCancellable()) return;
 	    this._values = null;
 	    this._promise._cancel();
 	};
@@ -23312,27 +21285,37 @@ var StellarSdk =
 	function ReductionPromiseArray(promises, fn, initialValue, _each) {
 	    this.constructor$(promises);
 	    var domain = getDomain();
-	    this._fn = domain === null ? fn : domain.bind(fn);
+	    this._fn = domain === null ? fn : util.domainBind(domain, fn);
 	    if (initialValue !== undefined) {
 	        initialValue = Promise.resolve(initialValue);
 	        initialValue._attachCancellationCallback(this);
 	    }
 	    this._initialValue = initialValue;
 	    this._currentCancellable = null;
-	    this._eachValues = _each === INTERNAL ? [] : undefined;
+	    if(_each === INTERNAL) {
+	        this._eachValues = Array(this._length);
+	    } else if (_each === 0) {
+	        this._eachValues = null;
+	    } else {
+	        this._eachValues = undefined;
+	    }
 	    this._promise._captureStackTrace();
 	    this._init$(undefined, -5);
 	}
 	util.inherits(ReductionPromiseArray, PromiseArray);
 
 	ReductionPromiseArray.prototype._gotAccum = function(accum) {
-	    if (this._eachValues !== undefined && accum !== INTERNAL) {
+	    if (this._eachValues !== undefined && 
+	        this._eachValues !== null && 
+	        accum !== INTERNAL) {
 	        this._eachValues.push(accum);
 	    }
 	};
 
 	ReductionPromiseArray.prototype._eachComplete = function(value) {
-	    this._eachValues.push(value);
+	    if (this._eachValues !== null) {
+	        this._eachValues.push(value);
+	    }
 	    return this._eachValues;
 	};
 
@@ -23475,7 +21458,8 @@ var StellarSdk =
 	    schedule = util.isRecentNode
 	                ? function(fn) { GlobalSetImmediate.call(global, fn); }
 	                : function(fn) { ProcessNextTick.call(process, fn); };
-	} else if (typeof NativePromise === "function") {
+	} else if (typeof NativePromise === "function" &&
+	           typeof NativePromise.resolve === "function") {
 	    var nativePromise = NativePromise.resolve();
 	    schedule = function(fn) {
 	        nativePromise.then(fn);
@@ -23483,7 +21467,7 @@ var StellarSdk =
 	} else if ((typeof MutationObserver !== "undefined") &&
 	          !(typeof window !== "undefined" &&
 	            window.navigator &&
-	            window.navigator.standalone)) {
+	            (window.navigator.standalone || window.cordova))) {
 	    schedule = (function() {
 	        var div = document.createElement("div");
 	        var opts = {attributes: true};
@@ -23769,13 +21753,20 @@ var StellarSdk =
 	    return (this._bitField & 50331648) !== 0;
 	};
 
-	PromiseInspection.prototype.isCancelled =
-	Promise.prototype._isCancelled = function() {
+	PromiseInspection.prototype.isCancelled = function() {
+	    return (this._bitField & 8454144) !== 0;
+	};
+
+	Promise.prototype.__isCancelled = function() {
 	    return (this._bitField & 65536) === 65536;
 	};
 
+	Promise.prototype._isCancelled = function() {
+	    return this._target().__isCancelled();
+	};
+
 	Promise.prototype.isCancelled = function() {
-	    return this._target()._isCancelled();
+	    return (this._target()._bitField & 8454144) !== 0;
 	};
 
 	Promise.prototype.isPending = function() {
@@ -23934,6 +21925,7 @@ var StellarSdk =
 	        if (debug.cancellation()) {
 	            ret._setOnCancel(new HandleWrapper(handle));
 	        }
+	        ret._captureStackTrace();
 	    }
 	    ret._setAsyncGuaranteed();
 	    return ret;
@@ -24554,6 +22546,10 @@ var StellarSdk =
 	    }
 	}
 
+	function domainBind(self, cb) {
+	    return self.bind(cb);
+	}
+
 	var ret = {
 	    isClass: isClass,
 	    isIdentifier: isIdentifier,
@@ -24586,7 +22582,8 @@ var StellarSdk =
 	    isNode: isNode,
 	    env: env,
 	    global: globalObject,
-	    getNativePromise: getNativePromise
+	    getNativePromise: getNativePromise,
+	    domainBind: domainBind
 	};
 	ret.isRecentNode = ret.isNode && (function() {
 	    var version = process.versions.node.split(".").map(Number);
@@ -24600,10 +22597,10 @@ var StellarSdk =
 
 	},{"./es5":13}]},{},[4])(4)
 	});                    ;if (typeof window !== 'undefined' && window !== null) {                               window.P = window.Promise;                                                     } else if (typeof self !== 'undefined' && self !== null) {                             self.P = self.Promise;                                                         }
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(3), (function() { return this; }()), __webpack_require__(182).setImmediate))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(3), (function() { return this; }()), __webpack_require__(110).setImmediate))
 
 /***/ },
-/* 182 */
+/* 110 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(setImmediate, clearImmediate) {var nextTick = __webpack_require__(3).nextTick;
@@ -24682,10 +22679,10 @@ var StellarSdk =
 	exports.clearImmediate = typeof clearImmediate === "function" ? clearImmediate : function(id) {
 	  delete immediateIds[id];
 	};
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(182).setImmediate, __webpack_require__(182).clearImmediate))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(110).setImmediate, __webpack_require__(110).clearImmediate))
 
 /***/ },
-/* 183 */
+/* 111 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -24702,7 +22699,7 @@ var StellarSdk =
 
 	function _inherits(subClass, superClass) { if (typeof superClass !== 'function' && superClass !== null) { throw new TypeError('Super expression must either be null or a function, not ' + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
-	var _call_builder = __webpack_require__(10);
+	var _call_builder = __webpack_require__(8);
 
 	var LedgerCallBuilder = (function (_CallBuilder) {
 	    _inherits(LedgerCallBuilder, _CallBuilder);
@@ -24744,7 +22741,7 @@ var StellarSdk =
 	exports.LedgerCallBuilder = LedgerCallBuilder;
 
 /***/ },
-/* 184 */
+/* 112 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -24761,7 +22758,7 @@ var StellarSdk =
 
 	function _inherits(subClass, superClass) { if (typeof superClass !== 'function' && superClass !== null) { throw new TypeError('Super expression must either be null or a function, not ' + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
-	var _time_filter_call_builder = __webpack_require__(185);
+	var _time_filter_call_builder = __webpack_require__(113);
 
 	var TransactionCallBuilder = (function (_TimeFilterCallBuilder) {
 	    _inherits(TransactionCallBuilder, _TimeFilterCallBuilder);
@@ -24830,7 +22827,7 @@ var StellarSdk =
 	exports.TransactionCallBuilder = TransactionCallBuilder;
 
 /***/ },
-/* 185 */
+/* 113 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -24847,7 +22844,7 @@ var StellarSdk =
 
 	function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
-	var _call_builder = __webpack_require__(10);
+	var _call_builder = __webpack_require__(8);
 
 	var TimeFilterCallBuilder = (function (_CallBuilder) {
 	    _inherits(TimeFilterCallBuilder, _CallBuilder);
@@ -24888,7 +22885,7 @@ var StellarSdk =
 	exports.TimeFilterCallBuilder = TimeFilterCallBuilder;
 
 /***/ },
-/* 186 */
+/* 114 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -24905,7 +22902,7 @@ var StellarSdk =
 
 	function _inherits(subClass, superClass) { if (typeof superClass !== 'function' && superClass !== null) { throw new TypeError('Super expression must either be null or a function, not ' + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
-	var _time_filter_call_builder = __webpack_require__(185);
+	var _time_filter_call_builder = __webpack_require__(113);
 
 	var OperationCallBuilder = (function (_TimeFilterCallBuilder) {
 	    _inherits(OperationCallBuilder, _TimeFilterCallBuilder);
@@ -24989,7 +22986,7 @@ var StellarSdk =
 	exports.OperationCallBuilder = OperationCallBuilder;
 
 /***/ },
-/* 187 */
+/* 115 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -25004,11 +23001,11 @@ var StellarSdk =
 
 	function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
-	var _call_builder = __webpack_require__(10);
+	var _call_builder = __webpack_require__(8);
 
-	var _orderbook_call_builder = __webpack_require__(188);
+	var _orderbook_call_builder = __webpack_require__(116);
 
-	var _errors = __webpack_require__(7);
+	var _errors = __webpack_require__(5);
 
 	var OfferCallBuilder = (function (_CallBuilder) {
 	    _inherits(OfferCallBuilder, _CallBuilder);
@@ -25044,7 +23041,7 @@ var StellarSdk =
 	exports.OfferCallBuilder = OfferCallBuilder;
 
 /***/ },
-/* 188 */
+/* 116 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -25061,7 +23058,7 @@ var StellarSdk =
 
 	function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
-	var _call_builder = __webpack_require__(10);
+	var _call_builder = __webpack_require__(8);
 
 	var OrderbookCallBuilder = (function (_CallBuilder) {
 	    _inherits(OrderbookCallBuilder, _CallBuilder);
@@ -25117,7 +23114,7 @@ var StellarSdk =
 	exports.OrderbookCallBuilder = OrderbookCallBuilder;
 
 /***/ },
-/* 189 */
+/* 117 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -25132,7 +23129,7 @@ var StellarSdk =
 
 	function _inherits(subClass, superClass) { if (typeof superClass !== 'function' && superClass !== null) { throw new TypeError('Super expression must either be null or a function, not ' + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
-	var _call_builder = __webpack_require__(10);
+	var _call_builder = __webpack_require__(8);
 
 	var PathCallBuilder = (function (_CallBuilder) {
 	    _inherits(PathCallBuilder, _CallBuilder);
@@ -25185,7 +23182,7 @@ var StellarSdk =
 	exports.PathCallBuilder = PathCallBuilder;
 
 /***/ },
-/* 190 */
+/* 118 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -25202,7 +23199,7 @@ var StellarSdk =
 
 	function _inherits(subClass, superClass) { if (typeof superClass !== 'function' && superClass !== null) { throw new TypeError('Super expression must either be null or a function, not ' + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
-	var _time_filter_call_builder = __webpack_require__(185);
+	var _time_filter_call_builder = __webpack_require__(113);
 
 	var PaymentCallBuilder = (function (_TimeFilterCallBuilder) {
 	    _inherits(PaymentCallBuilder, _TimeFilterCallBuilder);
@@ -25271,13 +23268,13 @@ var StellarSdk =
 	exports.PaymentCallBuilder = PaymentCallBuilder;
 
 /***/ },
-/* 191 */
+/* 119 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
 	Object.defineProperty(exports, '__esModule', {
-	  value: true
+	    value: true
 	});
 
 	var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
@@ -25288,7 +23285,7 @@ var StellarSdk =
 
 	function _inherits(subClass, superClass) { if (typeof superClass !== 'function' && superClass !== null) { throw new TypeError('Super expression must either be null or a function, not ' + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
-	var _call_builder = __webpack_require__(10);
+	var _call_builder = __webpack_require__(8);
 
 	/**
 	 * @class EffectCallBuilder
@@ -25296,87 +23293,87 @@ var StellarSdk =
 	 */
 
 	var EffectCallBuilder = (function (_CallBuilder) {
-	  _inherits(EffectCallBuilder, _CallBuilder);
+	    _inherits(EffectCallBuilder, _CallBuilder);
 
-	  /*
-	   * Creates a new {@link EffectCallBuilder} pointed to server defined by serverUrl.
-	   *
-	   * Do not create this object directly, use {@link Server#effects}.
-	   * @see [All Effects](https://www.stellar.org/developers/horizon/reference/effects-all.html)
-	   * @constructor
-	   * @param {string} serverUrl Horizon server URL.
-	   */
-
-	  function EffectCallBuilder(serverUrl) {
-	    _classCallCheck(this, EffectCallBuilder);
-
-	    _get(Object.getPrototypeOf(EffectCallBuilder.prototype), 'constructor', this).call(this, serverUrl);
-	    this.url.segment('effects');
-	  }
-
-	  /**
-	   * This endpoint represents all effects that changed a given account. It will return relevant effects from the creation of the account to the current ledger.
-	   * @see [Effects for Account](https://www.stellar.org/developers/horizon/reference/effects-for-account.html)
-	   * @param {string} accountId For example: `GDGQVOKHW4VEJRU2TETD6DBRKEO5ERCNF353LW5WBFW3JJWQ2BRQ6KDD`
-	   * @returns {EffectCallBuilder}
-	   */
-
-	  _createClass(EffectCallBuilder, [{
-	    key: 'forAccount',
-	    value: function forAccount(accountId) {
-	      this.filter.push(['accounts', accountId, 'effects']);
-	      return this;
-	    }
-
-	    /**
-	     * Effects are the specific ways that the ledger was changed by any operation.
+	    /*
+	     * Creates a new {@link EffectCallBuilder} pointed to server defined by serverUrl.
 	     *
-	     * This endpoint represents all effects that occurred in the given ledger.
-	     * @see [Effects for Ledger](https://www.stellar.org/developers/horizon/reference/effects-for-ledger.html)
-	     * @param {number} ledgerId Ledger ID
-	     * @returns {EffectCallBuilder}
+	     * Do not create this object directly, use {@link Server#effects}.
+	     * @see [All Effects](https://www.stellar.org/developers/horizon/reference/effects-all.html)
+	     * @constructor
+	     * @param {string} serverUrl Horizon server URL.
 	     */
-	  }, {
-	    key: 'forLedger',
-	    value: function forLedger(ledgerId) {
-	      this.filter.push(['ledgers', ledgerId, 'effects']);
-	      return this;
+
+	    function EffectCallBuilder(serverUrl) {
+	        _classCallCheck(this, EffectCallBuilder);
+
+	        _get(Object.getPrototypeOf(EffectCallBuilder.prototype), 'constructor', this).call(this, serverUrl);
+	        this.url.segment('effects');
 	    }
 
 	    /**
-	     * This endpoint represents all effects that occurred as a result of a given transaction.
-	     * @see [Effects for Transaction](https://www.stellar.org/developers/horizon/reference/effects-for-transaction.html)
-	     * @param {string} transactionId Transaction ID
+	     * This endpoint represents all effects that changed a given account. It will return relevant effects from the creation of the account to the current ledger.
+	     * @see [Effects for Account](https://www.stellar.org/developers/horizon/reference/effects-for-account.html)
+	     * @param {string} accountId For example: `GDGQVOKHW4VEJRU2TETD6DBRKEO5ERCNF353LW5WBFW3JJWQ2BRQ6KDD`
 	     * @returns {EffectCallBuilder}
 	     */
-	  }, {
-	    key: 'forTransaction',
-	    value: function forTransaction(transactionId) {
-	      this.filter.push(['transactions', transactionId, 'effects']);
-	      return this;
-	    }
 
-	    /**
-	     * This endpoint represents all effects that occurred as a result of a given operation.
-	     * @see [Effects for Operation](https://www.stellar.org/developers/horizon/reference/effects-for-operation.html)
-	     * @param {number} operationId Operation ID
-	     * @returns {EffectCallBuilder}
-	     */
-	  }, {
-	    key: 'forOperation',
-	    value: function forOperation(operationId) {
-	      this.filter.push(['operations', operationId, 'effects']);
-	      return this;
-	    }
-	  }]);
+	    _createClass(EffectCallBuilder, [{
+	        key: 'forAccount',
+	        value: function forAccount(accountId) {
+	            this.filter.push(['accounts', accountId, 'effects']);
+	            return this;
+	        }
 
-	  return EffectCallBuilder;
+	        /**
+	         * Effects are the specific ways that the ledger was changed by any operation.
+	         *
+	         * This endpoint represents all effects that occurred in the given ledger.
+	         * @see [Effects for Ledger](https://www.stellar.org/developers/horizon/reference/effects-for-ledger.html)
+	         * @param {number} ledgerId Ledger ID
+	         * @returns {EffectCallBuilder}
+	         */
+	    }, {
+	        key: 'forLedger',
+	        value: function forLedger(ledgerId) {
+	            this.filter.push(['ledgers', ledgerId, 'effects']);
+	            return this;
+	        }
+
+	        /**
+	         * This endpoint represents all effects that occurred as a result of a given transaction.
+	         * @see [Effects for Transaction](https://www.stellar.org/developers/horizon/reference/effects-for-transaction.html)
+	         * @param {string} transactionId Transaction ID
+	         * @returns {EffectCallBuilder}
+	         */
+	    }, {
+	        key: 'forTransaction',
+	        value: function forTransaction(transactionId) {
+	            this.filter.push(['transactions', transactionId, 'effects']);
+	            return this;
+	        }
+
+	        /**
+	         * This endpoint represents all effects that occurred as a result of a given operation.
+	         * @see [Effects for Operation](https://www.stellar.org/developers/horizon/reference/effects-for-operation.html)
+	         * @param {number} operationId Operation ID
+	         * @returns {EffectCallBuilder}
+	         */
+	    }, {
+	        key: 'forOperation',
+	        value: function forOperation(operationId) {
+	            this.filter.push(['operations', operationId, 'effects']);
+	            return this;
+	        }
+	    }]);
+
+	    return EffectCallBuilder;
 	})(_call_builder.CallBuilder);
 
 	exports.EffectCallBuilder = EffectCallBuilder;
 
 /***/ },
-/* 192 */
+/* 120 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -25391,7 +23388,7 @@ var StellarSdk =
 
 	function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
-	var _call_builder = __webpack_require__(10);
+	var _call_builder = __webpack_require__(8);
 
 	var FriendbotBuilder = (function (_CallBuilder) {
 	    _inherits(FriendbotBuilder, _CallBuilder);
@@ -25410,7 +23407,7 @@ var StellarSdk =
 	exports.FriendbotBuilder = FriendbotBuilder;
 
 /***/ },
-/* 193 */
+/* 121 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -25425,73 +23422,73 @@ var StellarSdk =
 	  value: true
 	});
 
-	var xdr = _interopRequire(__webpack_require__(194));
+	var xdr = _interopRequire(__webpack_require__(122));
 
 	exports.xdr = xdr;
-	exports.hash = __webpack_require__(232).hash;
+	exports.hash = __webpack_require__(161).hash;
 
-	var _signing = __webpack_require__(242);
+	var _signing = __webpack_require__(171);
 
 	exports.sign = _signing.sign;
 	exports.verify = _signing.verify;
-	exports.Keypair = __webpack_require__(259).Keypair;
+	exports.Keypair = __webpack_require__(188).Keypair;
 
-	var _jsXdr = __webpack_require__(195);
+	var _jsXdr = __webpack_require__(123);
 
 	exports.UnsignedHyper = _jsXdr.UnsignedHyper;
 	exports.Hyper = _jsXdr.Hyper;
-	exports.Transaction = __webpack_require__(305).Transaction;
-	exports.TransactionBuilder = __webpack_require__(421).TransactionBuilder;
-	exports.Asset = __webpack_require__(307).Asset;
-	exports.Operation = __webpack_require__(306).Operation;
-	exports.Memo = __webpack_require__(423).Memo;
-	exports.Account = __webpack_require__(422).Account;
+	exports.Transaction = __webpack_require__(234).Transaction;
+	exports.TransactionBuilder = __webpack_require__(350).TransactionBuilder;
+	exports.Asset = __webpack_require__(236).Asset;
+	exports.Operation = __webpack_require__(235).Operation;
+	exports.Memo = __webpack_require__(352).Memo;
+	exports.Account = __webpack_require__(351).Account;
 
-	var _network = __webpack_require__(260);
+	var _network = __webpack_require__(189);
 
 	exports.Network = _network.Network;
 	exports.Networks = _network.Networks;
-	exports.HDKey = __webpack_require__(424).HDKey;
+	exports.HDKey = __webpack_require__(353).HDKey;
 
-	_defaults(exports, _interopRequireWildcard(__webpack_require__(265)));
+	_defaults(exports, _interopRequireWildcard(__webpack_require__(194)));
 
 	exports["default"] = module.exports;
 
 /***/ },
-/* 194 */
+/* 122 */
 /***/ function(module, exports, __webpack_require__) {
 
-	"use strict";var _interopRequireWildcard=function(obj){return obj && obj.__esModule?obj:{"default":obj};};var XDR=_interopRequireWildcard(__webpack_require__(195));var types=XDR.config(function(xdr){xdr.typedef("AccountId", xdr.lookup("PublicKey"));xdr.typedef("Thresholds", xdr.opaque(4));xdr.typedef("String32", xdr.string(32));xdr.typedef("String64", xdr.string(64));xdr.typedef("LongString", xdr.string());xdr.typedef("SequenceNumber", xdr.lookup("Uint64"));xdr.typedef("DataValue", xdr.varOpaque(64));xdr["enum"]("AccountType", {accountAnonymousUser:0, accountRegisteredUser:1, accountMerchant:2, accountDistributionAgent:3, accountSettlementAgent:4, accountExchangeAgent:5, accountBank:6});xdr["enum"]("SignerType", {signerGeneral:0, signerAdmin:1, signerEmission:2});xdr["enum"]("AssetType", {assetTypeNative:0, assetTypeCreditAlphanum4:1, assetTypeCreditAlphanum12:2});xdr.struct("AssetAlphaNum4", [["assetCode", xdr.opaque(4)], ["issuer", xdr.lookup("AccountId")]]);xdr.struct("AssetAlphaNum12", [["assetCode", xdr.opaque(12)], ["issuer", xdr.lookup("AccountId")]]);xdr.union("Asset", {switchOn:xdr.lookup("AssetType"), switchName:"type", switches:[["assetTypeNative", xdr["void"]()], ["assetTypeCreditAlphanum4", "alphaNum4"], ["assetTypeCreditAlphanum12", "alphaNum12"]], arms:{alphaNum4:xdr.lookup("AssetAlphaNum4"), alphaNum12:xdr.lookup("AssetAlphaNum12")}});xdr.struct("Price", [["n", xdr.lookup("Int32")], ["d", xdr.lookup("Int32")]]);xdr["enum"]("ThresholdIndices", {thresholdMasterWeight:0, thresholdLow:1, thresholdMed:2, thresholdHigh:3});xdr["enum"]("LedgerEntryType", {account:0, trustline:1, offer:2, datum:3});xdr.struct("Signer", [["pubKey", xdr.lookup("AccountId")], ["weight", xdr.lookup("Uint32")], ["signerType", xdr.lookup("Uint32")]]);xdr["enum"]("AccountFlags", {authRequiredFlag:1, authRevocableFlag:2, authImmutableFlag:4});xdr.union("AccountEntryExt", {switchOn:xdr.int(), switchName:"v", switches:[[0, xdr["void"]()]], arms:{}});xdr.struct("AccountEntry", [["accountId", xdr.lookup("AccountId")], ["balance", xdr.lookup("Int64")], ["seqNum", xdr.lookup("SequenceNumber")], ["numSubEntries", xdr.lookup("Uint32")], ["inflationDest", xdr.option(xdr.lookup("AccountId"))], ["flags", xdr.lookup("Uint32")], ["homeDomain", xdr.lookup("String32")], ["accountType", xdr.lookup("Uint32")], ["thresholds", xdr.lookup("Thresholds")], ["signers", xdr.varArray(xdr.lookup("Signer"), 200)], ["ext", xdr.lookup("AccountEntryExt")]]);xdr["enum"]("TrustLineFlags", {authorizedFlag:1});xdr.union("TrustLineEntryExt", {switchOn:xdr.int(), switchName:"v", switches:[[0, xdr["void"]()]], arms:{}});xdr.struct("TrustLineEntry", [["accountId", xdr.lookup("AccountId")], ["asset", xdr.lookup("Asset")], ["balance", xdr.lookup("Int64")], ["limit", xdr.lookup("Int64")], ["flags", xdr.lookup("Uint32")], ["ext", xdr.lookup("TrustLineEntryExt")]]);xdr["enum"]("OfferEntryFlags", {passiveFlag:1});xdr.union("OfferEntryExt", {switchOn:xdr.int(), switchName:"v", switches:[[0, xdr["void"]()]], arms:{}});xdr.struct("OfferEntry", [["sellerId", xdr.lookup("AccountId")], ["offerId", xdr.lookup("Uint64")], ["selling", xdr.lookup("Asset")], ["buying", xdr.lookup("Asset")], ["amount", xdr.lookup("Int64")], ["price", xdr.lookup("Price")], ["flags", xdr.lookup("Uint32")], ["ext", xdr.lookup("OfferEntryExt")]]);xdr.union("DataEntryExt", {switchOn:xdr.int(), switchName:"v", switches:[[0, xdr["void"]()]], arms:{}});xdr.struct("DataEntry", [["accountId", xdr.lookup("AccountId")], ["dataName", xdr.lookup("String64")], ["dataValue", xdr.lookup("DataValue")], ["ext", xdr.lookup("DataEntryExt")]]);xdr.union("LedgerEntryData", {switchOn:xdr.lookup("LedgerEntryType"), switchName:"type", switches:[["account", "account"], ["trustline", "trustLine"], ["offer", "offer"], ["datum", "data"]], arms:{account:xdr.lookup("AccountEntry"), trustLine:xdr.lookup("TrustLineEntry"), offer:xdr.lookup("OfferEntry"), data:xdr.lookup("DataEntry")}});xdr.union("LedgerEntryExt", {switchOn:xdr.int(), switchName:"v", switches:[[0, xdr["void"]()]], arms:{}});xdr.struct("LedgerEntry", [["lastModifiedLedgerSeq", xdr.lookup("Uint32")], ["data", xdr.lookup("LedgerEntryData")], ["ext", xdr.lookup("LedgerEntryExt")]]);xdr["enum"]("EnvelopeType", {envelopeTypeScp:1, envelopeTypeTx:2, envelopeTypeAuth:3});xdr.typedef("UpgradeType", xdr.varOpaque(128));xdr.union("StellarValueExt", {switchOn:xdr.int(), switchName:"v", switches:[[0, xdr["void"]()]], arms:{}});xdr.struct("StellarValue", [["txSetHash", xdr.lookup("Hash")], ["closeTime", xdr.lookup("Uint64")], ["upgrades", xdr.varArray(xdr.lookup("UpgradeType"), 6)], ["ext", xdr.lookup("StellarValueExt")]]);xdr.union("LedgerHeaderExt", {switchOn:xdr.int(), switchName:"v", switches:[[0, xdr["void"]()]], arms:{}});xdr.struct("LedgerHeader", [["ledgerVersion", xdr.lookup("Uint32")], ["previousLedgerHash", xdr.lookup("Hash")], ["scpValue", xdr.lookup("StellarValue")], ["txSetResultHash", xdr.lookup("Hash")], ["bucketListHash", xdr.lookup("Hash")], ["ledgerSeq", xdr.lookup("Uint32")], ["totalCoins", xdr.lookup("Int64")], ["feePool", xdr.lookup("Int64")], ["inflationSeq", xdr.lookup("Uint32")], ["idPool", xdr.lookup("Uint64")], ["baseFee", xdr.lookup("Uint32")], ["baseReserve", xdr.lookup("Uint32")], ["maxTxSetSize", xdr.lookup("Uint32")], ["skipList", xdr.array(xdr.lookup("Hash"), 4)], ["ext", xdr.lookup("LedgerHeaderExt")]]);xdr["enum"]("LedgerUpgradeType", {ledgerUpgradeVersion:1, ledgerUpgradeMaxTxSetSize:2});xdr.union("LedgerUpgrade", {switchOn:xdr.lookup("LedgerUpgradeType"), switchName:"type", switches:[["ledgerUpgradeVersion", "newLedgerVersion"], ["ledgerUpgradeMaxTxSetSize", "newMaxTxSetSize"]], arms:{newLedgerVersion:xdr.lookup("Uint32"), newMaxTxSetSize:xdr.lookup("Uint32")}});xdr.struct("LedgerKeyAccount", [["accountId", xdr.lookup("AccountId")]]);xdr.struct("LedgerKeyTrustLine", [["accountId", xdr.lookup("AccountId")], ["asset", xdr.lookup("Asset")]]);xdr.struct("LedgerKeyOffer", [["sellerId", xdr.lookup("AccountId")], ["offerId", xdr.lookup("Uint64")]]);xdr.struct("LedgerKeyData", [["accountId", xdr.lookup("AccountId")], ["dataName", xdr.lookup("String64")]]);xdr.union("LedgerKey", {switchOn:xdr.lookup("LedgerEntryType"), switchName:"type", switches:[["account", "account"], ["trustline", "trustLine"], ["offer", "offer"], ["datum", "data"]], arms:{account:xdr.lookup("LedgerKeyAccount"), trustLine:xdr.lookup("LedgerKeyTrustLine"), offer:xdr.lookup("LedgerKeyOffer"), data:xdr.lookup("LedgerKeyData")}});xdr["enum"]("BucketEntryType", {liveentry:0, deadentry:1});xdr.union("BucketEntry", {switchOn:xdr.lookup("BucketEntryType"), switchName:"type", switches:[["liveentry", "liveEntry"], ["deadentry", "deadEntry"]], arms:{liveEntry:xdr.lookup("LedgerEntry"), deadEntry:xdr.lookup("LedgerKey")}});xdr["const"]("MAX_TX_PER_LEDGER", 5000);xdr.struct("TransactionSet", [["previousLedgerHash", xdr.lookup("Hash")], ["txes", xdr.varArray(xdr.lookup("TransactionEnvelope"), xdr.lookup("MAX_TX_PER_LEDGER"))]]);xdr.struct("TransactionResultPair", [["transactionHash", xdr.lookup("Hash")], ["result", xdr.lookup("TransactionResult")]]);xdr.struct("TransactionResultSet", [["results", xdr.varArray(xdr.lookup("TransactionResultPair"), xdr.lookup("MAX_TX_PER_LEDGER"))]]);xdr.union("TransactionHistoryEntryExt", {switchOn:xdr.int(), switchName:"v", switches:[[0, xdr["void"]()]], arms:{}});xdr.struct("TransactionHistoryEntry", [["ledgerSeq", xdr.lookup("Uint32")], ["txSet", xdr.lookup("TransactionSet")], ["ext", xdr.lookup("TransactionHistoryEntryExt")]]);xdr.union("TransactionHistoryResultEntryExt", {switchOn:xdr.int(), switchName:"v", switches:[[0, xdr["void"]()]], arms:{}});xdr.struct("TransactionHistoryResultEntry", [["ledgerSeq", xdr.lookup("Uint32")], ["txResultSet", xdr.lookup("TransactionResultSet")], ["ext", xdr.lookup("TransactionHistoryResultEntryExt")]]);xdr.union("LedgerHeaderHistoryEntryExt", {switchOn:xdr.int(), switchName:"v", switches:[[0, xdr["void"]()]], arms:{}});xdr.struct("LedgerHeaderHistoryEntry", [["hash", xdr.lookup("Hash")], ["header", xdr.lookup("LedgerHeader")], ["ext", xdr.lookup("LedgerHeaderHistoryEntryExt")]]);xdr.struct("LedgerScpMessages", [["ledgerSeq", xdr.lookup("Uint32")], ["messages", xdr.varArray(xdr.lookup("ScpEnvelope"), 2147483647)]]);xdr.struct("ScpHistoryEntryV0", [["quorumSets", xdr.varArray(xdr.lookup("ScpQuorumSet"), 2147483647)], ["ledgerMessages", xdr.lookup("LedgerScpMessages")]]);xdr.union("ScpHistoryEntry", {switchOn:xdr.int(), switchName:"v", switches:[[0, "v0"]], arms:{v0:xdr.lookup("ScpHistoryEntryV0")}});xdr["enum"]("LedgerEntryChangeType", {ledgerEntryCreated:0, ledgerEntryUpdated:1, ledgerEntryRemoved:2, ledgerEntryState:3});xdr.union("LedgerEntryChange", {switchOn:xdr.lookup("LedgerEntryChangeType"), switchName:"type", switches:[["ledgerEntryCreated", "created"], ["ledgerEntryUpdated", "updated"], ["ledgerEntryRemoved", "removed"], ["ledgerEntryState", "state"]], arms:{created:xdr.lookup("LedgerEntry"), updated:xdr.lookup("LedgerEntry"), removed:xdr.lookup("LedgerKey"), state:xdr.lookup("LedgerEntry")}});xdr.typedef("LedgerEntryChanges", xdr.varArray(xdr.lookup("LedgerEntryChange"), 2147483647));xdr.struct("OperationMeta", [["changes", xdr.lookup("LedgerEntryChanges")]]);xdr.union("TransactionMeta", {switchOn:xdr.int(), switchName:"v", switches:[[0, "operations"]], arms:{operations:xdr.varArray(xdr.lookup("OperationMeta"), 2147483647)}});xdr["enum"]("ErrorCode", {errMisc:0, errDatum:1, errConf:2, errAuth:3, errLoad:4});xdr.struct("Error", [["code", xdr.lookup("ErrorCode")], ["msg", xdr.string(100)]]);xdr.struct("AuthCert", [["pubkey", xdr.lookup("Curve25519Public")], ["expiration", xdr.lookup("Uint64")], ["sig", xdr.lookup("Signature")]]);xdr.struct("Hello", [["ledgerVersion", xdr.lookup("Uint32")], ["overlayVersion", xdr.lookup("Uint32")], ["overlayMinVersion", xdr.lookup("Uint32")], ["networkId", xdr.lookup("Hash")], ["versionStr", xdr.string(100)], ["listeningPort", xdr.int()], ["peerId", xdr.lookup("NodeId")], ["cert", xdr.lookup("AuthCert")], ["nonce", xdr.lookup("Uint256")]]);xdr.struct("Auth", [["unused", xdr.int()]]);xdr["enum"]("IpAddrType", {iPv4:0, iPv6:1});xdr.union("PeerAddressIp", {switchOn:xdr.lookup("IpAddrType"), switchName:"type", switches:[["iPv4", "ipv4"], ["iPv6", "ipv6"]], arms:{ipv4:xdr.opaque(4), ipv6:xdr.opaque(16)}});xdr.struct("PeerAddress", [["ip", xdr.lookup("PeerAddressIp")], ["port", xdr.lookup("Uint32")], ["numFailures", xdr.lookup("Uint32")]]);xdr["enum"]("MessageType", {errorMsg:0, auth:2, dontHave:3, getPeer:4, peer:5, getTxSet:6, txSet:7, transaction:8, getScpQuorumset:9, scpQuorumset:10, scpMessage:11, getScpState:12, hello:13});xdr.struct("DontHave", [["type", xdr.lookup("MessageType")], ["reqHash", xdr.lookup("Uint256")]]);xdr.union("StellarMessage", {switchOn:xdr.lookup("MessageType"), switchName:"type", switches:[["errorMsg", "error"], ["hello", "hello"], ["auth", "auth"], ["dontHave", "dontHave"], ["getPeer", xdr["void"]()], ["peer", "peers"], ["getTxSet", "txSetHash"], ["txSet", "txSet"], ["transaction", "transaction"], ["getScpQuorumset", "qSetHash"], ["scpQuorumset", "qSet"], ["scpMessage", "envelope"], ["getScpState", "getScpLedgerSeq"]], arms:{error:xdr.lookup("Error"), hello:xdr.lookup("Hello"), auth:xdr.lookup("Auth"), dontHave:xdr.lookup("DontHave"), peers:xdr.varArray(xdr.lookup("PeerAddress"), 2147483647), txSetHash:xdr.lookup("Uint256"), txSet:xdr.lookup("TransactionSet"), transaction:xdr.lookup("TransactionEnvelope"), qSetHash:xdr.lookup("Uint256"), qSet:xdr.lookup("ScpQuorumSet"), envelope:xdr.lookup("ScpEnvelope"), getScpLedgerSeq:xdr.lookup("Uint32")}});xdr.struct("AuthenticatedMessageV0", [["sequence", xdr.lookup("Uint64")], ["message", xdr.lookup("StellarMessage")], ["mac", xdr.lookup("HmacSha256Mac")]]);xdr.union("AuthenticatedMessage", {switchOn:xdr.lookup("Uint32"), switchName:"v", switches:[[0, "v0"]], arms:{v0:xdr.lookup("AuthenticatedMessageV0")}});xdr.typedef("Value", xdr.varOpaque());xdr.struct("ScpBallot", [["counter", xdr.lookup("Uint32")], ["value", xdr.lookup("Value")]]);xdr["enum"]("ScpStatementType", {scpStPrepare:0, scpStConfirm:1, scpStExternalize:2, scpStNominate:3});xdr.struct("ScpNomination", [["quorumSetHash", xdr.lookup("Hash")], ["votes", xdr.varArray(xdr.lookup("Value"), 2147483647)], ["accepted", xdr.varArray(xdr.lookup("Value"), 2147483647)]]);xdr.struct("ScpStatementPrepare", [["quorumSetHash", xdr.lookup("Hash")], ["ballot", xdr.lookup("ScpBallot")], ["prepared", xdr.option(xdr.lookup("ScpBallot"))], ["preparedPrime", xdr.option(xdr.lookup("ScpBallot"))], ["nC", xdr.lookup("Uint32")], ["nH", xdr.lookup("Uint32")]]);xdr.struct("ScpStatementConfirm", [["ballot", xdr.lookup("ScpBallot")], ["nPrepared", xdr.lookup("Uint32")], ["nCommit", xdr.lookup("Uint32")], ["nH", xdr.lookup("Uint32")], ["quorumSetHash", xdr.lookup("Hash")]]);xdr.struct("ScpStatementExternalize", [["commit", xdr.lookup("ScpBallot")], ["nH", xdr.lookup("Uint32")], ["commitQuorumSetHash", xdr.lookup("Hash")]]);xdr.union("ScpStatementPledges", {switchOn:xdr.lookup("ScpStatementType"), switchName:"type", switches:[["scpStPrepare", "prepare"], ["scpStConfirm", "confirm"], ["scpStExternalize", "externalize"], ["scpStNominate", "nominate"]], arms:{prepare:xdr.lookup("ScpStatementPrepare"), confirm:xdr.lookup("ScpStatementConfirm"), externalize:xdr.lookup("ScpStatementExternalize"), nominate:xdr.lookup("ScpNomination")}});xdr.struct("ScpStatement", [["nodeId", xdr.lookup("NodeId")], ["slotIndex", xdr.lookup("Uint64")], ["pledges", xdr.lookup("ScpStatementPledges")]]);xdr.struct("ScpEnvelope", [["statement", xdr.lookup("ScpStatement")], ["signature", xdr.lookup("Signature")]]);xdr.struct("ScpQuorumSet", [["threshold", xdr.lookup("Uint32")], ["validators", xdr.varArray(xdr.lookup("PublicKey"), 2147483647)], ["innerSets", xdr.varArray(xdr.lookup("ScpQuorumSet"), 2147483647)]]);xdr.struct("DecoratedSignature", [["hint", xdr.lookup("SignatureHint")], ["signature", xdr.lookup("Signature")]]);xdr["enum"]("OperationType", {createAccount:0, payment:1, pathPayment:2, manageOffer:3, createPassiveOffer:4, setOption:5, changeTrust:6, allowTrust:7, accountMerge:8, inflation:9, manageDatum:10, administrative:11});xdr.struct("CreateAccountOp", [["destination", xdr.lookup("AccountId")], ["accountType", xdr.lookup("Uint32")]]);xdr.struct("PaymentOp", [["destination", xdr.lookup("AccountId")], ["asset", xdr.lookup("Asset")], ["amount", xdr.lookup("Int64")]]);xdr.struct("PathPaymentOp", [["sendAsset", xdr.lookup("Asset")], ["sendMax", xdr.lookup("Int64")], ["destination", xdr.lookup("AccountId")], ["destAsset", xdr.lookup("Asset")], ["destAmount", xdr.lookup("Int64")], ["path", xdr.varArray(xdr.lookup("Asset"), 5)]]);xdr.struct("ManageOfferOp", [["selling", xdr.lookup("Asset")], ["buying", xdr.lookup("Asset")], ["amount", xdr.lookup("Int64")], ["price", xdr.lookup("Price")], ["offerId", xdr.lookup("Uint64")]]);xdr.struct("CreatePassiveOfferOp", [["selling", xdr.lookup("Asset")], ["buying", xdr.lookup("Asset")], ["amount", xdr.lookup("Int64")], ["price", xdr.lookup("Price")]]);xdr.struct("SetOptionsOp", [["inflationDest", xdr.option(xdr.lookup("AccountId"))], ["clearFlags", xdr.option(xdr.lookup("Uint32"))], ["setFlags", xdr.option(xdr.lookup("Uint32"))], ["masterWeight", xdr.option(xdr.lookup("Uint32"))], ["lowThreshold", xdr.option(xdr.lookup("Uint32"))], ["medThreshold", xdr.option(xdr.lookup("Uint32"))], ["highThreshold", xdr.option(xdr.lookup("Uint32"))], ["homeDomain", xdr.option(xdr.lookup("String32"))], ["signer", xdr.option(xdr.lookup("Signer"))]]);xdr.struct("ChangeTrustOp", [["line", xdr.lookup("Asset")], ["limit", xdr.lookup("Int64")]]);xdr.union("AllowTrustOpAsset", {switchOn:xdr.lookup("AssetType"), switchName:"type", switches:[["assetTypeCreditAlphanum4", "assetCode4"], ["assetTypeCreditAlphanum12", "assetCode12"]], arms:{assetCode4:xdr.opaque(4), assetCode12:xdr.opaque(12)}});xdr.struct("AllowTrustOp", [["trustor", xdr.lookup("AccountId")], ["asset", xdr.lookup("AllowTrustOpAsset")], ["authorize", xdr.bool()]]);xdr.struct("ManageDataOp", [["dataName", xdr.lookup("String64")], ["dataValue", xdr.option(xdr.lookup("DataValue"))]]);xdr.struct("AdministrativeOp", [["opData", xdr.lookup("LongString")]]);xdr.union("OperationBody", {switchOn:xdr.lookup("OperationType"), switchName:"type", switches:[["createAccount", "createAccountOp"], ["payment", "paymentOp"], ["pathPayment", "pathPaymentOp"], ["manageOffer", "manageOfferOp"], ["createPassiveOffer", "createPassiveOfferOp"], ["setOption", "setOptionsOp"], ["changeTrust", "changeTrustOp"], ["allowTrust", "allowTrustOp"], ["accountMerge", "destination"], ["inflation", xdr["void"]()], ["manageDatum", "manageDataOp"], ["administrative", "adminOp"]], arms:{createAccountOp:xdr.lookup("CreateAccountOp"), paymentOp:xdr.lookup("PaymentOp"), pathPaymentOp:xdr.lookup("PathPaymentOp"), manageOfferOp:xdr.lookup("ManageOfferOp"), createPassiveOfferOp:xdr.lookup("CreatePassiveOfferOp"), setOptionsOp:xdr.lookup("SetOptionsOp"), changeTrustOp:xdr.lookup("ChangeTrustOp"), allowTrustOp:xdr.lookup("AllowTrustOp"), destination:xdr.lookup("AccountId"), manageDataOp:xdr.lookup("ManageDataOp"), adminOp:xdr.lookup("AdministrativeOp")}});xdr.struct("Operation", [["sourceAccount", xdr.option(xdr.lookup("AccountId"))], ["body", xdr.lookup("OperationBody")]]);xdr["enum"]("MemoType", {memoNone:0, memoText:1, memoId:2, memoHash:3, memoReturn:4});xdr.union("Memo", {switchOn:xdr.lookup("MemoType"), switchName:"type", switches:[["memoNone", xdr["void"]()], ["memoText", "text"], ["memoId", "id"], ["memoHash", "hash"], ["memoReturn", "retHash"]], arms:{text:xdr.string(28), id:xdr.lookup("Uint64"), hash:xdr.lookup("Hash"), retHash:xdr.lookup("Hash")}});xdr.struct("TimeBounds", [["minTime", xdr.lookup("Uint64")], ["maxTime", xdr.lookup("Uint64")]]);xdr.union("TransactionExt", {switchOn:xdr.int(), switchName:"v", switches:[[0, xdr["void"]()]], arms:{}});xdr.struct("Transaction", [["sourceAccount", xdr.lookup("AccountId")], ["fee", xdr.lookup("Uint32")], ["seqNum", xdr.lookup("SequenceNumber")], ["timeBounds", xdr.option(xdr.lookup("TimeBounds"))], ["memo", xdr.lookup("Memo")], ["operations", xdr.varArray(xdr.lookup("Operation"), 100)], ["ext", xdr.lookup("TransactionExt")]]);xdr["enum"]("OperationFeeType", {opFeeNone:0, opFeeCharged:1});xdr.union("OperationFeeFeeExt", {switchOn:xdr.int(), switchName:"v", switches:[[0, xdr["void"]()]], arms:{}});xdr.struct("OperationFeeFee", [["asset", xdr.lookup("Asset")], ["amountToCharge", xdr.lookup("Int64")], ["percentFee", xdr.option(xdr.lookup("Int64"))], ["flatFee", xdr.option(xdr.lookup("Int64"))], ["ext", xdr.lookup("OperationFeeFeeExt")]]);xdr.union("OperationFee", {switchOn:xdr.lookup("OperationFeeType"), switchName:"type", switches:[["opFeeNone", xdr["void"]()], ["opFeeCharged", "fee"]], arms:{fee:xdr.lookup("OperationFeeFee")}});xdr.struct("TransactionEnvelope", [["tx", xdr.lookup("Transaction")], ["signatures", xdr.varArray(xdr.lookup("DecoratedSignature"), 20)], ["operationFees", xdr.varArray(xdr.lookup("OperationFee"), 100)]]);xdr.struct("ClaimOfferAtom", [["sellerId", xdr.lookup("AccountId")], ["offerId", xdr.lookup("Uint64")], ["assetSold", xdr.lookup("Asset")], ["amountSold", xdr.lookup("Int64")], ["assetBought", xdr.lookup("Asset")], ["amountBought", xdr.lookup("Int64")]]);xdr["enum"]("CreateAccountResultCode", {createAccountSuccess:0, createAccountMalformed:-1, createAccountUnderfunded:-2, createAccountLowReserve:-3, createAccountAlreadyExist:-4, createAccountNotAuthorizedType:-5, createAccountWrongType:-6});xdr.union("CreateAccountResult", {switchOn:xdr.lookup("CreateAccountResultCode"), switchName:"code", switches:[["createAccountSuccess", xdr["void"]()]], arms:{}, defaultArm:xdr["void"]()});xdr["enum"]("PaymentResultCode", {paymentSuccess:0, paymentMalformed:-1, paymentUnderfunded:-2, paymentSrcNoTrust:-3, paymentSrcNotAuthorized:-4, paymentNoDestination:-5, paymentNoTrust:-6, paymentNotAuthorized:-7, paymentLineFull:-8, paymentNoIssuer:-9});xdr.union("PaymentResult", {switchOn:xdr.lookup("PaymentResultCode"), switchName:"code", switches:[["paymentSuccess", xdr["void"]()]], arms:{}, defaultArm:xdr["void"]()});xdr["enum"]("PathPaymentResultCode", {pathPaymentSuccess:0, pathPaymentMalformed:-1, pathPaymentUnderfunded:-2, pathPaymentSrcNoTrust:-3, pathPaymentSrcNotAuthorized:-4, pathPaymentNoDestination:-5, pathPaymentNoTrust:-6, pathPaymentNotAuthorized:-7, pathPaymentLineFull:-8, pathPaymentNoIssuer:-9, pathPaymentTooFewOffer:-10, pathPaymentOfferCrossSelf:-11, pathPaymentOverSendmax:-12});xdr.struct("SimplePaymentResult", [["destination", xdr.lookup("AccountId")], ["asset", xdr.lookup("Asset")], ["amount", xdr.lookup("Int64")]]);xdr.struct("PathPaymentResultSuccess", [["offers", xdr.varArray(xdr.lookup("ClaimOfferAtom"), 2147483647)], ["last", xdr.lookup("SimplePaymentResult")]]);xdr.union("PathPaymentResult", {switchOn:xdr.lookup("PathPaymentResultCode"), switchName:"code", switches:[["pathPaymentSuccess", "success"], ["pathPaymentNoIssuer", "noIssuer"]], arms:{success:xdr.lookup("PathPaymentResultSuccess"), noIssuer:xdr.lookup("Asset")}, defaultArm:xdr["void"]()});xdr["enum"]("ManageOfferResultCode", {manageOfferSuccess:0, manageOfferMalformed:-1, manageOfferSellNoTrust:-2, manageOfferBuyNoTrust:-3, manageOfferSellNotAuthorized:-4, manageOfferBuyNotAuthorized:-5, manageOfferLineFull:-6, manageOfferUnderfunded:-7, manageOfferCrossSelf:-8, manageOfferSellNoIssuer:-9, manageOfferBuyNoIssuer:-10, manageOfferNotFound:-11, manageOfferLowReserve:-12});xdr["enum"]("ManageOfferEffect", {manageOfferCreated:0, manageOfferUpdated:1, manageOfferDeleted:2});xdr.union("ManageOfferSuccessResultOffer", {switchOn:xdr.lookup("ManageOfferEffect"), switchName:"effect", switches:[["manageOfferCreated", "offer"], ["manageOfferUpdated", "offer"]], arms:{offer:xdr.lookup("OfferEntry")}, defaultArm:xdr["void"]()});xdr.struct("ManageOfferSuccessResult", [["offersClaimed", xdr.varArray(xdr.lookup("ClaimOfferAtom"), 2147483647)], ["offer", xdr.lookup("ManageOfferSuccessResultOffer")]]);xdr.union("ManageOfferResult", {switchOn:xdr.lookup("ManageOfferResultCode"), switchName:"code", switches:[["manageOfferSuccess", "success"]], arms:{success:xdr.lookup("ManageOfferSuccessResult")}, defaultArm:xdr["void"]()});xdr["enum"]("SetOptionsResultCode", {setOptionsSuccess:0, setOptionsLowReserve:-1, setOptionsTooManySigner:-2, setOptionsBadFlag:-3, setOptionsInvalidInflation:-4, setOptionsCantChange:-5, setOptionsUnknownFlag:-6, setOptionsThresholdOutOfRange:-7, setOptionsBadSigner:-8, setOptionsInvalidHomeDomain:-9, setOptionsBadSignerType:-10});xdr.union("SetOptionsResult", {switchOn:xdr.lookup("SetOptionsResultCode"), switchName:"code", switches:[["setOptionsSuccess", xdr["void"]()]], arms:{}, defaultArm:xdr["void"]()});xdr["enum"]("ChangeTrustResultCode", {changeTrustSuccess:0, changeTrustMalformed:-1, changeTrustNoIssuer:-2, changeTrustInvalidLimit:-3, changeTrustLowReserve:-4});xdr.union("ChangeTrustResult", {switchOn:xdr.lookup("ChangeTrustResultCode"), switchName:"code", switches:[["changeTrustSuccess", xdr["void"]()]], arms:{}, defaultArm:xdr["void"]()});xdr["enum"]("AllowTrustResultCode", {allowTrustSuccess:0, allowTrustMalformed:-1, allowTrustNoTrustLine:-2, allowTrustTrustNotRequired:-3, allowTrustCantRevoke:-4});xdr.union("AllowTrustResult", {switchOn:xdr.lookup("AllowTrustResultCode"), switchName:"code", switches:[["allowTrustSuccess", xdr["void"]()]], arms:{}, defaultArm:xdr["void"]()});xdr["enum"]("AccountMergeResultCode", {accountMergeSuccess:0, accountMergeMalformed:-1, accountMergeNoAccount:-2, accountMergeImmutableSet:-3, accountMergeHasSubEntry:-4});xdr.union("AccountMergeResult", {switchOn:xdr.lookup("AccountMergeResultCode"), switchName:"code", switches:[["accountMergeSuccess", "sourceAccountBalance"]], arms:{sourceAccountBalance:xdr.lookup("Int64")}, defaultArm:xdr["void"]()});xdr["enum"]("InflationResultCode", {inflationSuccess:0, inflationNotTime:-1});xdr.struct("InflationPayout", [["destination", xdr.lookup("AccountId")], ["amount", xdr.lookup("Int64")]]);xdr.union("InflationResult", {switchOn:xdr.lookup("InflationResultCode"), switchName:"code", switches:[["inflationSuccess", "payouts"]], arms:{payouts:xdr.varArray(xdr.lookup("InflationPayout"), 2147483647)}, defaultArm:xdr["void"]()});xdr["enum"]("ManageDataResultCode", {manageDataSuccess:0, manageDataNotSupportedYet:-1, manageDataNameNotFound:-2, manageDataLowReserve:-3, manageDataInvalidName:-4});xdr.union("ManageDataResult", {switchOn:xdr.lookup("ManageDataResultCode"), switchName:"code", switches:[["manageDataSuccess", xdr["void"]()]], arms:{}, defaultArm:xdr["void"]()});xdr["enum"]("AdministrativeResultCode", {administrativeSuccess:0, administrativeMalformed:-1, administrativeNotAuthorized:-2});xdr.union("AdministrativeResult", {switchOn:xdr.lookup("AdministrativeResultCode"), switchName:"code", switches:[["administrativeSuccess", xdr["void"]()]], arms:{}, defaultArm:xdr["void"]()});xdr["enum"]("OperationResultCode", {opInner:0, opBadAuth:-1, opNoAccount:-2});xdr.union("OperationResultTr", {switchOn:xdr.lookup("OperationType"), switchName:"type", switches:[["createAccount", "createAccountResult"], ["payment", "paymentResult"], ["pathPayment", "pathPaymentResult"], ["manageOffer", "manageOfferResult"], ["createPassiveOffer", "createPassiveOfferResult"], ["setOption", "setOptionsResult"], ["changeTrust", "changeTrustResult"], ["allowTrust", "allowTrustResult"], ["accountMerge", "accountMergeResult"], ["inflation", "inflationResult"], ["manageDatum", "manageDataResult"], ["administrative", "adminResult"]], arms:{createAccountResult:xdr.lookup("CreateAccountResult"), paymentResult:xdr.lookup("PaymentResult"), pathPaymentResult:xdr.lookup("PathPaymentResult"), manageOfferResult:xdr.lookup("ManageOfferResult"), createPassiveOfferResult:xdr.lookup("ManageOfferResult"), setOptionsResult:xdr.lookup("SetOptionsResult"), changeTrustResult:xdr.lookup("ChangeTrustResult"), allowTrustResult:xdr.lookup("AllowTrustResult"), accountMergeResult:xdr.lookup("AccountMergeResult"), inflationResult:xdr.lookup("InflationResult"), manageDataResult:xdr.lookup("ManageDataResult"), adminResult:xdr.lookup("AdministrativeResult")}});xdr.union("OperationResult", {switchOn:xdr.lookup("OperationResultCode"), switchName:"code", switches:[["opInner", "tr"]], arms:{tr:xdr.lookup("OperationResultTr")}, defaultArm:xdr["void"]()});xdr["enum"]("TransactionResultCode", {txSuccess:0, txFailed:-1, txTooEarly:-2, txTooLate:-3, txMissingOperation:-4, txBadSeq:-5, txBadAuth:-6, txInsufficientBalance:-7, txNoAccount:-8, txInsufficientFee:-9, txBadAuthExtra:-10, txInternalError:-11});xdr.union("TransactionResultResult", {switchOn:xdr.lookup("TransactionResultCode"), switchName:"code", switches:[["txSuccess", "results"], ["txFailed", "results"]], arms:{results:xdr.varArray(xdr.lookup("OperationResult"), 2147483647)}, defaultArm:xdr["void"]()});xdr.union("TransactionResultExt", {switchOn:xdr.int(), switchName:"v", switches:[[0, xdr["void"]()]], arms:{}});xdr.struct("TransactionResult", [["result", xdr.lookup("TransactionResultResult")], ["ext", xdr.lookup("TransactionResultExt")]]);xdr.typedef("Hash", xdr.opaque(32));xdr.typedef("Uint256", xdr.opaque(32));xdr.typedef("Uint32", xdr.uint());xdr.typedef("Int32", xdr.int());xdr.typedef("Uint64", xdr.uhyper());xdr.typedef("Int64", xdr.hyper());xdr.typedef("List", xdr.varArray(xdr.lookup("Uint32"), 2147483647));xdr["enum"]("CryptoKeyType", {keyTypeEd25519:0});xdr.union("PublicKey", {switchOn:xdr.lookup("CryptoKeyType"), switchName:"type", switches:[["keyTypeEd25519", "ed25519"]], arms:{ed25519:xdr.lookup("Uint256")}});xdr.typedef("Signature", xdr.varOpaque(64));xdr.typedef("SignatureHint", xdr.opaque(4));xdr.typedef("NodeId", xdr.lookup("PublicKey"));xdr.struct("Curve25519Secret", [["key", xdr.opaque(32)]]);xdr.struct("Curve25519Public", [["key", xdr.opaque(32)]]);xdr.struct("HmacSha256Key", [["key", xdr.opaque(32)]]);xdr.struct("HmacSha256Mac", [["mac", xdr.opaque(32)]]);xdr.struct("HdKeySerialization", [["version", xdr.lookup("Uint32")], ["depth", xdr.lookup("Uint32")], ["fingerprint", xdr.lookup("Uint32")], ["index", xdr.lookup("Uint32")], ["key", xdr.opaque(32)], ["chainCode", xdr.opaque(32)]]);xdr.struct("PrivHdwSerialization", [["seed", xdr.opaque(32)], ["firstWithMoney", xdr.lookup("Uint32")], ["firstUnused", xdr.lookup("Uint32")], ["mpubCounter", xdr.lookup("Uint32")], ["indexList", xdr.lookup("List")]]);xdr.struct("PubHdwSerialization", [["publicKey", xdr.opaque(32)], ["chainCode", xdr.opaque(32)], ["firstWithMoney", xdr.lookup("Uint32")], ["firstUnused", xdr.lookup("Uint32")]]);});module.exports = types;
+	"use strict";var _interopRequireWildcard=function(obj){return obj && obj.__esModule?obj:{"default":obj};};var XDR=_interopRequireWildcard(__webpack_require__(123));var types=XDR.config(function(xdr){xdr.typedef("AccountId", xdr.lookup("PublicKey"));xdr.typedef("Thresholds", xdr.opaque(4));xdr.typedef("String32", xdr.string(32));xdr.typedef("String64", xdr.string(64));xdr.typedef("LongString", xdr.string());xdr.typedef("SequenceNumber", xdr.lookup("Uint64"));xdr.typedef("DataValue", xdr.varOpaque(64));xdr["enum"]("AccountType", {accountAnonymousUser:0, accountRegisteredUser:1, accountMerchant:2, accountDistributionAgent:3, accountSettlementAgent:4, accountExchangeAgent:5, accountBank:6});xdr["enum"]("SignerType", {signerGeneral:0, signerAdmin:1, signerEmission:2});xdr["enum"]("AssetType", {assetTypeNative:0, assetTypeCreditAlphanum4:1, assetTypeCreditAlphanum12:2});xdr.struct("AssetAlphaNum4", [["assetCode", xdr.opaque(4)], ["issuer", xdr.lookup("AccountId")]]);xdr.struct("AssetAlphaNum12", [["assetCode", xdr.opaque(12)], ["issuer", xdr.lookup("AccountId")]]);xdr.union("Asset", {switchOn:xdr.lookup("AssetType"), switchName:"type", switches:[["assetTypeNative", xdr["void"]()], ["assetTypeCreditAlphanum4", "alphaNum4"], ["assetTypeCreditAlphanum12", "alphaNum12"]], arms:{alphaNum4:xdr.lookup("AssetAlphaNum4"), alphaNum12:xdr.lookup("AssetAlphaNum12")}});xdr.struct("Price", [["n", xdr.lookup("Int32")], ["d", xdr.lookup("Int32")]]);xdr["enum"]("ThresholdIndices", {thresholdMasterWeight:0, thresholdLow:1, thresholdMed:2, thresholdHigh:3});xdr["enum"]("LedgerEntryType", {account:0, trustline:1, offer:2, datum:3});xdr.struct("Signer", [["pubKey", xdr.lookup("AccountId")], ["weight", xdr.lookup("Uint32")], ["signerType", xdr.lookup("Uint32")]]);xdr["enum"]("AccountFlags", {authRequiredFlag:1, authRevocableFlag:2, authImmutableFlag:4});xdr.union("AccountEntryExt", {switchOn:xdr.int(), switchName:"v", switches:[[0, xdr["void"]()]], arms:{}});xdr.struct("AccountEntry", [["accountId", xdr.lookup("AccountId")], ["balance", xdr.lookup("Int64")], ["seqNum", xdr.lookup("SequenceNumber")], ["numSubEntries", xdr.lookup("Uint32")], ["inflationDest", xdr.option(xdr.lookup("AccountId"))], ["flags", xdr.lookup("Uint32")], ["homeDomain", xdr.lookup("String32")], ["accountType", xdr.lookup("Uint32")], ["thresholds", xdr.lookup("Thresholds")], ["signers", xdr.varArray(xdr.lookup("Signer"), 200)], ["ext", xdr.lookup("AccountEntryExt")]]);xdr["enum"]("TrustLineFlags", {authorizedFlag:1});xdr.union("TrustLineEntryExt", {switchOn:xdr.int(), switchName:"v", switches:[[0, xdr["void"]()]], arms:{}});xdr.struct("TrustLineEntry", [["accountId", xdr.lookup("AccountId")], ["asset", xdr.lookup("Asset")], ["balance", xdr.lookup("Int64")], ["limit", xdr.lookup("Int64")], ["flags", xdr.lookup("Uint32")], ["ext", xdr.lookup("TrustLineEntryExt")]]);xdr["enum"]("OfferEntryFlags", {passiveFlag:1});xdr.union("OfferEntryExt", {switchOn:xdr.int(), switchName:"v", switches:[[0, xdr["void"]()]], arms:{}});xdr.struct("OfferEntry", [["sellerId", xdr.lookup("AccountId")], ["offerId", xdr.lookup("Uint64")], ["selling", xdr.lookup("Asset")], ["buying", xdr.lookup("Asset")], ["amount", xdr.lookup("Int64")], ["price", xdr.lookup("Price")], ["flags", xdr.lookup("Uint32")], ["ext", xdr.lookup("OfferEntryExt")]]);xdr.union("DataEntryExt", {switchOn:xdr.int(), switchName:"v", switches:[[0, xdr["void"]()]], arms:{}});xdr.struct("DataEntry", [["accountId", xdr.lookup("AccountId")], ["dataName", xdr.lookup("String64")], ["dataValue", xdr.lookup("DataValue")], ["ext", xdr.lookup("DataEntryExt")]]);xdr.union("LedgerEntryData", {switchOn:xdr.lookup("LedgerEntryType"), switchName:"type", switches:[["account", "account"], ["trustline", "trustLine"], ["offer", "offer"], ["datum", "data"]], arms:{account:xdr.lookup("AccountEntry"), trustLine:xdr.lookup("TrustLineEntry"), offer:xdr.lookup("OfferEntry"), data:xdr.lookup("DataEntry")}});xdr.union("LedgerEntryExt", {switchOn:xdr.int(), switchName:"v", switches:[[0, xdr["void"]()]], arms:{}});xdr.struct("LedgerEntry", [["lastModifiedLedgerSeq", xdr.lookup("Uint32")], ["data", xdr.lookup("LedgerEntryData")], ["ext", xdr.lookup("LedgerEntryExt")]]);xdr["enum"]("EnvelopeType", {envelopeTypeScp:1, envelopeTypeTx:2, envelopeTypeAuth:3});xdr.typedef("UpgradeType", xdr.varOpaque(128));xdr.union("StellarValueExt", {switchOn:xdr.int(), switchName:"v", switches:[[0, xdr["void"]()]], arms:{}});xdr.struct("StellarValue", [["txSetHash", xdr.lookup("Hash")], ["closeTime", xdr.lookup("Uint64")], ["upgrades", xdr.varArray(xdr.lookup("UpgradeType"), 6)], ["ext", xdr.lookup("StellarValueExt")]]);xdr.union("LedgerHeaderExt", {switchOn:xdr.int(), switchName:"v", switches:[[0, xdr["void"]()]], arms:{}});xdr.struct("LedgerHeader", [["ledgerVersion", xdr.lookup("Uint32")], ["previousLedgerHash", xdr.lookup("Hash")], ["scpValue", xdr.lookup("StellarValue")], ["txSetResultHash", xdr.lookup("Hash")], ["bucketListHash", xdr.lookup("Hash")], ["ledgerSeq", xdr.lookup("Uint32")], ["totalCoins", xdr.lookup("Int64")], ["feePool", xdr.lookup("Int64")], ["inflationSeq", xdr.lookup("Uint32")], ["idPool", xdr.lookup("Uint64")], ["baseFee", xdr.lookup("Uint32")], ["baseReserve", xdr.lookup("Uint32")], ["maxTxSetSize", xdr.lookup("Uint32")], ["skipList", xdr.array(xdr.lookup("Hash"), 4)], ["ext", xdr.lookup("LedgerHeaderExt")]]);xdr["enum"]("LedgerUpgradeType", {ledgerUpgradeVersion:1, ledgerUpgradeMaxTxSetSize:2});xdr.union("LedgerUpgrade", {switchOn:xdr.lookup("LedgerUpgradeType"), switchName:"type", switches:[["ledgerUpgradeVersion", "newLedgerVersion"], ["ledgerUpgradeMaxTxSetSize", "newMaxTxSetSize"]], arms:{newLedgerVersion:xdr.lookup("Uint32"), newMaxTxSetSize:xdr.lookup("Uint32")}});xdr.struct("LedgerKeyAccount", [["accountId", xdr.lookup("AccountId")]]);xdr.struct("LedgerKeyTrustLine", [["accountId", xdr.lookup("AccountId")], ["asset", xdr.lookup("Asset")]]);xdr.struct("LedgerKeyOffer", [["sellerId", xdr.lookup("AccountId")], ["offerId", xdr.lookup("Uint64")]]);xdr.struct("LedgerKeyData", [["accountId", xdr.lookup("AccountId")], ["dataName", xdr.lookup("String64")]]);xdr.union("LedgerKey", {switchOn:xdr.lookup("LedgerEntryType"), switchName:"type", switches:[["account", "account"], ["trustline", "trustLine"], ["offer", "offer"], ["datum", "data"]], arms:{account:xdr.lookup("LedgerKeyAccount"), trustLine:xdr.lookup("LedgerKeyTrustLine"), offer:xdr.lookup("LedgerKeyOffer"), data:xdr.lookup("LedgerKeyData")}});xdr["enum"]("BucketEntryType", {liveentry:0, deadentry:1});xdr.union("BucketEntry", {switchOn:xdr.lookup("BucketEntryType"), switchName:"type", switches:[["liveentry", "liveEntry"], ["deadentry", "deadEntry"]], arms:{liveEntry:xdr.lookup("LedgerEntry"), deadEntry:xdr.lookup("LedgerKey")}});xdr["const"]("MAX_TX_PER_LEDGER", 5000);xdr.struct("TransactionSet", [["previousLedgerHash", xdr.lookup("Hash")], ["txes", xdr.varArray(xdr.lookup("TransactionEnvelope"), xdr.lookup("MAX_TX_PER_LEDGER"))]]);xdr.struct("TransactionResultPair", [["transactionHash", xdr.lookup("Hash")], ["result", xdr.lookup("TransactionResult")]]);xdr.struct("TransactionResultSet", [["results", xdr.varArray(xdr.lookup("TransactionResultPair"), xdr.lookup("MAX_TX_PER_LEDGER"))]]);xdr.union("TransactionHistoryEntryExt", {switchOn:xdr.int(), switchName:"v", switches:[[0, xdr["void"]()]], arms:{}});xdr.struct("TransactionHistoryEntry", [["ledgerSeq", xdr.lookup("Uint32")], ["txSet", xdr.lookup("TransactionSet")], ["ext", xdr.lookup("TransactionHistoryEntryExt")]]);xdr.union("TransactionHistoryResultEntryExt", {switchOn:xdr.int(), switchName:"v", switches:[[0, xdr["void"]()]], arms:{}});xdr.struct("TransactionHistoryResultEntry", [["ledgerSeq", xdr.lookup("Uint32")], ["txResultSet", xdr.lookup("TransactionResultSet")], ["ext", xdr.lookup("TransactionHistoryResultEntryExt")]]);xdr.union("LedgerHeaderHistoryEntryExt", {switchOn:xdr.int(), switchName:"v", switches:[[0, xdr["void"]()]], arms:{}});xdr.struct("LedgerHeaderHistoryEntry", [["hash", xdr.lookup("Hash")], ["header", xdr.lookup("LedgerHeader")], ["ext", xdr.lookup("LedgerHeaderHistoryEntryExt")]]);xdr.struct("LedgerScpMessages", [["ledgerSeq", xdr.lookup("Uint32")], ["messages", xdr.varArray(xdr.lookup("ScpEnvelope"), 2147483647)]]);xdr.struct("ScpHistoryEntryV0", [["quorumSets", xdr.varArray(xdr.lookup("ScpQuorumSet"), 2147483647)], ["ledgerMessages", xdr.lookup("LedgerScpMessages")]]);xdr.union("ScpHistoryEntry", {switchOn:xdr.int(), switchName:"v", switches:[[0, "v0"]], arms:{v0:xdr.lookup("ScpHistoryEntryV0")}});xdr["enum"]("LedgerEntryChangeType", {ledgerEntryCreated:0, ledgerEntryUpdated:1, ledgerEntryRemoved:2, ledgerEntryState:3});xdr.union("LedgerEntryChange", {switchOn:xdr.lookup("LedgerEntryChangeType"), switchName:"type", switches:[["ledgerEntryCreated", "created"], ["ledgerEntryUpdated", "updated"], ["ledgerEntryRemoved", "removed"], ["ledgerEntryState", "state"]], arms:{created:xdr.lookup("LedgerEntry"), updated:xdr.lookup("LedgerEntry"), removed:xdr.lookup("LedgerKey"), state:xdr.lookup("LedgerEntry")}});xdr.typedef("LedgerEntryChanges", xdr.varArray(xdr.lookup("LedgerEntryChange"), 2147483647));xdr.struct("OperationMeta", [["changes", xdr.lookup("LedgerEntryChanges")]]);xdr.union("TransactionMeta", {switchOn:xdr.int(), switchName:"v", switches:[[0, "operations"]], arms:{operations:xdr.varArray(xdr.lookup("OperationMeta"), 2147483647)}});xdr["enum"]("ErrorCode", {errMisc:0, errDatum:1, errConf:2, errAuth:3, errLoad:4});xdr.struct("Error", [["code", xdr.lookup("ErrorCode")], ["msg", xdr.string(100)]]);xdr.struct("AuthCert", [["pubkey", xdr.lookup("Curve25519Public")], ["expiration", xdr.lookup("Uint64")], ["sig", xdr.lookup("Signature")]]);xdr.struct("Hello", [["ledgerVersion", xdr.lookup("Uint32")], ["overlayVersion", xdr.lookup("Uint32")], ["overlayMinVersion", xdr.lookup("Uint32")], ["networkId", xdr.lookup("Hash")], ["versionStr", xdr.string(100)], ["listeningPort", xdr.int()], ["peerId", xdr.lookup("NodeId")], ["cert", xdr.lookup("AuthCert")], ["nonce", xdr.lookup("Uint256")]]);xdr.struct("Auth", [["unused", xdr.int()]]);xdr["enum"]("IpAddrType", {iPv4:0, iPv6:1});xdr.union("PeerAddressIp", {switchOn:xdr.lookup("IpAddrType"), switchName:"type", switches:[["iPv4", "ipv4"], ["iPv6", "ipv6"]], arms:{ipv4:xdr.opaque(4), ipv6:xdr.opaque(16)}});xdr.struct("PeerAddress", [["ip", xdr.lookup("PeerAddressIp")], ["port", xdr.lookup("Uint32")], ["numFailures", xdr.lookup("Uint32")]]);xdr["enum"]("MessageType", {errorMsg:0, auth:2, dontHave:3, getPeer:4, peer:5, getTxSet:6, txSet:7, transaction:8, getScpQuorumset:9, scpQuorumset:10, scpMessage:11, getScpState:12, hello:13});xdr.struct("DontHave", [["type", xdr.lookup("MessageType")], ["reqHash", xdr.lookup("Uint256")]]);xdr.union("StellarMessage", {switchOn:xdr.lookup("MessageType"), switchName:"type", switches:[["errorMsg", "error"], ["hello", "hello"], ["auth", "auth"], ["dontHave", "dontHave"], ["getPeer", xdr["void"]()], ["peer", "peers"], ["getTxSet", "txSetHash"], ["txSet", "txSet"], ["transaction", "transaction"], ["getScpQuorumset", "qSetHash"], ["scpQuorumset", "qSet"], ["scpMessage", "envelope"], ["getScpState", "getScpLedgerSeq"]], arms:{error:xdr.lookup("Error"), hello:xdr.lookup("Hello"), auth:xdr.lookup("Auth"), dontHave:xdr.lookup("DontHave"), peers:xdr.varArray(xdr.lookup("PeerAddress"), 2147483647), txSetHash:xdr.lookup("Uint256"), txSet:xdr.lookup("TransactionSet"), transaction:xdr.lookup("TransactionEnvelope"), qSetHash:xdr.lookup("Uint256"), qSet:xdr.lookup("ScpQuorumSet"), envelope:xdr.lookup("ScpEnvelope"), getScpLedgerSeq:xdr.lookup("Uint32")}});xdr.struct("AuthenticatedMessageV0", [["sequence", xdr.lookup("Uint64")], ["message", xdr.lookup("StellarMessage")], ["mac", xdr.lookup("HmacSha256Mac")]]);xdr.union("AuthenticatedMessage", {switchOn:xdr.lookup("Uint32"), switchName:"v", switches:[[0, "v0"]], arms:{v0:xdr.lookup("AuthenticatedMessageV0")}});xdr.typedef("Value", xdr.varOpaque());xdr.struct("ScpBallot", [["counter", xdr.lookup("Uint32")], ["value", xdr.lookup("Value")]]);xdr["enum"]("ScpStatementType", {scpStPrepare:0, scpStConfirm:1, scpStExternalize:2, scpStNominate:3});xdr.struct("ScpNomination", [["quorumSetHash", xdr.lookup("Hash")], ["votes", xdr.varArray(xdr.lookup("Value"), 2147483647)], ["accepted", xdr.varArray(xdr.lookup("Value"), 2147483647)]]);xdr.struct("ScpStatementPrepare", [["quorumSetHash", xdr.lookup("Hash")], ["ballot", xdr.lookup("ScpBallot")], ["prepared", xdr.option(xdr.lookup("ScpBallot"))], ["preparedPrime", xdr.option(xdr.lookup("ScpBallot"))], ["nC", xdr.lookup("Uint32")], ["nH", xdr.lookup("Uint32")]]);xdr.struct("ScpStatementConfirm", [["ballot", xdr.lookup("ScpBallot")], ["nPrepared", xdr.lookup("Uint32")], ["nCommit", xdr.lookup("Uint32")], ["nH", xdr.lookup("Uint32")], ["quorumSetHash", xdr.lookup("Hash")]]);xdr.struct("ScpStatementExternalize", [["commit", xdr.lookup("ScpBallot")], ["nH", xdr.lookup("Uint32")], ["commitQuorumSetHash", xdr.lookup("Hash")]]);xdr.union("ScpStatementPledges", {switchOn:xdr.lookup("ScpStatementType"), switchName:"type", switches:[["scpStPrepare", "prepare"], ["scpStConfirm", "confirm"], ["scpStExternalize", "externalize"], ["scpStNominate", "nominate"]], arms:{prepare:xdr.lookup("ScpStatementPrepare"), confirm:xdr.lookup("ScpStatementConfirm"), externalize:xdr.lookup("ScpStatementExternalize"), nominate:xdr.lookup("ScpNomination")}});xdr.struct("ScpStatement", [["nodeId", xdr.lookup("NodeId")], ["slotIndex", xdr.lookup("Uint64")], ["pledges", xdr.lookup("ScpStatementPledges")]]);xdr.struct("ScpEnvelope", [["statement", xdr.lookup("ScpStatement")], ["signature", xdr.lookup("Signature")]]);xdr.struct("ScpQuorumSet", [["threshold", xdr.lookup("Uint32")], ["validators", xdr.varArray(xdr.lookup("PublicKey"), 2147483647)], ["innerSets", xdr.varArray(xdr.lookup("ScpQuorumSet"), 2147483647)]]);xdr.struct("DecoratedSignature", [["hint", xdr.lookup("SignatureHint")], ["signature", xdr.lookup("Signature")]]);xdr["enum"]("OperationType", {createAccount:0, payment:1, pathPayment:2, manageOffer:3, createPassiveOffer:4, setOption:5, changeTrust:6, allowTrust:7, accountMerge:8, inflation:9, manageDatum:10, administrative:11});xdr.struct("CreateAccountOp", [["destination", xdr.lookup("AccountId")], ["accountType", xdr.lookup("Uint32")]]);xdr.struct("PaymentOp", [["destination", xdr.lookup("AccountId")], ["asset", xdr.lookup("Asset")], ["amount", xdr.lookup("Int64")]]);xdr.struct("PathPaymentOp", [["sendAsset", xdr.lookup("Asset")], ["sendMax", xdr.lookup("Int64")], ["destination", xdr.lookup("AccountId")], ["destAsset", xdr.lookup("Asset")], ["destAmount", xdr.lookup("Int64")], ["path", xdr.varArray(xdr.lookup("Asset"), 5)]]);xdr.struct("ManageOfferOp", [["selling", xdr.lookup("Asset")], ["buying", xdr.lookup("Asset")], ["amount", xdr.lookup("Int64")], ["price", xdr.lookup("Price")], ["offerId", xdr.lookup("Uint64")]]);xdr.struct("CreatePassiveOfferOp", [["selling", xdr.lookup("Asset")], ["buying", xdr.lookup("Asset")], ["amount", xdr.lookup("Int64")], ["price", xdr.lookup("Price")]]);xdr.struct("SetOptionsOp", [["inflationDest", xdr.option(xdr.lookup("AccountId"))], ["clearFlags", xdr.option(xdr.lookup("Uint32"))], ["setFlags", xdr.option(xdr.lookup("Uint32"))], ["masterWeight", xdr.option(xdr.lookup("Uint32"))], ["lowThreshold", xdr.option(xdr.lookup("Uint32"))], ["medThreshold", xdr.option(xdr.lookup("Uint32"))], ["highThreshold", xdr.option(xdr.lookup("Uint32"))], ["homeDomain", xdr.option(xdr.lookup("String32"))], ["signer", xdr.option(xdr.lookup("Signer"))]]);xdr.struct("ChangeTrustOp", [["line", xdr.lookup("Asset")], ["limit", xdr.lookup("Int64")]]);xdr.union("AllowTrustOpAsset", {switchOn:xdr.lookup("AssetType"), switchName:"type", switches:[["assetTypeCreditAlphanum4", "assetCode4"], ["assetTypeCreditAlphanum12", "assetCode12"]], arms:{assetCode4:xdr.opaque(4), assetCode12:xdr.opaque(12)}});xdr.struct("AllowTrustOp", [["trustor", xdr.lookup("AccountId")], ["asset", xdr.lookup("AllowTrustOpAsset")], ["authorize", xdr.bool()]]);xdr.struct("ManageDataOp", [["dataName", xdr.lookup("String64")], ["dataValue", xdr.option(xdr.lookup("DataValue"))]]);xdr.struct("AdministrativeOp", [["opData", xdr.lookup("LongString")]]);xdr.union("OperationBody", {switchOn:xdr.lookup("OperationType"), switchName:"type", switches:[["createAccount", "createAccountOp"], ["payment", "paymentOp"], ["pathPayment", "pathPaymentOp"], ["manageOffer", "manageOfferOp"], ["createPassiveOffer", "createPassiveOfferOp"], ["setOption", "setOptionsOp"], ["changeTrust", "changeTrustOp"], ["allowTrust", "allowTrustOp"], ["accountMerge", "destination"], ["inflation", xdr["void"]()], ["manageDatum", "manageDataOp"], ["administrative", "adminOp"]], arms:{createAccountOp:xdr.lookup("CreateAccountOp"), paymentOp:xdr.lookup("PaymentOp"), pathPaymentOp:xdr.lookup("PathPaymentOp"), manageOfferOp:xdr.lookup("ManageOfferOp"), createPassiveOfferOp:xdr.lookup("CreatePassiveOfferOp"), setOptionsOp:xdr.lookup("SetOptionsOp"), changeTrustOp:xdr.lookup("ChangeTrustOp"), allowTrustOp:xdr.lookup("AllowTrustOp"), destination:xdr.lookup("AccountId"), manageDataOp:xdr.lookup("ManageDataOp"), adminOp:xdr.lookup("AdministrativeOp")}});xdr.struct("Operation", [["sourceAccount", xdr.option(xdr.lookup("AccountId"))], ["body", xdr.lookup("OperationBody")]]);xdr["enum"]("MemoType", {memoNone:0, memoText:1, memoId:2, memoHash:3, memoReturn:4});xdr.union("Memo", {switchOn:xdr.lookup("MemoType"), switchName:"type", switches:[["memoNone", xdr["void"]()], ["memoText", "text"], ["memoId", "id"], ["memoHash", "hash"], ["memoReturn", "retHash"]], arms:{text:xdr.string(28), id:xdr.lookup("Uint64"), hash:xdr.lookup("Hash"), retHash:xdr.lookup("Hash")}});xdr.struct("TimeBounds", [["minTime", xdr.lookup("Uint64")], ["maxTime", xdr.lookup("Uint64")]]);xdr.union("TransactionExt", {switchOn:xdr.int(), switchName:"v", switches:[[0, xdr["void"]()]], arms:{}});xdr.struct("Transaction", [["sourceAccount", xdr.lookup("AccountId")], ["fee", xdr.lookup("Uint32")], ["seqNum", xdr.lookup("SequenceNumber")], ["timeBounds", xdr.option(xdr.lookup("TimeBounds"))], ["memo", xdr.lookup("Memo")], ["operations", xdr.varArray(xdr.lookup("Operation"), 100)], ["ext", xdr.lookup("TransactionExt")]]);xdr["enum"]("OperationFeeType", {opFeeNone:0, opFeeCharged:1});xdr.union("OperationFeeFeeExt", {switchOn:xdr.int(), switchName:"v", switches:[[0, xdr["void"]()]], arms:{}});xdr.struct("OperationFeeFee", [["asset", xdr.lookup("Asset")], ["amountToCharge", xdr.lookup("Int64")], ["percentFee", xdr.option(xdr.lookup("Int64"))], ["flatFee", xdr.option(xdr.lookup("Int64"))], ["ext", xdr.lookup("OperationFeeFeeExt")]]);xdr.union("OperationFee", {switchOn:xdr.lookup("OperationFeeType"), switchName:"type", switches:[["opFeeNone", xdr["void"]()], ["opFeeCharged", "fee"]], arms:{fee:xdr.lookup("OperationFeeFee")}});xdr.struct("TransactionEnvelope", [["tx", xdr.lookup("Transaction")], ["signatures", xdr.varArray(xdr.lookup("DecoratedSignature"), 20)], ["operationFees", xdr.varArray(xdr.lookup("OperationFee"), 100)]]);xdr.struct("ClaimOfferAtom", [["sellerId", xdr.lookup("AccountId")], ["offerId", xdr.lookup("Uint64")], ["assetSold", xdr.lookup("Asset")], ["amountSold", xdr.lookup("Int64")], ["assetBought", xdr.lookup("Asset")], ["amountBought", xdr.lookup("Int64")]]);xdr["enum"]("CreateAccountResultCode", {createAccountSuccess:0, createAccountMalformed:-1, createAccountUnderfunded:-2, createAccountLowReserve:-3, createAccountAlreadyExist:-4, createAccountNotAuthorizedType:-5, createAccountWrongType:-6});xdr.union("CreateAccountResult", {switchOn:xdr.lookup("CreateAccountResultCode"), switchName:"code", switches:[["createAccountSuccess", xdr["void"]()]], arms:{}, defaultArm:xdr["void"]()});xdr["enum"]("PaymentResultCode", {paymentSuccess:0, paymentMalformed:-1, paymentUnderfunded:-2, paymentSrcNoTrust:-3, paymentSrcNotAuthorized:-4, paymentNoDestination:-5, paymentNoTrust:-6, paymentNotAuthorized:-7, paymentLineFull:-8, paymentNoIssuer:-9});xdr.union("PaymentResult", {switchOn:xdr.lookup("PaymentResultCode"), switchName:"code", switches:[["paymentSuccess", xdr["void"]()]], arms:{}, defaultArm:xdr["void"]()});xdr["enum"]("PathPaymentResultCode", {pathPaymentSuccess:0, pathPaymentMalformed:-1, pathPaymentUnderfunded:-2, pathPaymentSrcNoTrust:-3, pathPaymentSrcNotAuthorized:-4, pathPaymentNoDestination:-5, pathPaymentNoTrust:-6, pathPaymentNotAuthorized:-7, pathPaymentLineFull:-8, pathPaymentNoIssuer:-9, pathPaymentTooFewOffer:-10, pathPaymentOfferCrossSelf:-11, pathPaymentOverSendmax:-12});xdr.struct("SimplePaymentResult", [["destination", xdr.lookup("AccountId")], ["asset", xdr.lookup("Asset")], ["amount", xdr.lookup("Int64")]]);xdr.struct("PathPaymentResultSuccess", [["offers", xdr.varArray(xdr.lookup("ClaimOfferAtom"), 2147483647)], ["last", xdr.lookup("SimplePaymentResult")]]);xdr.union("PathPaymentResult", {switchOn:xdr.lookup("PathPaymentResultCode"), switchName:"code", switches:[["pathPaymentSuccess", "success"], ["pathPaymentNoIssuer", "noIssuer"]], arms:{success:xdr.lookup("PathPaymentResultSuccess"), noIssuer:xdr.lookup("Asset")}, defaultArm:xdr["void"]()});xdr["enum"]("ManageOfferResultCode", {manageOfferSuccess:0, manageOfferMalformed:-1, manageOfferSellNoTrust:-2, manageOfferBuyNoTrust:-3, manageOfferSellNotAuthorized:-4, manageOfferBuyNotAuthorized:-5, manageOfferLineFull:-6, manageOfferUnderfunded:-7, manageOfferCrossSelf:-8, manageOfferSellNoIssuer:-9, manageOfferBuyNoIssuer:-10, manageOfferNotFound:-11, manageOfferLowReserve:-12});xdr["enum"]("ManageOfferEffect", {manageOfferCreated:0, manageOfferUpdated:1, manageOfferDeleted:2});xdr.union("ManageOfferSuccessResultOffer", {switchOn:xdr.lookup("ManageOfferEffect"), switchName:"effect", switches:[["manageOfferCreated", "offer"], ["manageOfferUpdated", "offer"]], arms:{offer:xdr.lookup("OfferEntry")}, defaultArm:xdr["void"]()});xdr.struct("ManageOfferSuccessResult", [["offersClaimed", xdr.varArray(xdr.lookup("ClaimOfferAtom"), 2147483647)], ["offer", xdr.lookup("ManageOfferSuccessResultOffer")]]);xdr.union("ManageOfferResult", {switchOn:xdr.lookup("ManageOfferResultCode"), switchName:"code", switches:[["manageOfferSuccess", "success"]], arms:{success:xdr.lookup("ManageOfferSuccessResult")}, defaultArm:xdr["void"]()});xdr["enum"]("SetOptionsResultCode", {setOptionsSuccess:0, setOptionsLowReserve:-1, setOptionsTooManySigner:-2, setOptionsBadFlag:-3, setOptionsInvalidInflation:-4, setOptionsCantChange:-5, setOptionsUnknownFlag:-6, setOptionsThresholdOutOfRange:-7, setOptionsBadSigner:-8, setOptionsInvalidHomeDomain:-9, setOptionsBadSignerType:-10});xdr.union("SetOptionsResult", {switchOn:xdr.lookup("SetOptionsResultCode"), switchName:"code", switches:[["setOptionsSuccess", xdr["void"]()]], arms:{}, defaultArm:xdr["void"]()});xdr["enum"]("ChangeTrustResultCode", {changeTrustSuccess:0, changeTrustMalformed:-1, changeTrustNoIssuer:-2, changeTrustInvalidLimit:-3, changeTrustLowReserve:-4});xdr.union("ChangeTrustResult", {switchOn:xdr.lookup("ChangeTrustResultCode"), switchName:"code", switches:[["changeTrustSuccess", xdr["void"]()]], arms:{}, defaultArm:xdr["void"]()});xdr["enum"]("AllowTrustResultCode", {allowTrustSuccess:0, allowTrustMalformed:-1, allowTrustNoTrustLine:-2, allowTrustTrustNotRequired:-3, allowTrustCantRevoke:-4});xdr.union("AllowTrustResult", {switchOn:xdr.lookup("AllowTrustResultCode"), switchName:"code", switches:[["allowTrustSuccess", xdr["void"]()]], arms:{}, defaultArm:xdr["void"]()});xdr["enum"]("AccountMergeResultCode", {accountMergeSuccess:0, accountMergeMalformed:-1, accountMergeNoAccount:-2, accountMergeImmutableSet:-3, accountMergeHasSubEntry:-4});xdr.union("AccountMergeResult", {switchOn:xdr.lookup("AccountMergeResultCode"), switchName:"code", switches:[["accountMergeSuccess", "sourceAccountBalance"]], arms:{sourceAccountBalance:xdr.lookup("Int64")}, defaultArm:xdr["void"]()});xdr["enum"]("InflationResultCode", {inflationSuccess:0, inflationNotTime:-1});xdr.struct("InflationPayout", [["destination", xdr.lookup("AccountId")], ["amount", xdr.lookup("Int64")]]);xdr.union("InflationResult", {switchOn:xdr.lookup("InflationResultCode"), switchName:"code", switches:[["inflationSuccess", "payouts"]], arms:{payouts:xdr.varArray(xdr.lookup("InflationPayout"), 2147483647)}, defaultArm:xdr["void"]()});xdr["enum"]("ManageDataResultCode", {manageDataSuccess:0, manageDataNotSupportedYet:-1, manageDataNameNotFound:-2, manageDataLowReserve:-3, manageDataInvalidName:-4});xdr.union("ManageDataResult", {switchOn:xdr.lookup("ManageDataResultCode"), switchName:"code", switches:[["manageDataSuccess", xdr["void"]()]], arms:{}, defaultArm:xdr["void"]()});xdr["enum"]("AdministrativeResultCode", {administrativeSuccess:0, administrativeMalformed:-1, administrativeNotAuthorized:-2});xdr.union("AdministrativeResult", {switchOn:xdr.lookup("AdministrativeResultCode"), switchName:"code", switches:[["administrativeSuccess", xdr["void"]()]], arms:{}, defaultArm:xdr["void"]()});xdr["enum"]("OperationResultCode", {opInner:0, opBadAuth:-1, opNoAccount:-2});xdr.union("OperationResultTr", {switchOn:xdr.lookup("OperationType"), switchName:"type", switches:[["createAccount", "createAccountResult"], ["payment", "paymentResult"], ["pathPayment", "pathPaymentResult"], ["manageOffer", "manageOfferResult"], ["createPassiveOffer", "createPassiveOfferResult"], ["setOption", "setOptionsResult"], ["changeTrust", "changeTrustResult"], ["allowTrust", "allowTrustResult"], ["accountMerge", "accountMergeResult"], ["inflation", "inflationResult"], ["manageDatum", "manageDataResult"], ["administrative", "adminResult"]], arms:{createAccountResult:xdr.lookup("CreateAccountResult"), paymentResult:xdr.lookup("PaymentResult"), pathPaymentResult:xdr.lookup("PathPaymentResult"), manageOfferResult:xdr.lookup("ManageOfferResult"), createPassiveOfferResult:xdr.lookup("ManageOfferResult"), setOptionsResult:xdr.lookup("SetOptionsResult"), changeTrustResult:xdr.lookup("ChangeTrustResult"), allowTrustResult:xdr.lookup("AllowTrustResult"), accountMergeResult:xdr.lookup("AccountMergeResult"), inflationResult:xdr.lookup("InflationResult"), manageDataResult:xdr.lookup("ManageDataResult"), adminResult:xdr.lookup("AdministrativeResult")}});xdr.union("OperationResult", {switchOn:xdr.lookup("OperationResultCode"), switchName:"code", switches:[["opInner", "tr"]], arms:{tr:xdr.lookup("OperationResultTr")}, defaultArm:xdr["void"]()});xdr["enum"]("TransactionResultCode", {txSuccess:0, txFailed:-1, txTooEarly:-2, txTooLate:-3, txMissingOperation:-4, txBadSeq:-5, txBadAuth:-6, txInsufficientBalance:-7, txNoAccount:-8, txInsufficientFee:-9, txBadAuthExtra:-10, txInternalError:-11});xdr.union("TransactionResultResult", {switchOn:xdr.lookup("TransactionResultCode"), switchName:"code", switches:[["txSuccess", "results"], ["txFailed", "results"]], arms:{results:xdr.varArray(xdr.lookup("OperationResult"), 2147483647)}, defaultArm:xdr["void"]()});xdr.union("TransactionResultExt", {switchOn:xdr.int(), switchName:"v", switches:[[0, xdr["void"]()]], arms:{}});xdr.struct("TransactionResult", [["result", xdr.lookup("TransactionResultResult")], ["ext", xdr.lookup("TransactionResultExt")]]);xdr.typedef("Hash", xdr.opaque(32));xdr.typedef("Uint256", xdr.opaque(32));xdr.typedef("Uint32", xdr.uint());xdr.typedef("Int32", xdr.int());xdr.typedef("Uint64", xdr.uhyper());xdr.typedef("Int64", xdr.hyper());xdr.typedef("List", xdr.varArray(xdr.lookup("Uint32"), 2147483647));xdr["enum"]("CryptoKeyType", {keyTypeEd25519:0});xdr.union("PublicKey", {switchOn:xdr.lookup("CryptoKeyType"), switchName:"type", switches:[["keyTypeEd25519", "ed25519"]], arms:{ed25519:xdr.lookup("Uint256")}});xdr.typedef("Signature", xdr.varOpaque(64));xdr.typedef("SignatureHint", xdr.opaque(4));xdr.typedef("NodeId", xdr.lookup("PublicKey"));xdr.struct("Curve25519Secret", [["key", xdr.opaque(32)]]);xdr.struct("Curve25519Public", [["key", xdr.opaque(32)]]);xdr.struct("HmacSha256Key", [["key", xdr.opaque(32)]]);xdr.struct("HmacSha256Mac", [["mac", xdr.opaque(32)]]);xdr.struct("DerivedKeyPair", [["index", xdr.lookup("Uint32")], ["publicKey", xdr.opaque(32)], ["privateKey", xdr.opaque(32)]]);xdr.struct("BranchMaster", [["version", xdr.lookup("Uint32")], ["key", xdr.opaque(32)], ["chainCode", xdr.opaque(32)], ["children", xdr.varArray(xdr.lookup("DerivedKeyPair"), 2147483647)]]);xdr.struct("PrivateHdkCache", [["path", xdr.lookup("Uint32")], ["branchIndex", xdr.lookup("Uint32")], ["master", xdr.lookup("BranchMaster")]]);xdr.struct("FullPrivateHdw", [["seed", xdr.opaque(32)], ["firstWithMoney", xdr.lookup("Uint32")], ["firstUnused", xdr.lookup("Uint32")], ["mpubCounter", xdr.lookup("Uint32")], ["indexList", xdr.lookup("List")], ["keyCache", xdr.varArray(xdr.lookup("PrivateHdkCache"), 2147483647)]]);xdr.struct("FullPublicHdw", [["publicKey", xdr.opaque(32)], ["chainCode", xdr.opaque(32)], ["firstWithMoney", xdr.lookup("Uint32")], ["firstUnused", xdr.lookup("Uint32")], ["keyCache", xdr.varArray(xdr.lookup("BranchMaster"), 2147483647)]]);xdr.struct("HdKeySerialization", [["version", xdr.lookup("Uint32")], ["depth", xdr.lookup("Uint32")], ["fingerprint", xdr.lookup("Uint32")], ["index", xdr.lookup("Uint32")], ["key", xdr.opaque(32)], ["chainCode", xdr.opaque(32)]]);xdr.struct("PrivHdwSerialization", [["seed", xdr.opaque(32)], ["firstWithMoney", xdr.lookup("Uint32")], ["firstUnused", xdr.lookup("Uint32")], ["mpubCounter", xdr.lookup("Uint32")], ["indexList", xdr.lookup("List")]]);xdr.struct("PubHdwSerialization", [["publicKey", xdr.opaque(32)], ["chainCode", xdr.opaque(32)], ["firstWithMoney", xdr.lookup("Uint32")], ["firstUnused", xdr.lookup("Uint32")]]);});module.exports = types;
 
 /***/ },
-/* 195 */
+/* 123 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
 
-	var _defaults = __webpack_require__(196)["default"];
+	var _defaults = __webpack_require__(124)["default"];
 
-	var _interopRequireWildcard = __webpack_require__(198)["default"];
+	var _interopRequireWildcard = __webpack_require__(126)["default"];
 
 	Object.defineProperty(exports, "__esModule", {
 	  value: true
 	});
 
-	_defaults(exports, _interopRequireWildcard(__webpack_require__(199)));
+	_defaults(exports, _interopRequireWildcard(__webpack_require__(127)));
 
-	var _config = __webpack_require__(229);
+	var _config = __webpack_require__(158);
 
 	_defaults(exports, _interopRequireWildcard(_config));
 
 	var config = _config.config;
 
 /***/ },
-/* 196 */
+/* 124 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
 
-	var _core = __webpack_require__(197)["default"];
+	var _core = __webpack_require__(125)["default"];
 
 	exports["default"] = function (obj, defaults) {
 	  var keys = _core.Object.getOwnPropertyNames(defaults);
@@ -25512,7 +23509,7 @@ var StellarSdk =
 	exports.__esModule = true;
 
 /***/ },
-/* 197 */
+/* 125 */
 /***/ function(module, exports) {
 
 	/**
@@ -27858,7 +25855,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 198 */
+/* 126 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -27872,70 +25869,70 @@ var StellarSdk =
 	exports.__esModule = true;
 
 /***/ },
-/* 199 */
+/* 127 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
 
-	var _defaults = __webpack_require__(196)["default"];
+	var _defaults = __webpack_require__(124)["default"];
 
-	var _interopRequireWildcard = __webpack_require__(198)["default"];
+	var _interopRequireWildcard = __webpack_require__(126)["default"];
 
 	Object.defineProperty(exports, "__esModule", {
 	  value: true
 	});
 
-	_defaults(exports, _interopRequireWildcard(__webpack_require__(200)));
+	_defaults(exports, _interopRequireWildcard(__webpack_require__(128)));
 
-	_defaults(exports, _interopRequireWildcard(__webpack_require__(210)));
+	_defaults(exports, _interopRequireWildcard(__webpack_require__(138)));
 
-	_defaults(exports, _interopRequireWildcard(__webpack_require__(213)));
+	_defaults(exports, _interopRequireWildcard(__webpack_require__(142)));
 
-	_defaults(exports, _interopRequireWildcard(__webpack_require__(214)));
+	_defaults(exports, _interopRequireWildcard(__webpack_require__(143)));
 
-	_defaults(exports, _interopRequireWildcard(__webpack_require__(215)));
+	_defaults(exports, _interopRequireWildcard(__webpack_require__(144)));
 
-	_defaults(exports, _interopRequireWildcard(__webpack_require__(216)));
+	_defaults(exports, _interopRequireWildcard(__webpack_require__(145)));
 
-	_defaults(exports, _interopRequireWildcard(__webpack_require__(217)));
+	_defaults(exports, _interopRequireWildcard(__webpack_require__(146)));
 
-	_defaults(exports, _interopRequireWildcard(__webpack_require__(218)));
+	_defaults(exports, _interopRequireWildcard(__webpack_require__(147)));
 
-	_defaults(exports, _interopRequireWildcard(__webpack_require__(219)));
+	_defaults(exports, _interopRequireWildcard(__webpack_require__(148)));
 
-	_defaults(exports, _interopRequireWildcard(__webpack_require__(220)));
+	_defaults(exports, _interopRequireWildcard(__webpack_require__(149)));
 
-	_defaults(exports, _interopRequireWildcard(__webpack_require__(221)));
+	_defaults(exports, _interopRequireWildcard(__webpack_require__(150)));
 
-	_defaults(exports, _interopRequireWildcard(__webpack_require__(222)));
+	_defaults(exports, _interopRequireWildcard(__webpack_require__(151)));
 
-	_defaults(exports, _interopRequireWildcard(__webpack_require__(223)));
+	_defaults(exports, _interopRequireWildcard(__webpack_require__(152)));
 
-	_defaults(exports, _interopRequireWildcard(__webpack_require__(224)));
+	_defaults(exports, _interopRequireWildcard(__webpack_require__(153)));
 
-	_defaults(exports, _interopRequireWildcard(__webpack_require__(225)));
+	_defaults(exports, _interopRequireWildcard(__webpack_require__(154)));
 
-	_defaults(exports, _interopRequireWildcard(__webpack_require__(226)));
+	_defaults(exports, _interopRequireWildcard(__webpack_require__(155)));
 
-	_defaults(exports, _interopRequireWildcard(__webpack_require__(227)));
+	_defaults(exports, _interopRequireWildcard(__webpack_require__(156)));
 
-	_defaults(exports, _interopRequireWildcard(__webpack_require__(231)));
+	_defaults(exports, _interopRequireWildcard(__webpack_require__(160)));
 
 /***/ },
-/* 200 */
+/* 128 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
 
-	var _interopRequire = __webpack_require__(201)["default"];
+	var _interopRequire = __webpack_require__(129)["default"];
 
 	Object.defineProperty(exports, "__esModule", {
 	  value: true
 	});
 
-	var isNumber = __webpack_require__(202).isNumber;
+	var isNumber = __webpack_require__(130).isNumber;
 
-	var includeIoMixin = _interopRequire(__webpack_require__(203));
+	var includeIoMixin = _interopRequire(__webpack_require__(131));
 
 	var Int = {
 
@@ -27973,7 +25970,7 @@ var StellarSdk =
 	includeIoMixin(Int);
 
 /***/ },
-/* 201 */
+/* 129 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -27985,7 +25982,7 @@ var StellarSdk =
 	exports.__esModule = true;
 
 /***/ },
-/* 202 */
+/* 130 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var __WEBPACK_AMD_DEFINE_RESULT__;/* WEBPACK VAR INJECTION */(function(module, global) {/**
@@ -40340,19 +38337,19 @@ var StellarSdk =
 	  }
 	}.call(this));
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(4)(module), (function() { return this; }())))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(29)(module), (function() { return this; }())))
 
 /***/ },
-/* 203 */
+/* 131 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {"use strict";
 
 	module.exports = includeIoMixin;
 
-	var Cursor = __webpack_require__(204).Cursor;
+	var Cursor = __webpack_require__(132).Cursor;
 
-	var _lodash = __webpack_require__(202);
+	var _lodash = __webpack_require__(130);
 
 	var extend = _lodash.extend;
 	var isFunction = _lodash.isFunction;
@@ -40418,29 +38415,29 @@ var StellarSdk =
 	    extend(obj.prototype, instanceMethods);
 	  }
 	}
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(162).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(89).Buffer))
 
 /***/ },
-/* 204 */
+/* 132 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {"use strict";
 
-	var _classCallCheck = __webpack_require__(205)["default"];
+	var _classCallCheck = __webpack_require__(133)["default"];
 
-	var _inherits = __webpack_require__(206)["default"];
+	var _inherits = __webpack_require__(134)["default"];
 
-	var _createClass = __webpack_require__(207)["default"];
+	var _createClass = __webpack_require__(135)["default"];
 
-	var _interopRequire = __webpack_require__(201)["default"];
+	var _interopRequire = __webpack_require__(129)["default"];
 
 	Object.defineProperty(exports, "__esModule", {
 	  value: true
 	});
 
-	var BaseCursor = _interopRequire(__webpack_require__(208));
+	var BaseCursor = _interopRequire(__webpack_require__(136));
 
-	var calculatePadding = __webpack_require__(209).calculatePadding;
+	var calculatePadding = __webpack_require__(137).calculatePadding;
 
 	var Cursor = exports.Cursor = (function (_BaseCursor) {
 	  function Cursor() {
@@ -40467,10 +38464,10 @@ var StellarSdk =
 
 	  return Cursor;
 	})(BaseCursor);
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(162).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(89).Buffer))
 
 /***/ },
-/* 205 */
+/* 133 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -40484,7 +38481,7 @@ var StellarSdk =
 	exports.__esModule = true;
 
 /***/ },
-/* 206 */
+/* 134 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -40508,7 +38505,7 @@ var StellarSdk =
 	exports.__esModule = true;
 
 /***/ },
-/* 207 */
+/* 135 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -40534,7 +38531,7 @@ var StellarSdk =
 	exports.__esModule = true;
 
 /***/ },
-/* 208 */
+/* 136 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {var Cursor = function(buffer)
@@ -40756,7 +38753,7 @@ var StellarSdk =
 			parent.call(this, buffer);
 		};
 
-		__webpack_require__(178).inherits(C, parent);
+		__webpack_require__(105).inherits(C, parent);
 
 		C.extend = parent.extend;
 		C.define = parent.define;
@@ -40782,10 +38779,10 @@ var StellarSdk =
 
 	module.exports = Cursor;
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(162).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(89).Buffer))
 
 /***/ },
-/* 209 */
+/* 137 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -40809,30 +38806,30 @@ var StellarSdk =
 	}
 
 /***/ },
-/* 210 */
+/* 138 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
 
-	var _classCallCheck = __webpack_require__(205)["default"];
+	var _classCallCheck = __webpack_require__(133)["default"];
 
-	var _inherits = __webpack_require__(206)["default"];
+	var _inherits = __webpack_require__(134)["default"];
 
-	var _get = __webpack_require__(211)["default"];
+	var _get = __webpack_require__(139)["default"];
 
-	var _createClass = __webpack_require__(207)["default"];
+	var _createClass = __webpack_require__(135)["default"];
 
-	var _core = __webpack_require__(197)["default"];
+	var _core = __webpack_require__(125)["default"];
 
-	var _interopRequire = __webpack_require__(201)["default"];
+	var _interopRequire = __webpack_require__(129)["default"];
 
 	Object.defineProperty(exports, "__esModule", {
 	  value: true
 	});
 
-	var Long = _interopRequire(__webpack_require__(212));
+	var Long = _interopRequire(__webpack_require__(140));
 
-	var includeIoMixin = _interopRequire(__webpack_require__(203));
+	var includeIoMixin = _interopRequire(__webpack_require__(131));
 
 	var Hyper = exports.Hyper = (function (_Long) {
 	  function Hyper(low, high) {
@@ -40892,12 +38889,12 @@ var StellarSdk =
 	Hyper.MIN_VALUE = new Hyper(Long.MIN_VALUE.low, Long.MIN_VALUE.high);
 
 /***/ },
-/* 211 */
+/* 139 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
 
-	var _core = __webpack_require__(197)["default"];
+	var _core = __webpack_require__(125)["default"];
 
 	exports["default"] = function get(_x, _x2, _x3) {
 	  var _again = true;
@@ -40940,7 +38937,7 @@ var StellarSdk =
 	exports.__esModule = true;
 
 /***/ },
-/* 212 */
+/* 140 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;/* WEBPACK VAR INJECTION */(function(module) {/*
@@ -40967,7 +38964,7 @@ var StellarSdk =
 	 */
 	(function(global, factory) {
 
-	    /* AMD */ if ("function" === 'function' && __webpack_require__(6)["amd"])
+	    /* AMD */ if ("function" === 'function' && __webpack_require__(141)["amd"])
 	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
 	    /* CommonJS */ else if ("function" === 'function' && typeof module === "object" && module && module["exports"])
 	        module["exports"] = factory();
@@ -42023,23 +40020,30 @@ var StellarSdk =
 	    return Long;
 	});
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(4)(module)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(29)(module)))
 
 /***/ },
-/* 213 */
+/* 141 */
+/***/ function(module, exports) {
+
+	module.exports = function() { throw new Error("define cannot be used indirect"); };
+
+
+/***/ },
+/* 142 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
 
-	var _interopRequire = __webpack_require__(201)["default"];
+	var _interopRequire = __webpack_require__(129)["default"];
 
 	Object.defineProperty(exports, "__esModule", {
 	  value: true
 	});
 
-	var isNumber = __webpack_require__(202).isNumber;
+	var isNumber = __webpack_require__(130).isNumber;
 
-	var includeIoMixin = _interopRequire(__webpack_require__(203));
+	var includeIoMixin = _interopRequire(__webpack_require__(131));
 
 	var UnsignedInt = {
 
@@ -42081,30 +40085,30 @@ var StellarSdk =
 	includeIoMixin(UnsignedInt);
 
 /***/ },
-/* 214 */
+/* 143 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
 
-	var _classCallCheck = __webpack_require__(205)["default"];
+	var _classCallCheck = __webpack_require__(133)["default"];
 
-	var _inherits = __webpack_require__(206)["default"];
+	var _inherits = __webpack_require__(134)["default"];
 
-	var _get = __webpack_require__(211)["default"];
+	var _get = __webpack_require__(139)["default"];
 
-	var _createClass = __webpack_require__(207)["default"];
+	var _createClass = __webpack_require__(135)["default"];
 
-	var _core = __webpack_require__(197)["default"];
+	var _core = __webpack_require__(125)["default"];
 
-	var _interopRequire = __webpack_require__(201)["default"];
+	var _interopRequire = __webpack_require__(129)["default"];
 
 	Object.defineProperty(exports, "__esModule", {
 	  value: true
 	});
 
-	var Long = _interopRequire(__webpack_require__(212));
+	var Long = _interopRequire(__webpack_require__(140));
 
-	var includeIoMixin = _interopRequire(__webpack_require__(203));
+	var includeIoMixin = _interopRequire(__webpack_require__(131));
 
 	var UnsignedHyper = exports.UnsignedHyper = (function (_Long) {
 	  function UnsignedHyper(low, high) {
@@ -42165,20 +40169,20 @@ var StellarSdk =
 	UnsignedHyper.MIN_VALUE = new UnsignedHyper(Long.MIN_VALUE.low, Long.MIN_VALUE.high);
 
 /***/ },
-/* 215 */
+/* 144 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
 
-	var _interopRequire = __webpack_require__(201)["default"];
+	var _interopRequire = __webpack_require__(129)["default"];
 
 	Object.defineProperty(exports, "__esModule", {
 	  value: true
 	});
 
-	var isNumber = __webpack_require__(202).isNumber;
+	var isNumber = __webpack_require__(130).isNumber;
 
-	var includeIoMixin = _interopRequire(__webpack_require__(203));
+	var includeIoMixin = _interopRequire(__webpack_require__(131));
 
 	var Float = {
 
@@ -42202,20 +40206,20 @@ var StellarSdk =
 	includeIoMixin(Float);
 
 /***/ },
-/* 216 */
+/* 145 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
 
-	var _interopRequire = __webpack_require__(201)["default"];
+	var _interopRequire = __webpack_require__(129)["default"];
 
 	Object.defineProperty(exports, "__esModule", {
 	  value: true
 	});
 
-	var isNumber = __webpack_require__(202).isNumber;
+	var isNumber = __webpack_require__(130).isNumber;
 
-	var includeIoMixin = _interopRequire(__webpack_require__(203));
+	var includeIoMixin = _interopRequire(__webpack_require__(131));
 
 	var Double = {
 
@@ -42239,18 +40243,18 @@ var StellarSdk =
 	includeIoMixin(Double);
 
 /***/ },
-/* 217 */
+/* 146 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
 
-	var _interopRequire = __webpack_require__(201)["default"];
+	var _interopRequire = __webpack_require__(129)["default"];
 
 	Object.defineProperty(exports, "__esModule", {
 	  value: true
 	});
 
-	var includeIoMixin = _interopRequire(__webpack_require__(203));
+	var includeIoMixin = _interopRequire(__webpack_require__(131));
 
 	var Quadruple = {
 	  /* jshint unused: false */
@@ -42271,22 +40275,22 @@ var StellarSdk =
 	includeIoMixin(Quadruple);
 
 /***/ },
-/* 218 */
+/* 147 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
 
-	var _interopRequire = __webpack_require__(201)["default"];
+	var _interopRequire = __webpack_require__(129)["default"];
 
 	Object.defineProperty(exports, "__esModule", {
 	  value: true
 	});
 
-	var Int = __webpack_require__(200).Int;
+	var Int = __webpack_require__(128).Int;
 
-	var isBoolean = __webpack_require__(202).isBoolean;
+	var isBoolean = __webpack_require__(130).isBoolean;
 
-	var includeIoMixin = _interopRequire(__webpack_require__(203));
+	var includeIoMixin = _interopRequire(__webpack_require__(131));
 
 	var Bool = {
 	  read: function read(io) {
@@ -42316,30 +40320,30 @@ var StellarSdk =
 	includeIoMixin(Bool);
 
 /***/ },
-/* 219 */
+/* 148 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {"use strict";
 
-	var _classCallCheck = __webpack_require__(205)["default"];
+	var _classCallCheck = __webpack_require__(133)["default"];
 
-	var _createClass = __webpack_require__(207)["default"];
+	var _createClass = __webpack_require__(135)["default"];
 
-	var _interopRequire = __webpack_require__(201)["default"];
+	var _interopRequire = __webpack_require__(129)["default"];
 
 	Object.defineProperty(exports, "__esModule", {
 	  value: true
 	});
 
-	var Int = __webpack_require__(200).Int;
+	var Int = __webpack_require__(128).Int;
 
-	var UnsignedInt = __webpack_require__(213).UnsignedInt;
+	var UnsignedInt = __webpack_require__(142).UnsignedInt;
 
-	var calculatePadding = __webpack_require__(209).calculatePadding;
+	var calculatePadding = __webpack_require__(137).calculatePadding;
 
-	var isString = __webpack_require__(202).isString;
+	var isString = __webpack_require__(130).isString;
 
-	var includeIoMixin = _interopRequire(__webpack_require__(203));
+	var includeIoMixin = _interopRequire(__webpack_require__(131));
 
 	var String = exports.String = (function () {
 	  function String() {
@@ -42394,27 +40398,27 @@ var StellarSdk =
 	})();
 
 	includeIoMixin(String.prototype);
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(162).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(89).Buffer))
 
 /***/ },
-/* 220 */
+/* 149 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {"use strict";
 
-	var _classCallCheck = __webpack_require__(205)["default"];
+	var _classCallCheck = __webpack_require__(133)["default"];
 
-	var _createClass = __webpack_require__(207)["default"];
+	var _createClass = __webpack_require__(135)["default"];
 
-	var _interopRequire = __webpack_require__(201)["default"];
+	var _interopRequire = __webpack_require__(129)["default"];
 
 	Object.defineProperty(exports, "__esModule", {
 	  value: true
 	});
 
-	var calculatePadding = __webpack_require__(209).calculatePadding;
+	var calculatePadding = __webpack_require__(137).calculatePadding;
 
-	var includeIoMixin = _interopRequire(__webpack_require__(203));
+	var includeIoMixin = _interopRequire(__webpack_require__(131));
 
 	var Opaque = exports.Opaque = (function () {
 	  function Opaque(length) {
@@ -42452,31 +40456,31 @@ var StellarSdk =
 	})();
 
 	includeIoMixin(Opaque.prototype);
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(162).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(89).Buffer))
 
 /***/ },
-/* 221 */
+/* 150 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {"use strict";
 
-	var _classCallCheck = __webpack_require__(205)["default"];
+	var _classCallCheck = __webpack_require__(133)["default"];
 
-	var _createClass = __webpack_require__(207)["default"];
+	var _createClass = __webpack_require__(135)["default"];
 
-	var _interopRequire = __webpack_require__(201)["default"];
+	var _interopRequire = __webpack_require__(129)["default"];
 
 	Object.defineProperty(exports, "__esModule", {
 	  value: true
 	});
 
-	var Int = __webpack_require__(200).Int;
+	var Int = __webpack_require__(128).Int;
 
-	var UnsignedInt = __webpack_require__(213).UnsignedInt;
+	var UnsignedInt = __webpack_require__(142).UnsignedInt;
 
-	var calculatePadding = __webpack_require__(209).calculatePadding;
+	var calculatePadding = __webpack_require__(137).calculatePadding;
 
-	var includeIoMixin = _interopRequire(__webpack_require__(203));
+	var includeIoMixin = _interopRequire(__webpack_require__(131));
 
 	var VarOpaque = exports.VarOpaque = (function () {
 	  function VarOpaque() {
@@ -42521,32 +40525,32 @@ var StellarSdk =
 	})();
 
 	includeIoMixin(VarOpaque.prototype);
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(162).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(89).Buffer))
 
 /***/ },
-/* 222 */
+/* 151 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
 
-	var _classCallCheck = __webpack_require__(205)["default"];
+	var _classCallCheck = __webpack_require__(133)["default"];
 
-	var _createClass = __webpack_require__(207)["default"];
+	var _createClass = __webpack_require__(135)["default"];
 
-	var _interopRequire = __webpack_require__(201)["default"];
+	var _interopRequire = __webpack_require__(129)["default"];
 
 	Object.defineProperty(exports, "__esModule", {
 	  value: true
 	});
 
-	var _lodash = __webpack_require__(202);
+	var _lodash = __webpack_require__(130);
 
 	var all = _lodash.all;
 	var each = _lodash.each;
 	var times = _lodash.times;
 	var isArray = _lodash.isArray;
 
-	var includeIoMixin = _interopRequire(__webpack_require__(203));
+	var includeIoMixin = _interopRequire(__webpack_require__(131));
 
 	var Array = exports.Array = (function () {
 	  function Array(childType, length) {
@@ -42607,33 +40611,33 @@ var StellarSdk =
 	includeIoMixin(Array.prototype);
 
 /***/ },
-/* 223 */
+/* 152 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
 
-	var _classCallCheck = __webpack_require__(205)["default"];
+	var _classCallCheck = __webpack_require__(133)["default"];
 
-	var _createClass = __webpack_require__(207)["default"];
+	var _createClass = __webpack_require__(135)["default"];
 
-	var _interopRequire = __webpack_require__(201)["default"];
+	var _interopRequire = __webpack_require__(129)["default"];
 
 	Object.defineProperty(exports, "__esModule", {
 	  value: true
 	});
 
-	var Int = __webpack_require__(200).Int;
+	var Int = __webpack_require__(128).Int;
 
-	var UnsignedInt = __webpack_require__(213).UnsignedInt;
+	var UnsignedInt = __webpack_require__(142).UnsignedInt;
 
-	var _lodash = __webpack_require__(202);
+	var _lodash = __webpack_require__(130);
 
 	var all = _lodash.all;
 	var each = _lodash.each;
 	var times = _lodash.times;
 	var isArray = _lodash.isArray;
 
-	var includeIoMixin = _interopRequire(__webpack_require__(203));
+	var includeIoMixin = _interopRequire(__webpack_require__(131));
 
 	var VarArray = exports.VarArray = (function () {
 	  function VarArray(childType) {
@@ -42703,29 +40707,29 @@ var StellarSdk =
 	includeIoMixin(VarArray.prototype);
 
 /***/ },
-/* 224 */
+/* 153 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
 
-	var _classCallCheck = __webpack_require__(205)["default"];
+	var _classCallCheck = __webpack_require__(133)["default"];
 
-	var _createClass = __webpack_require__(207)["default"];
+	var _createClass = __webpack_require__(135)["default"];
 
-	var _interopRequire = __webpack_require__(201)["default"];
+	var _interopRequire = __webpack_require__(129)["default"];
 
 	Object.defineProperty(exports, "__esModule", {
 	  value: true
 	});
 
-	var Bool = __webpack_require__(218).Bool;
+	var Bool = __webpack_require__(147).Bool;
 
-	var _lodash = __webpack_require__(202);
+	var _lodash = __webpack_require__(130);
 
 	var isNull = _lodash.isNull;
 	var isUndefined = _lodash.isUndefined;
 
-	var includeIoMixin = _interopRequire(__webpack_require__(203));
+	var includeIoMixin = _interopRequire(__webpack_require__(131));
 
 	var Option = exports.Option = (function () {
 	  function Option(childType) {
@@ -42773,20 +40777,20 @@ var StellarSdk =
 	includeIoMixin(Option.prototype);
 
 /***/ },
-/* 225 */
+/* 154 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
 
-	var _interopRequire = __webpack_require__(201)["default"];
+	var _interopRequire = __webpack_require__(129)["default"];
 
 	Object.defineProperty(exports, "__esModule", {
 	  value: true
 	});
 
-	var isUndefined = __webpack_require__(202).isUndefined;
+	var isUndefined = __webpack_require__(130).isUndefined;
 
-	var includeIoMixin = _interopRequire(__webpack_require__(203));
+	var includeIoMixin = _interopRequire(__webpack_require__(131));
 
 	var Void = {
 	  /* jshint unused: false */
@@ -42809,35 +40813,35 @@ var StellarSdk =
 	includeIoMixin(Void);
 
 /***/ },
-/* 226 */
+/* 155 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
 
-	var _classCallCheck = __webpack_require__(205)["default"];
+	var _classCallCheck = __webpack_require__(133)["default"];
 
-	var _createClass = __webpack_require__(207)["default"];
+	var _createClass = __webpack_require__(135)["default"];
 
-	var _inherits = __webpack_require__(206)["default"];
+	var _inherits = __webpack_require__(134)["default"];
 
-	var _get = __webpack_require__(211)["default"];
+	var _get = __webpack_require__(139)["default"];
 
-	var _core = __webpack_require__(197)["default"];
+	var _core = __webpack_require__(125)["default"];
 
-	var _interopRequire = __webpack_require__(201)["default"];
+	var _interopRequire = __webpack_require__(129)["default"];
 
 	Object.defineProperty(exports, "__esModule", {
 	  value: true
 	});
 
-	var Int = __webpack_require__(200).Int;
+	var Int = __webpack_require__(128).Int;
 
-	var _lodash = __webpack_require__(202);
+	var _lodash = __webpack_require__(130);
 
 	var each = _lodash.each;
 	var vals = _lodash.values;
 
-	var includeIoMixin = _interopRequire(__webpack_require__(203));
+	var includeIoMixin = _interopRequire(__webpack_require__(131));
 
 	var Enum = exports.Enum = (function () {
 	  function Enum(name, value) {
@@ -42938,39 +40942,39 @@ var StellarSdk =
 	includeIoMixin(Enum);
 
 /***/ },
-/* 227 */
+/* 156 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
 
-	var _classCallCheck = __webpack_require__(205)["default"];
+	var _classCallCheck = __webpack_require__(133)["default"];
 
-	var _createClass = __webpack_require__(207)["default"];
+	var _createClass = __webpack_require__(135)["default"];
 
-	var _inherits = __webpack_require__(206)["default"];
+	var _inherits = __webpack_require__(134)["default"];
 
-	var _get = __webpack_require__(211)["default"];
+	var _get = __webpack_require__(139)["default"];
 
-	var _slicedToArray = __webpack_require__(228)["default"];
+	var _slicedToArray = __webpack_require__(157)["default"];
 
-	var _core = __webpack_require__(197)["default"];
+	var _core = __webpack_require__(125)["default"];
 
-	var _interopRequire = __webpack_require__(201)["default"];
+	var _interopRequire = __webpack_require__(129)["default"];
 
 	Object.defineProperty(exports, "__esModule", {
 	  value: true
 	});
 
-	var _lodash = __webpack_require__(202);
+	var _lodash = __webpack_require__(130);
 
 	var each = _lodash.each;
 	var map = _lodash.map;
 	var isUndefined = _lodash.isUndefined;
 	var zipObject = _lodash.zipObject;
 
-	var Reference = __webpack_require__(229).Reference;
+	var Reference = __webpack_require__(158).Reference;
 
-	var includeIoMixin = _interopRequire(__webpack_require__(203));
+	var includeIoMixin = _interopRequire(__webpack_require__(131));
 
 	var Struct = exports.Struct = (function () {
 	  function Struct(attributes) {
@@ -43080,12 +41084,12 @@ var StellarSdk =
 	}
 
 /***/ },
-/* 228 */
+/* 157 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
 
-	var _core = __webpack_require__(197)["default"];
+	var _core = __webpack_require__(125)["default"];
 
 	exports["default"] = function (arr, i) {
 	  if (Array.isArray(arr)) {
@@ -43108,29 +41112,29 @@ var StellarSdk =
 	exports.__esModule = true;
 
 /***/ },
-/* 229 */
+/* 158 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
 
-	var _classCallCheck = __webpack_require__(205)["default"];
+	var _classCallCheck = __webpack_require__(133)["default"];
 
-	var _createClass = __webpack_require__(207)["default"];
+	var _createClass = __webpack_require__(135)["default"];
 
-	var _inherits = __webpack_require__(206)["default"];
+	var _inherits = __webpack_require__(134)["default"];
 
-	var _interopRequireWildcard = __webpack_require__(198)["default"];
+	var _interopRequireWildcard = __webpack_require__(126)["default"];
 
-	var _interopRequire = __webpack_require__(201)["default"];
+	var _interopRequire = __webpack_require__(129)["default"];
 
 	exports.config = config;
 	Object.defineProperty(exports, "__esModule", {
 	  value: true
 	});
 
-	var XDR = _interopRequireWildcard(__webpack_require__(199));
+	var XDR = _interopRequireWildcard(__webpack_require__(127));
 
-	var _lodash = __webpack_require__(202);
+	var _lodash = __webpack_require__(130);
 
 	var isUndefined = _lodash.isUndefined;
 	var isPlainObject = _lodash.isPlainObject;
@@ -43139,7 +41143,7 @@ var StellarSdk =
 	var map = _lodash.map;
 	var pick = _lodash.pick;
 
-	var sequencify = _interopRequire(__webpack_require__(230));
+	var sequencify = _interopRequire(__webpack_require__(159));
 
 	// types is the root
 	var types = {};
@@ -43477,7 +41481,7 @@ var StellarSdk =
 	})();
 
 /***/ },
-/* 230 */
+/* 159 */
 /***/ function(module, exports) {
 
 	/*jshint node:true */
@@ -43529,40 +41533,40 @@ var StellarSdk =
 
 
 /***/ },
-/* 231 */
+/* 160 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
 
-	var _classCallCheck = __webpack_require__(205)["default"];
+	var _classCallCheck = __webpack_require__(133)["default"];
 
-	var _createClass = __webpack_require__(207)["default"];
+	var _createClass = __webpack_require__(135)["default"];
 
-	var _inherits = __webpack_require__(206)["default"];
+	var _inherits = __webpack_require__(134)["default"];
 
-	var _get = __webpack_require__(211)["default"];
+	var _get = __webpack_require__(139)["default"];
 
-	var _slicedToArray = __webpack_require__(228)["default"];
+	var _slicedToArray = __webpack_require__(157)["default"];
 
-	var _core = __webpack_require__(197)["default"];
+	var _core = __webpack_require__(125)["default"];
 
-	var _interopRequire = __webpack_require__(201)["default"];
+	var _interopRequire = __webpack_require__(129)["default"];
 
 	Object.defineProperty(exports, "__esModule", {
 	  value: true
 	});
 
-	var _lodash = __webpack_require__(202);
+	var _lodash = __webpack_require__(130);
 
 	var each = _lodash.each;
 	var isUndefined = _lodash.isUndefined;
 	var isString = _lodash.isString;
 
-	var Void = __webpack_require__(225).Void;
+	var Void = __webpack_require__(154).Void;
 
-	var Reference = __webpack_require__(229).Reference;
+	var Reference = __webpack_require__(158).Reference;
 
-	var includeIoMixin = _interopRequire(__webpack_require__(203));
+	var includeIoMixin = _interopRequire(__webpack_require__(131));
 
 	var Union = exports.Union = (function () {
 	  function Union(aSwitch, value) {
@@ -43758,7 +41762,7 @@ var StellarSdk =
 	includeIoMixin(Union);
 
 /***/ },
-/* 232 */
+/* 161 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -43768,7 +41772,7 @@ var StellarSdk =
 	  value: true
 	});
 
-	var sha256 = __webpack_require__(233).sha256;
+	var sha256 = __webpack_require__(162).sha256;
 
 	function hash(data) {
 	  var hasher = new sha256();
@@ -43777,7 +41781,7 @@ var StellarSdk =
 	}
 
 /***/ },
-/* 233 */
+/* 162 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var exports = module.exports = function SHA (algorithm) {
@@ -43789,16 +41793,16 @@ var StellarSdk =
 	  return new Algorithm()
 	}
 
-	exports.sha = __webpack_require__(234)
-	exports.sha1 = __webpack_require__(237)
-	exports.sha224 = __webpack_require__(238)
-	exports.sha256 = __webpack_require__(239)
-	exports.sha384 = __webpack_require__(240)
-	exports.sha512 = __webpack_require__(241)
+	exports.sha = __webpack_require__(163)
+	exports.sha1 = __webpack_require__(166)
+	exports.sha224 = __webpack_require__(167)
+	exports.sha256 = __webpack_require__(168)
+	exports.sha384 = __webpack_require__(169)
+	exports.sha512 = __webpack_require__(170)
 
 
 /***/ },
-/* 234 */
+/* 163 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {/*
@@ -43809,8 +41813,8 @@ var StellarSdk =
 	 * operation was added.
 	 */
 
-	var inherits = __webpack_require__(235)
-	var Hash = __webpack_require__(236)
+	var inherits = __webpack_require__(164)
+	var Hash = __webpack_require__(165)
 
 	var W = new Array(80)
 
@@ -43902,10 +41906,10 @@ var StellarSdk =
 	module.exports = Sha
 
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(162).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(89).Buffer))
 
 /***/ },
-/* 235 */
+/* 164 */
 /***/ function(module, exports) {
 
 	if (typeof Object.create === 'function') {
@@ -43934,7 +41938,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 236 */
+/* 165 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {// prototype class for hash functions
@@ -44007,10 +42011,10 @@ var StellarSdk =
 
 	module.exports = Hash
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(162).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(89).Buffer))
 
 /***/ },
-/* 237 */
+/* 166 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {/*
@@ -44022,8 +42026,8 @@ var StellarSdk =
 	 * See http://pajhome.org.uk/crypt/md5 for details.
 	 */
 
-	var inherits = __webpack_require__(235)
-	var Hash = __webpack_require__(236)
+	var inherits = __webpack_require__(164)
+	var Hash = __webpack_require__(165)
 
 	var W = new Array(80)
 
@@ -44110,10 +42114,10 @@ var StellarSdk =
 
 	module.exports = Sha1
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(162).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(89).Buffer))
 
 /***/ },
-/* 238 */
+/* 167 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {/**
@@ -44124,9 +42128,9 @@ var StellarSdk =
 	 *
 	 */
 
-	var inherits = __webpack_require__(235)
-	var Sha256 = __webpack_require__(239)
-	var Hash = __webpack_require__(236)
+	var inherits = __webpack_require__(164)
+	var Sha256 = __webpack_require__(168)
+	var Hash = __webpack_require__(165)
 
 	var W = new Array(64)
 
@@ -44169,10 +42173,10 @@ var StellarSdk =
 
 	module.exports = Sha224
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(162).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(89).Buffer))
 
 /***/ },
-/* 239 */
+/* 168 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {/**
@@ -44183,8 +42187,8 @@ var StellarSdk =
 	 *
 	 */
 
-	var inherits = __webpack_require__(235)
-	var Hash = __webpack_require__(236)
+	var inherits = __webpack_require__(164)
+	var Hash = __webpack_require__(165)
 
 	var K = [
 	  0x428A2F98, 0x71374491, 0xB5C0FBCF, 0xE9B5DBA5,
@@ -44317,15 +42321,15 @@ var StellarSdk =
 
 	module.exports = Sha256
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(162).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(89).Buffer))
 
 /***/ },
-/* 240 */
+/* 169 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(Buffer) {var inherits = __webpack_require__(235)
-	var SHA512 = __webpack_require__(241)
-	var Hash = __webpack_require__(236)
+	/* WEBPACK VAR INJECTION */(function(Buffer) {var inherits = __webpack_require__(164)
+	var SHA512 = __webpack_require__(170)
+	var Hash = __webpack_require__(165)
 
 	var W = new Array(160)
 
@@ -44380,14 +42384,14 @@ var StellarSdk =
 
 	module.exports = Sha384
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(162).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(89).Buffer))
 
 /***/ },
-/* 241 */
+/* 170 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(Buffer) {var inherits = __webpack_require__(235)
-	var Hash = __webpack_require__(236)
+	/* WEBPACK VAR INJECTION */(function(Buffer) {var inherits = __webpack_require__(164)
+	var Hash = __webpack_require__(165)
 
 	var K = [
 	  0x428a2f98, 0xd728ae22, 0x71374491, 0x23ef65cd,
@@ -44653,10 +42657,10 @@ var StellarSdk =
 
 	module.exports = Sha512
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(162).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(89).Buffer))
 
 /***/ },
-/* 242 */
+/* 171 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {"use strict";
@@ -44682,52 +42686,57 @@ var StellarSdk =
 	  return actualMethods.verify(data, signature, publicKey);
 	}
 
-	//// if in node  TODO: Need to change depended ed25519
-	// if (typeof window === 'undefined') {
-	//   // NOTE: we use commonjs style require here because es6 imports
-	//   // can only occur at the top level.  thanks, obama.
-	//   let ed25519 = require("ed25519");
-	//
-	//   actualMethods.sign = function(data, secretKey) {
-	//     data = new Buffer(data);
-	//     return ed25519.Sign(data, secretKey);
-	//   };
-	//
-	//   actualMethods.verify = function(data, signature, publicKey) {
-	//     data = new Buffer(data);
-	//     try {
-	//       return ed25519.Verify(data, signature, publicKey);
-	//     } catch(e) {
-	//       return false;
-	//     }
-	//   };
-	//
-	// } else {
-	//   // fallback to tweetnacl.js if we're in the browser
-	var nacl = __webpack_require__(243);
+	// //// if in node
+	if (typeof window === "undefined") {
+	  (function () {
+	    // NOTE: we use commonjs style require here because es6 imports
+	    // can only occur at the top level.  thanks, obama.
+	    var ed25519 = __webpack_require__(!(function webpackMissingModule() { var e = new Error("Cannot find module \"ed25519\""); e.code = 'MODULE_NOT_FOUND'; throw e; }()));
 
-	actualMethods.sign = function (data, secretKey) {
-	  data = new Buffer(data);
-	  data = new Uint8Array(data.toJSON().data);
-	  secretKey = new Uint8Array(secretKey.toJSON().data);
+	    actualMethods.sign = function (data, secretKey) {
+	      data = new Buffer(data);
+	      return ed25519.Sign(data, secretKey);
+	    };
 
-	  var signature = nacl.sign.detached(data, secretKey);
+	    actualMethods.verify = function (data, signature, publicKey) {
+	      data = new Buffer(data);
+	      try {
+	        return ed25519.Verify(data, signature, publicKey);
+	      } catch (e) {
+	        return false;
+	      }
+	    };
+	  })();
+	} else {
+	  (function () {
+	    // fallback to tweetnacl.js if we're in the browser
 
-	  return new Buffer(signature);
-	};
+	    var nacl = __webpack_require__(172);
 
-	actualMethods.verify = function (data, signature, publicKey) {
-	  data = new Buffer(data);
-	  data = new Uint8Array(data.toJSON().data);
-	  signature = new Uint8Array(signature.toJSON().data);
-	  publicKey = new Uint8Array(publicKey.toJSON().data);
+	    actualMethods.sign = function (data, secretKey) {
+	      data = new Buffer(data);
+	      data = new Uint8Array(data.toJSON().data);
+	      secretKey = new Uint8Array(secretKey.toJSON().data);
 
-	  return nacl.sign.detached.verify(data, signature, publicKey);
-	};
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(162).Buffer))
+	      var signature = nacl.sign.detached(data, secretKey);
+
+	      return new Buffer(signature);
+	    };
+
+	    actualMethods.verify = function (data, signature, publicKey) {
+	      data = new Buffer(data);
+	      data = new Uint8Array(data.toJSON().data);
+	      signature = new Uint8Array(signature.toJSON().data);
+	      publicKey = new Uint8Array(publicKey.toJSON().data);
+
+	      return nacl.sign.detached.verify(data, signature, publicKey);
+	    };
+	  })();
+	}
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(89).Buffer))
 
 /***/ },
-/* 243 */
+/* 172 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {"use strict";
@@ -47368,7 +45377,7 @@ var StellarSdk =
 	      });
 	    } else if (true) {
 	      // Node.js.
-	      crypto = __webpack_require__(244);
+	      crypto = __webpack_require__(173);
 	      if (crypto && crypto.randomBytes) {
 	        nacl.setPRNG(function (x, n) {
 	          var i,
@@ -47381,13 +45390,13 @@ var StellarSdk =
 	  })();
 	})(typeof module !== "undefined" && module.exports ? module.exports : self.nacl = self.nacl || {});
 	/* x, n */
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(162).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(89).Buffer))
 
 /***/ },
-/* 244 */
+/* 173 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(Buffer) {var rng = __webpack_require__(245)
+	/* WEBPACK VAR INJECTION */(function(Buffer) {var rng = __webpack_require__(174)
 
 	function error () {
 	  var m = [].slice.call(arguments).join(' ')
@@ -47398,9 +45407,9 @@ var StellarSdk =
 	    ].join('\n'))
 	}
 
-	exports.createHash = __webpack_require__(247)
+	exports.createHash = __webpack_require__(176)
 
-	exports.createHmac = __webpack_require__(256)
+	exports.createHmac = __webpack_require__(185)
 
 	exports.randomBytes = function(size, callback) {
 	  if (callback && callback.call) {
@@ -47421,7 +45430,7 @@ var StellarSdk =
 	  return ['sha1', 'sha256', 'sha512', 'md5', 'rmd160']
 	}
 
-	var p = __webpack_require__(257)(exports)
+	var p = __webpack_require__(186)(exports)
 	exports.pbkdf2 = p.pbkdf2
 	exports.pbkdf2Sync = p.pbkdf2Sync
 
@@ -47441,16 +45450,16 @@ var StellarSdk =
 	  }
 	})
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(162).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(89).Buffer))
 
 /***/ },
-/* 245 */
+/* 174 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(global, Buffer) {(function() {
 	  var g = ('undefined' === typeof window ? global : window) || {}
 	  _crypto = (
-	    g.crypto || g.msCrypto || __webpack_require__(246)
+	    g.crypto || g.msCrypto || __webpack_require__(175)
 	  )
 	  module.exports = function(size) {
 	    // Modern Browsers
@@ -47474,22 +45483,22 @@ var StellarSdk =
 	  }
 	}())
 
-	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }()), __webpack_require__(162).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }()), __webpack_require__(89).Buffer))
 
 /***/ },
-/* 246 */
+/* 175 */
 /***/ function(module, exports) {
 
 	/* (ignored) */
 
 /***/ },
-/* 247 */
+/* 176 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(Buffer) {var createHash = __webpack_require__(248)
+	/* WEBPACK VAR INJECTION */(function(Buffer) {var createHash = __webpack_require__(177)
 
-	var md5 = toConstructor(__webpack_require__(253))
-	var rmd160 = toConstructor(__webpack_require__(255))
+	var md5 = toConstructor(__webpack_require__(182))
+	var rmd160 = toConstructor(__webpack_require__(184))
 
 	function toConstructor (fn) {
 	  return function () {
@@ -47517,10 +45526,10 @@ var StellarSdk =
 	  return createHash(alg)
 	}
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(162).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(89).Buffer))
 
 /***/ },
-/* 248 */
+/* 177 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var exports = module.exports = function (alg) {
@@ -47529,16 +45538,16 @@ var StellarSdk =
 	  return new Alg()
 	}
 
-	var Buffer = __webpack_require__(162).Buffer
-	var Hash   = __webpack_require__(249)(Buffer)
+	var Buffer = __webpack_require__(89).Buffer
+	var Hash   = __webpack_require__(178)(Buffer)
 
-	exports.sha1 = __webpack_require__(250)(Buffer, Hash)
-	exports.sha256 = __webpack_require__(251)(Buffer, Hash)
-	exports.sha512 = __webpack_require__(252)(Buffer, Hash)
+	exports.sha1 = __webpack_require__(179)(Buffer, Hash)
+	exports.sha256 = __webpack_require__(180)(Buffer, Hash)
+	exports.sha512 = __webpack_require__(181)(Buffer, Hash)
 
 
 /***/ },
-/* 249 */
+/* 178 */
 /***/ function(module, exports) {
 
 	module.exports = function (Buffer) {
@@ -47621,7 +45630,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 250 */
+/* 179 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/*
@@ -47633,7 +45642,7 @@ var StellarSdk =
 	 * See http://pajhome.org.uk/crypt/md5 for details.
 	 */
 
-	var inherits = __webpack_require__(178).inherits
+	var inherits = __webpack_require__(105).inherits
 
 	module.exports = function (Buffer, Hash) {
 
@@ -47765,7 +45774,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 251 */
+/* 180 */
 /***/ function(module, exports, __webpack_require__) {
 
 	
@@ -47777,7 +45786,7 @@ var StellarSdk =
 	 *
 	 */
 
-	var inherits = __webpack_require__(178).inherits
+	var inherits = __webpack_require__(105).inherits
 
 	module.exports = function (Buffer, Hash) {
 
@@ -47918,10 +45927,10 @@ var StellarSdk =
 
 
 /***/ },
-/* 252 */
+/* 181 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var inherits = __webpack_require__(178).inherits
+	var inherits = __webpack_require__(105).inherits
 
 	module.exports = function (Buffer, Hash) {
 	  var K = [
@@ -48168,7 +46177,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 253 */
+/* 182 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/*
@@ -48180,7 +46189,7 @@ var StellarSdk =
 	 * See http://pajhome.org.uk/crypt/md5 for more info.
 	 */
 
-	var helpers = __webpack_require__(254);
+	var helpers = __webpack_require__(183);
 
 	/*
 	 * Calculate the MD5 of an array of little-endian words, and a bit length
@@ -48329,7 +46338,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 254 */
+/* 183 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {var intSize = 4;
@@ -48367,10 +46376,10 @@ var StellarSdk =
 
 	module.exports = { hash: hash };
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(162).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(89).Buffer))
 
 /***/ },
-/* 255 */
+/* 184 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {
@@ -48579,13 +46588,13 @@ var StellarSdk =
 
 
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(162).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(89).Buffer))
 
 /***/ },
-/* 256 */
+/* 185 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(Buffer) {var createHash = __webpack_require__(247)
+	/* WEBPACK VAR INJECTION */(function(Buffer) {var createHash = __webpack_require__(176)
 
 	var zeroBuffer = new Buffer(128)
 	zeroBuffer.fill(0)
@@ -48629,13 +46638,13 @@ var StellarSdk =
 	}
 
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(162).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(89).Buffer))
 
 /***/ },
-/* 257 */
+/* 186 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var pbkdf2Export = __webpack_require__(258)
+	var pbkdf2Export = __webpack_require__(187)
 
 	module.exports = function (crypto, exports) {
 	  exports = exports || {}
@@ -48650,7 +46659,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 258 */
+/* 187 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {module.exports = function(crypto) {
@@ -48738,10 +46747,10 @@ var StellarSdk =
 	  }
 	}
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(162).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(89).Buffer))
 
 /***/ },
-/* 259 */
+/* 188 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {"use strict";
@@ -48758,20 +46767,20 @@ var StellarSdk =
 	  value: true
 	});
 
-	var Network = __webpack_require__(260).Network;
+	var Network = __webpack_require__(189).Network;
 
-	var _signing = __webpack_require__(242);
+	var _signing = __webpack_require__(171);
 
 	var sign = _signing.sign;
 	var verify = _signing.verify;
 
-	var base58 = _interopRequireWildcard(__webpack_require__(261));
+	var base58 = _interopRequireWildcard(__webpack_require__(190));
 
-	var strkey = _interopRequireWildcard(__webpack_require__(265));
+	var strkey = _interopRequireWildcard(__webpack_require__(194));
 
-	var xdr = _interopRequire(__webpack_require__(194));
+	var xdr = _interopRequire(__webpack_require__(122));
 
-	var nacl = __webpack_require__(243);
+	var nacl = __webpack_require__(172);
 
 	var Keypair = exports.Keypair = (function () {
 	  /**
@@ -49049,10 +47058,10 @@ var StellarSdk =
 
 	  return Keypair;
 	})();
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(162).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(89).Buffer))
 
 /***/ },
-/* 260 */
+/* 189 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -49065,7 +47074,7 @@ var StellarSdk =
 		value: true
 	});
 
-	var hash = __webpack_require__(232).hash;
+	var hash = __webpack_require__(161).hash;
 
 	/**
 	 * Contains passphrases for common networks:
@@ -49195,7 +47204,7 @@ var StellarSdk =
 	Network.useDefault();
 
 /***/ },
-/* 261 */
+/* 190 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {"use strict";
@@ -49210,13 +47219,13 @@ var StellarSdk =
 	  value: true
 	});
 
-	var bs58 = _interopRequire(__webpack_require__(262));
+	var bs58 = _interopRequire(__webpack_require__(191));
 
-	var isUndefined = _interopRequire(__webpack_require__(263));
+	var isUndefined = _interopRequire(__webpack_require__(192));
 
-	var isNull = _interopRequire(__webpack_require__(264));
+	var isNull = _interopRequire(__webpack_require__(193));
 
-	var hash = __webpack_require__(232).hash;
+	var hash = __webpack_require__(161).hash;
 
 	var versionBytes = {
 	  accountId: 0, // decimal 0
@@ -49309,10 +47318,10 @@ var StellarSdk =
 
 	  return true;
 	}
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(162).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(89).Buffer))
 
 /***/ },
-/* 262 */
+/* 191 */
 /***/ function(module, exports) {
 
 	// vendored from http://cryptocoinjs.com/modules/misc/bs58/
@@ -49411,7 +47420,7 @@ var StellarSdk =
 	};
 
 /***/ },
-/* 263 */
+/* 192 */
 /***/ function(module, exports) {
 
 	/**
@@ -49438,7 +47447,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 264 */
+/* 193 */
 /***/ function(module, exports) {
 
 	/**
@@ -49465,7 +47474,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 265 */
+/* 194 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {"use strict";
@@ -49473,23 +47482,22 @@ var StellarSdk =
 	var _interopRequire = function (obj) { return obj && obj.__esModule ? obj["default"] : obj; };
 
 	exports.decodeCheck = decodeCheck;
-	exports.encodeWithoutPad = encodeWithoutPad;
 	exports.encodeCheck = encodeCheck;
 	Object.defineProperty(exports, "__esModule", {
 	  value: true
 	});
 
-	var base32 = _interopRequire(__webpack_require__(266));
+	var base32 = _interopRequire(__webpack_require__(195));
 
-	var crc = _interopRequire(__webpack_require__(267));
+	var crc = _interopRequire(__webpack_require__(196));
 
-	var contains = _interopRequire(__webpack_require__(279));
+	var contains = _interopRequire(__webpack_require__(208));
 
-	var isUndefined = _interopRequire(__webpack_require__(263));
+	var isUndefined = _interopRequire(__webpack_require__(192));
 
-	var isNull = _interopRequire(__webpack_require__(264));
+	var isNull = _interopRequire(__webpack_require__(193));
 
-	var isString = _interopRequire(__webpack_require__(288));
+	var isString = _interopRequire(__webpack_require__(217));
 
 	var versionBytes = {
 	  accountId: 48, // "G" in base32
@@ -49498,7 +47506,7 @@ var StellarSdk =
 	  mpub: 120, // "P" in base32
 	  privWallet: 176, // "W" in base32
 	  pubWallet: 200, // "Z" in base32
-	  hdk: 80 // "Z" in base32
+	  hdk: 80 // "K" in base32
 	};
 
 	function decodeCheck(versionByteName, encoded) {
@@ -49533,15 +47541,6 @@ var StellarSdk =
 	  }
 
 	  return new Buffer(data);
-	}
-
-	function encodeWithoutPad(versionByteName, data) {
-	  var forAddL = 5 - (data.length + 3) % 5,
-	      add = new Buffer(forAddL);
-	  for (var i = 0; i < forAddL; i++) {
-	    add[i] = 0;
-	  }var res = Buffer.concat([data, add]);
-	  return encodeCheck(versionByteName, res);
 	}
 
 	function encodeCheck(versionByteName, data) {
@@ -49589,354 +47588,152 @@ var StellarSdk =
 
 	  return true;
 	}
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(162).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(89).Buffer))
 
 /***/ },
-/* 266 */
-/***/ function(module, exports) {
+/* 195 */
+/***/ function(module, exports, __webpack_require__) {
 
-	"use strict";
+	/* WEBPACK VAR INJECTION */(function(Buffer) {var charTable = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+	var byteTable = [
+	  0xff, 0xff, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
+	  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+	  0xff, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
+	  0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e,
+	  0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16,
+	  0x17, 0x18, 0x19, 0xff, 0xff, 0xff, 0xff, 0xff,
+	  0xff, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
+	  0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e,
+	  0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16,
+	  0x17, 0x18, 0x19, 0xff, 0xff, 0xff, 0xff, 0xff
+	];
 
-	/**
-	 * Generate a character map.
-	 * @param {string} alphabet e.g. "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
-	 * @param {object} mappings map overrides from key to value
-	 * @method
-	 */
-
-	var charmap = function (alphabet, mappings) {
-	  mappings || (mappings = {});
-	  alphabet.split("").forEach(function (c, i) {
-	    if (!(c in mappings)) mappings[c] = i;
-	  });
-	  return mappings;
+	function quintetCount(buff) {
+	  var quintets = Math.floor(buff.length / 5);
+	  return buff.length % 5 == 0 ? quintets: quintets + 1;
 	}
 
-	/**
-	 * The RFC 4648 base 32 alphabet and character map.
-	 * @see {@link https://tools.ietf.org/html/rfc4648}
-	 */
-
-	var rfc4648 = {
-	  alphabet: "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567",
-	  charmap: {
-	    0: 14,
-	    1: 8
+	encode = function(plain) {
+	  var i = 0;
+	  var j = 0;
+	  var shiftIndex = 0;
+	  var digit = 0;
+	  var encoded = new Buffer(quintetCount(plain) * 8);
+	  if(!Buffer.isBuffer(plain)){
+	  	plain = new Buffer(plain);
 	  }
-	};
 
-	rfc4648.charmap = charmap(rfc4648.alphabet, rfc4648.charmap);
-
-	/**
-	 * The Crockford base 32 alphabet and character map.
-	 * @see {@link http://www.crockford.com/wrmg/base32.html}
-	 */
-
-	var crockford = {
-	  alphabet: "0123456789ABCDEFGHJKMNPQRSTVWXYZ",
-	  charmap: {
-	    O: 0,
-	    I: 1,
-	    L: 1
-	  }
-	};
-
-	crockford.charmap = charmap(crockford.alphabet, crockford.charmap);
-
-	/**
-	 * base32hex
-	 * @see {@link https://en.wikipedia.org/wiki/Base32#base32hex}
-	 */
-
-	var base32hex = {
-	  alphabet: "0123456789ABCDEFGHIJKLMNOPQRSTUV",
-	  charmap: {}
-	};
-
-	base32hex.charmap = charmap(base32hex.alphabet, base32hex.charmap);
-
-	/**
-	 * Create a new `Decoder` with the given options.
-	 *
-	 * @param {object} [options]
-	 *   @param {string} [type] Supported Base-32 variants are "rfc4648" and
-	 *     "crockford".
-	 *   @param {object} [charmap] Override the character map used in decoding.
-	 * @constructor
-	 */
-
-	function Decoder (options) {
-	  this.buf = [];
-	  this.shift = 8;
-	  this.carry = 0;
-
-	  if (options) {
-
-	    switch (options.type) {
-	      case "rfc4648":
-	        this.charmap = exports.rfc4648.charmap;
-	        break;
-	      case "crockford":
-	        this.charmap = exports.crockford.charmap;
-	        break;
-	      case "base32hex":
-	        this.charmap = exports.base32hex.charmap;
-	        break;
-	      default:
-	        throw new Error("invalid type");
-	    }
-
-	    if (options.charmap) this.charmap = options.charmap;
-	  }
-	}
-
-	/**
-	 * The default character map coresponds to RFC4648.
-	 */
-
-	Decoder.prototype.charmap = rfc4648.charmap;
-
-	/**
-	 * Decode a string, continuing from the previous state.
-	 *
-	 * @param {string} str
-	 * @return {Decoder} this
-	 */
-
-	Decoder.prototype.write = function (str) {
-	  var charmap = this.charmap;
-	  var buf = this.buf;
-	  var shift = this.shift;
-	  var carry = this.carry;
-
-	  // decode string
-	  str.toUpperCase().split("").forEach(function (char) {
-
-	    // ignore padding
-	    if (char == "=") return;
-
-	    // lookup symbol
-	    var symbol = charmap[char] & 0xff;
-
-	    // 1: 00000 000
-	    // 2:          00 00000 0
-	    // 3:                    0000 0000
-	    // 4:                             0 00000 00
-	    // 5:                                       000 00000
-	    // 6:                                                00000 000
-	    // 7:                                                         00 00000 0
-
-	    shift -= 5;
-	    if (shift > 0) {
-	      carry |= symbol << shift;
-	    } else if (shift < 0) {
-	      buf.push(carry | (symbol >> -shift));
-	      shift += 8;
-	      carry = (symbol << shift) & 0xff;
+	  /* byte by byte isn't as pretty as quintet by quintet but tests a bit
+	    faster. will have to revisit. */
+	  while(i < plain.length) {
+	    var current = plain[i];
+	  
+	    if(shiftIndex > 3) {
+	      digit = current & (0xff >> shiftIndex);
+	      shiftIndex = (shiftIndex + 5) % 8;
+	      digit = (digit << shiftIndex) | ((i + 1 < plain.length) ?
+	        plain[i + 1] : 0) >> (8 - shiftIndex);
+	      i++;
 	    } else {
-	      buf.push(carry | symbol);
-	      shift = 8;
-	      carry = 0;
+	      digit = (current >> (8 - (shiftIndex + 5))) & 0x1f;
+	      shiftIndex = (shiftIndex + 5) % 8;      
+	      if(shiftIndex == 0) i++;
 	    }
-	  });
+	    
+	    encoded[j] = charTable.charCodeAt(digit);
+	    j++;
+	  }
 
-	  // save state
-	  this.shift = shift;
-	  this.carry = carry;
-
-	  // for chaining
-	  return this;
+	  for(i = j; i < encoded.length; i++) {
+	    encoded[i] = 0x3d; //'='.charCodeAt(0)
+	  }
+	    
+	  return encoded.toString();
 	};
 
-	/**
-	 * Finish decoding.
-	 *
-	 * @param {string} [str] The final string to decode.
-	 * @return {Array} Decoded byte array.
-	 */
+	decode = function(encoded) {
+	  var shiftIndex = 0;
+	  var plainDigit = 0;
+	  var plainChar;
+	  var plainPos = 0;
+	  if(!Buffer.isBuffer(encoded)){
+	  	encoded = new Buffer(encoded);
+	  }
+	  var decoded = new Buffer(Math.ceil(encoded.length * 5 / 8));
+	  
+	  /* byte by byte isn't as pretty as octet by octet but tests a bit
+	    faster. will have to revisit. */  
+	  for(var i = 0; i < encoded.length; i++) {
+	  	if(encoded[i] == 0x3d){ //'='
+	  		break;
+	  	}
+	  		
+	    var encodedByte = encoded[i] - 0x30;
+	    
+	    if(encodedByte < byteTable.length) {
+	      plainDigit = byteTable[encodedByte];
+	      
+	      if(shiftIndex <= 3) {
+	        shiftIndex = (shiftIndex + 5) % 8;
+	        
+	        if(shiftIndex == 0) {
+	          plainChar |= plainDigit;
+	          decoded[plainPos] = plainChar;
+	          plainPos++;
+	          plainChar = 0;
+	        } else {
+	          plainChar |= 0xff & (plainDigit << (8 - shiftIndex));
+	        }
+	      } else {
+	        shiftIndex = (shiftIndex + 5) % 8;
+	        plainChar |= 0xff & (plainDigit >>> shiftIndex);
+	        decoded[plainPos] = plainChar;
+	        plainPos++;
 
-	Decoder.prototype.finalize = function (str) {
-	  if (str) {
-	    this.write(str);
+	        plainChar = 0xff & (plainDigit << (8 - shiftIndex));
+	      }
+	    } else {
+	    	throw new Error('Invalid input - it is not base32 encoded string');
+	    }
 	  }
-	  if (this.shift !== 8 && this.carry !== 0) {
-	    this.buf.push(this.carry);
-	    this.shift = 8;
-	    this.carry = 0;
-	  }
-	  return this.buf;
+	  return decoded.slice(0, plainPos);
 	};
 
-	/**
-	 * Create a new `Encoder` with the given options.
-	 *
-	 * @param {object} [options]
-	 *   @param {string} [type] Supported Base-32 variants are "rfc4648" and
-	 *     "crockford".
-	 *   @param {object} [alphabet] Override the alphabet used in encoding.
-	 * @constructor
-	 */
-
-	function Encoder (options) {
-	  this.buf = "";
-	  this.shift = 3;
-	  this.carry = 0;
-
-	  if (options) {
-
-	    switch (options.type) {
-	      case "rfc4648":
-	        this.alphabet = exports.rfc4648.alphabet;
-	        break;
-	      case "crockford":
-	        this.alphabet = exports.crockford.alphabet;
-	        break;
-	      case "base32hex":
-	        this.alphabet = exports.base32hex.alphabet;
-	        break;
-	      default:
-	        throw new Error("invalid type");
-	    }
-
-	    if (options.alphabet) this.alphabet = options.alphabet;
-	    else if (options.lc) this.alphabet = this.alphabet.toLowerCase();
-	  }
+	module.exports = {
+	  encode: encode,
+	  decode: decode
 	}
 
-	/**
-	 * The default alphabet coresponds to RFC4648.
-	 */
-
-	Encoder.prototype.alphabet = rfc4648.alphabet;
-
-	/**
-	 * Encode a byte array, continuing from the previous state.
-	 *
-	 * @param {byte[]} buf The byte array to encode.
-	 * @return {Encoder} this
-	 */
-
-	Encoder.prototype.write = function (buf) {
-	  var shift = this.shift;
-	  var carry = this.carry;
-	  var symbol;
-	  var byte;
-	  var i;
-
-	  // encode each byte in buf
-	  for (i = 0; i < buf.length; i++) {
-	    byte = buf[i];
-
-	    // 1: 00000 000
-	    // 2:          00 00000 0
-	    // 3:                    0000 0000
-	    // 4:                             0 00000 00
-	    // 5:                                       000 00000
-	    // 6:                                                00000 000
-	    // 7:                                                         00 00000 0
-
-	    symbol = carry | (byte >> shift);
-	    this.buf += this.alphabet[symbol & 0x1f];
-
-	    if (shift > 5) {
-	      shift -= 5;
-	      symbol = byte >> shift;
-	      this.buf += this.alphabet[symbol & 0x1f];
-	    }
-
-	    shift = 5 - shift;
-	    carry = byte << shift;
-	    shift = 8 - shift;
-	  }
-
-	  // save state
-	  this.shift = shift;
-	  this.carry = carry;
-
-	  // for chaining
-	  return this;
-	};
-
-	/**
-	 * Finish encoding.
-	 *
-	 * @param {byte[]} [buf] The final byte array to encode.
-	 * @return {string} The encoded byte array.
-	 */
-
-	Encoder.prototype.finalize = function (buf) {
-	  if (buf) {
-	    this.write(buf);
-	  }
-	  if (this.shift !== 3) {
-	    this.buf += this.alphabet[this.carry & 0x1f];
-	    this.shift = 3;
-	    this.carry = 0;
-	  }
-	  return this.buf;
-	};
-
-	/**
-	 * Convenience encoder.
-	 *
-	 * @param {byte[]} buf The byte array to encode.
-	 * @param {object} [options] Options to pass to the encoder.
-	 * @return {string} The encoded string.
-	 */
-
-	exports.encode = function (buf, options) {
-	  return new Encoder(options).finalize(buf);
-	};
-
-	/**
-	 * Convenience decoder.
-	 *
-	 * @param {string} str The string to decode.
-	 * @param {object} [options] Options to pass to the decoder.
-	 * @return {byte[]} The decoded byte array.
-	 */
-
-	exports.decode = function (str, options) {
-	  return new Decoder(options).finalize(str);
-	};
-
-	// Exports.
-	exports.Decoder = Decoder;
-	exports.Encoder = Encoder;
-	exports.charmap = charmap;
-	exports.crockford = crockford;
-	exports.rfc4648 = rfc4648;
-	exports.base32hex = base32hex;
-
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(89).Buffer))
 
 /***/ },
-/* 267 */
+/* 196 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
 	module.exports = {
-	  crc1: __webpack_require__(268),
-	  crc8: __webpack_require__(270),
-	  crc81wire: __webpack_require__(271),
-	  crc16: __webpack_require__(272),
-	  crc16ccitt: __webpack_require__(273),
-	  crc16modbus: __webpack_require__(274),
-	  crc16xmodem: __webpack_require__(275),
-	  crc16kermit: __webpack_require__(276),
-	  crc24: __webpack_require__(277),
-	  crc32: __webpack_require__(278)
+	  crc1: __webpack_require__(197),
+	  crc8: __webpack_require__(199),
+	  crc81wire: __webpack_require__(200),
+	  crc16: __webpack_require__(201),
+	  crc16ccitt: __webpack_require__(202),
+	  crc16modbus: __webpack_require__(203),
+	  crc16xmodem: __webpack_require__(204),
+	  crc16kermit: __webpack_require__(205),
+	  crc24: __webpack_require__(206),
+	  crc32: __webpack_require__(207)
 	};
 
 /***/ },
-/* 268 */
+/* 197 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	var _buffer = __webpack_require__(162);
+	var _buffer = __webpack_require__(89);
 
-	var _define_crc = __webpack_require__(269);
+	var _define_crc = __webpack_require__(198);
 
 	var _define_crc2 = _interopRequireDefault(_define_crc);
 
@@ -49958,7 +47755,7 @@ var StellarSdk =
 	});
 
 /***/ },
-/* 269 */
+/* 198 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -49979,14 +47776,14 @@ var StellarSdk =
 	};
 
 /***/ },
-/* 270 */
+/* 199 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	var _buffer = __webpack_require__(162);
+	var _buffer = __webpack_require__(89);
 
-	var _define_crc = __webpack_require__(269);
+	var _define_crc = __webpack_require__(198);
 
 	var _define_crc2 = _interopRequireDefault(_define_crc);
 
@@ -50011,14 +47808,14 @@ var StellarSdk =
 	});
 
 /***/ },
-/* 271 */
+/* 200 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	var _buffer = __webpack_require__(162);
+	var _buffer = __webpack_require__(89);
 
-	var _define_crc = __webpack_require__(269);
+	var _define_crc = __webpack_require__(198);
 
 	var _define_crc2 = _interopRequireDefault(_define_crc);
 
@@ -50043,14 +47840,14 @@ var StellarSdk =
 	});
 
 /***/ },
-/* 272 */
+/* 201 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	var _buffer = __webpack_require__(162);
+	var _buffer = __webpack_require__(89);
 
-	var _define_crc = __webpack_require__(269);
+	var _define_crc = __webpack_require__(198);
 
 	var _define_crc2 = _interopRequireDefault(_define_crc);
 
@@ -50075,14 +47872,14 @@ var StellarSdk =
 	});
 
 /***/ },
-/* 273 */
+/* 202 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	var _buffer = __webpack_require__(162);
+	var _buffer = __webpack_require__(89);
 
-	var _define_crc = __webpack_require__(269);
+	var _define_crc = __webpack_require__(198);
 
 	var _define_crc2 = _interopRequireDefault(_define_crc);
 
@@ -50107,14 +47904,14 @@ var StellarSdk =
 	});
 
 /***/ },
-/* 274 */
+/* 203 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	var _buffer = __webpack_require__(162);
+	var _buffer = __webpack_require__(89);
 
-	var _define_crc = __webpack_require__(269);
+	var _define_crc = __webpack_require__(198);
 
 	var _define_crc2 = _interopRequireDefault(_define_crc);
 
@@ -50139,14 +47936,14 @@ var StellarSdk =
 	});
 
 /***/ },
-/* 275 */
+/* 204 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	var _buffer = __webpack_require__(162);
+	var _buffer = __webpack_require__(89);
 
-	var _define_crc = __webpack_require__(269);
+	var _define_crc = __webpack_require__(198);
 
 	var _define_crc2 = _interopRequireDefault(_define_crc);
 
@@ -50175,14 +47972,14 @@ var StellarSdk =
 	});
 
 /***/ },
-/* 276 */
+/* 205 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	var _buffer = __webpack_require__(162);
+	var _buffer = __webpack_require__(89);
 
-	var _define_crc = __webpack_require__(269);
+	var _define_crc = __webpack_require__(198);
 
 	var _define_crc2 = _interopRequireDefault(_define_crc);
 
@@ -50207,14 +48004,14 @@ var StellarSdk =
 	});
 
 /***/ },
-/* 277 */
+/* 206 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	var _buffer = __webpack_require__(162);
+	var _buffer = __webpack_require__(89);
 
-	var _define_crc = __webpack_require__(269);
+	var _define_crc = __webpack_require__(198);
 
 	var _define_crc2 = _interopRequireDefault(_define_crc);
 
@@ -50239,14 +48036,14 @@ var StellarSdk =
 	});
 
 /***/ },
-/* 278 */
+/* 207 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	var _buffer = __webpack_require__(162);
+	var _buffer = __webpack_require__(89);
 
-	var _define_crc = __webpack_require__(269);
+	var _define_crc = __webpack_require__(198);
 
 	var _define_crc2 = _interopRequireDefault(_define_crc);
 
@@ -50271,14 +48068,14 @@ var StellarSdk =
 	});
 
 /***/ },
-/* 279 */
+/* 208 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var baseIndexOf = __webpack_require__(280),
-	    isArrayLike = __webpack_require__(282),
-	    isString = __webpack_require__(288),
-	    toInteger = __webpack_require__(291),
-	    values = __webpack_require__(293);
+	var baseIndexOf = __webpack_require__(209),
+	    isArrayLike = __webpack_require__(211),
+	    isString = __webpack_require__(217),
+	    toInteger = __webpack_require__(220),
+	    values = __webpack_require__(222);
 
 	/* Built-in method references for those with the same name as other `lodash` methods. */
 	var nativeMax = Math.max;
@@ -50328,10 +48125,10 @@ var StellarSdk =
 
 
 /***/ },
-/* 280 */
+/* 209 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var indexOfNaN = __webpack_require__(281);
+	var indexOfNaN = __webpack_require__(210);
 
 	/**
 	 * The base implementation of `_.indexOf` without `fromIndex` bounds checks.
@@ -50361,7 +48158,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 281 */
+/* 210 */
 /***/ function(module, exports) {
 
 	/**
@@ -50390,12 +48187,12 @@ var StellarSdk =
 
 
 /***/ },
-/* 282 */
+/* 211 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var getLength = __webpack_require__(283),
-	    isFunction = __webpack_require__(285),
-	    isLength = __webpack_require__(287);
+	var getLength = __webpack_require__(212),
+	    isFunction = __webpack_require__(214),
+	    isLength = __webpack_require__(216);
 
 	/**
 	 * Checks if `value` is array-like. A value is considered array-like if it's
@@ -50431,10 +48228,10 @@ var StellarSdk =
 
 
 /***/ },
-/* 283 */
+/* 212 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var baseProperty = __webpack_require__(284);
+	var baseProperty = __webpack_require__(213);
 
 	/**
 	 * Gets the "length" property value of `object`.
@@ -50452,7 +48249,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 284 */
+/* 213 */
 /***/ function(module, exports) {
 
 	/**
@@ -50472,10 +48269,10 @@ var StellarSdk =
 
 
 /***/ },
-/* 285 */
+/* 214 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(global) {var isObject = __webpack_require__(286);
+	/* WEBPACK VAR INJECTION */(function(global) {var isObject = __webpack_require__(215);
 
 	/** `Object#toString` result references. */
 	var funcTag = '[object Function]',
@@ -50519,7 +48316,7 @@ var StellarSdk =
 	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
 
 /***/ },
-/* 286 */
+/* 215 */
 /***/ function(module, exports) {
 
 	/**
@@ -50556,7 +48353,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 287 */
+/* 216 */
 /***/ function(module, exports) {
 
 	/** Used as references for various `Number` constants. */
@@ -50594,11 +48391,11 @@ var StellarSdk =
 
 
 /***/ },
-/* 288 */
+/* 217 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(global) {var isArray = __webpack_require__(289),
-	    isObjectLike = __webpack_require__(290);
+	/* WEBPACK VAR INJECTION */(function(global) {var isArray = __webpack_require__(218),
+	    isObjectLike = __webpack_require__(219);
 
 	/** `Object#toString` result references. */
 	var stringTag = '[object String]';
@@ -50638,7 +48435,7 @@ var StellarSdk =
 	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
 
 /***/ },
-/* 289 */
+/* 218 */
 /***/ function(module, exports) {
 
 	/**
@@ -50670,7 +48467,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 290 */
+/* 219 */
 /***/ function(module, exports) {
 
 	/**
@@ -50704,10 +48501,10 @@ var StellarSdk =
 
 
 /***/ },
-/* 291 */
+/* 220 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var toNumber = __webpack_require__(292);
+	var toNumber = __webpack_require__(221);
 
 	/** Used as references for various `Number` constants. */
 	var INFINITY = 1 / 0,
@@ -50754,11 +48551,11 @@ var StellarSdk =
 
 
 /***/ },
-/* 292 */
+/* 221 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var isFunction = __webpack_require__(285),
-	    isObject = __webpack_require__(286);
+	var isFunction = __webpack_require__(214),
+	    isObject = __webpack_require__(215);
 
 	/** Used as references for various `Number` constants. */
 	var NAN = 0 / 0;
@@ -50819,11 +48616,11 @@ var StellarSdk =
 
 
 /***/ },
-/* 293 */
+/* 222 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var baseValues = __webpack_require__(294),
-	    keys = __webpack_require__(296);
+	var baseValues = __webpack_require__(223),
+	    keys = __webpack_require__(225);
 
 	/**
 	 * Creates an array of the own enumerable property values of `object`.
@@ -50858,10 +48655,10 @@ var StellarSdk =
 
 
 /***/ },
-/* 294 */
+/* 223 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var arrayMap = __webpack_require__(295);
+	var arrayMap = __webpack_require__(224);
 
 	/**
 	 * The base implementation of `_.values` and `_.valuesIn` which creates an
@@ -50883,7 +48680,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 295 */
+/* 224 */
 /***/ function(module, exports) {
 
 	/**
@@ -50910,15 +48707,15 @@ var StellarSdk =
 
 
 /***/ },
-/* 296 */
+/* 225 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var baseHas = __webpack_require__(297),
-	    baseKeys = __webpack_require__(298),
-	    indexKeys = __webpack_require__(299),
-	    isArrayLike = __webpack_require__(282),
-	    isIndex = __webpack_require__(303),
-	    isPrototype = __webpack_require__(304);
+	var baseHas = __webpack_require__(226),
+	    baseKeys = __webpack_require__(227),
+	    indexKeys = __webpack_require__(228),
+	    isArrayLike = __webpack_require__(211),
+	    isIndex = __webpack_require__(232),
+	    isPrototype = __webpack_require__(233);
 
 	/**
 	 * Creates an array of the own enumerable property names of `object`.
@@ -50971,7 +48768,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 297 */
+/* 226 */
 /***/ function(module, exports) {
 
 	/* WEBPACK VAR INJECTION */(function(global) {/** Used for built-in method references. */
@@ -51004,7 +48801,7 @@ var StellarSdk =
 	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
 
 /***/ },
-/* 298 */
+/* 227 */
 /***/ function(module, exports) {
 
 	/* Built-in method references for those with the same name as other `lodash` methods. */
@@ -51027,14 +48824,14 @@ var StellarSdk =
 
 
 /***/ },
-/* 299 */
+/* 228 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var baseTimes = __webpack_require__(300),
-	    isArguments = __webpack_require__(301),
-	    isArray = __webpack_require__(289),
-	    isLength = __webpack_require__(287),
-	    isString = __webpack_require__(288);
+	var baseTimes = __webpack_require__(229),
+	    isArguments = __webpack_require__(230),
+	    isArray = __webpack_require__(218),
+	    isLength = __webpack_require__(216),
+	    isString = __webpack_require__(217);
 
 	/**
 	 * Creates an array of index keys for `object` values of arrays,
@@ -51055,7 +48852,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 300 */
+/* 229 */
 /***/ function(module, exports) {
 
 	/**
@@ -51081,10 +48878,10 @@ var StellarSdk =
 
 
 /***/ },
-/* 301 */
+/* 230 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(global) {var isArrayLikeObject = __webpack_require__(302);
+	/* WEBPACK VAR INJECTION */(function(global) {var isArrayLikeObject = __webpack_require__(231);
 
 	/** `Object#toString` result references. */
 	var argsTag = '[object Arguments]';
@@ -51131,11 +48928,11 @@ var StellarSdk =
 	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
 
 /***/ },
-/* 302 */
+/* 231 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var isArrayLike = __webpack_require__(282),
-	    isObjectLike = __webpack_require__(290);
+	var isArrayLike = __webpack_require__(211),
+	    isObjectLike = __webpack_require__(219);
 
 	/**
 	 * This method is like `_.isArrayLike` except that it also checks if `value`
@@ -51169,7 +48966,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 303 */
+/* 232 */
 /***/ function(module, exports) {
 
 	/** Used as references for various `Number` constants. */
@@ -51196,7 +48993,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 304 */
+/* 233 */
 /***/ function(module, exports) {
 
 	/* WEBPACK VAR INJECTION */(function(global) {/** Used for built-in method references. */
@@ -51221,7 +49018,7 @@ var StellarSdk =
 	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
 
 /***/ },
-/* 305 */
+/* 234 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {"use strict";
@@ -51236,20 +49033,20 @@ var StellarSdk =
 	    value: true
 	});
 
-	var _index = __webpack_require__(193);
+	var _index = __webpack_require__(121);
 
 	var xdr = _index.xdr;
 	var hash = _index.hash;
 
-	var encodeCheck = __webpack_require__(265).encodeCheck;
+	var encodeCheck = __webpack_require__(194).encodeCheck;
 
-	var Operation = __webpack_require__(306).Operation;
+	var Operation = __webpack_require__(235).Operation;
 
-	var Network = __webpack_require__(260).Network;
+	var Network = __webpack_require__(189).Network;
 
-	var map = _interopRequire(__webpack_require__(385));
+	var map = _interopRequire(__webpack_require__(314));
 
-	var each = _interopRequire(__webpack_require__(418));
+	var each = _interopRequire(__webpack_require__(347));
 
 	var MIN_LEDGER = 0;
 	var MAX_LEDGER = 4294967295; // max uint32
@@ -51382,10 +49179,10 @@ var StellarSdk =
 
 	    return Transaction;
 	})();
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(162).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(89).Buffer))
 
 /***/ },
-/* 306 */
+/* 235 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {"use strict";
@@ -51400,40 +49197,40 @@ var StellarSdk =
 	    value: true
 	});
 
-	var xdr = _interopRequire(__webpack_require__(194));
+	var xdr = _interopRequire(__webpack_require__(122));
 
-	var Keypair = __webpack_require__(259).Keypair;
+	var Keypair = __webpack_require__(188).Keypair;
 
-	var _jsXdr = __webpack_require__(195);
+	var _jsXdr = __webpack_require__(123);
 
 	var UnsignedHyper = _jsXdr.UnsignedHyper;
 	var Hyper = _jsXdr.Hyper;
 
-	var hash = __webpack_require__(232).hash;
+	var hash = __webpack_require__(161).hash;
 
-	var encodeCheck = __webpack_require__(265).encodeCheck;
+	var encodeCheck = __webpack_require__(194).encodeCheck;
 
-	var Asset = __webpack_require__(307).Asset;
+	var Asset = __webpack_require__(236).Asset;
 
-	var BigNumber = _interopRequire(__webpack_require__(378));
+	var BigNumber = _interopRequire(__webpack_require__(307));
 
-	var best_r = __webpack_require__(379).best_r;
+	var best_r = __webpack_require__(308).best_r;
 
-	var padEnd = _interopRequire(__webpack_require__(369));
+	var padEnd = _interopRequire(__webpack_require__(298));
 
-	var trimEnd = _interopRequire(__webpack_require__(376));
+	var trimEnd = _interopRequire(__webpack_require__(305));
 
-	var isEmpty = _interopRequire(__webpack_require__(380));
+	var isEmpty = _interopRequire(__webpack_require__(309));
 
-	var isUndefined = _interopRequire(__webpack_require__(263));
+	var isUndefined = _interopRequire(__webpack_require__(192));
 
-	var isString = _interopRequire(__webpack_require__(288));
+	var isString = _interopRequire(__webpack_require__(217));
 
-	var isBoolean = _interopRequire(__webpack_require__(382));
+	var isBoolean = _interopRequire(__webpack_require__(311));
 
-	var isNumber = _interopRequire(__webpack_require__(383));
+	var isNumber = _interopRequire(__webpack_require__(312));
 
-	var isFinite = _interopRequire(__webpack_require__(384));
+	var isFinite = _interopRequire(__webpack_require__(313));
 
 	var ADMIN_OP_COMMISSION = "commission";
 	exports.ADMIN_OP_COMMISSION = ADMIN_OP_COMMISSION;
@@ -52458,10 +50255,10 @@ var StellarSdk =
 
 	    return Operation;
 	})();
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(162).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(89).Buffer))
 
 /***/ },
-/* 307 */
+/* 236 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -52476,17 +50273,17 @@ var StellarSdk =
 	  value: true
 	});
 
-	var xdr = _interopRequire(__webpack_require__(194));
+	var xdr = _interopRequire(__webpack_require__(122));
 
-	var Keypair = __webpack_require__(259).Keypair;
+	var Keypair = __webpack_require__(188).Keypair;
 
-	var encodeCheck = __webpack_require__(265).encodeCheck;
+	var encodeCheck = __webpack_require__(194).encodeCheck;
 
-	var clone = _interopRequire(__webpack_require__(308));
+	var clone = _interopRequire(__webpack_require__(237));
 
-	var padEnd = _interopRequire(__webpack_require__(369));
+	var padEnd = _interopRequire(__webpack_require__(298));
 
-	var trimEnd = _interopRequire(__webpack_require__(376));
+	var trimEnd = _interopRequire(__webpack_require__(305));
 
 	var Asset = exports.Asset = (function () {
 	  /**
@@ -52671,10 +50468,10 @@ var StellarSdk =
 	})();
 
 /***/ },
-/* 308 */
+/* 237 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var baseClone = __webpack_require__(309);
+	var baseClone = __webpack_require__(238);
 
 	/**
 	 * Creates a shallow clone of `value`.
@@ -52708,23 +50505,23 @@ var StellarSdk =
 
 
 /***/ },
-/* 309 */
+/* 238 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var Stack = __webpack_require__(310),
-	    arrayEach = __webpack_require__(339),
-	    assignValue = __webpack_require__(340),
-	    baseAssign = __webpack_require__(341),
-	    baseForOwn = __webpack_require__(344),
-	    copyArray = __webpack_require__(347),
-	    copySymbols = __webpack_require__(348),
-	    getTag = __webpack_require__(350),
-	    initCloneArray = __webpack_require__(352),
-	    initCloneByTag = __webpack_require__(353),
-	    initCloneObject = __webpack_require__(367),
-	    isArray = __webpack_require__(289),
-	    isHostObject = __webpack_require__(327),
-	    isObject = __webpack_require__(286);
+	var Stack = __webpack_require__(239),
+	    arrayEach = __webpack_require__(268),
+	    assignValue = __webpack_require__(269),
+	    baseAssign = __webpack_require__(270),
+	    baseForOwn = __webpack_require__(273),
+	    copyArray = __webpack_require__(276),
+	    copySymbols = __webpack_require__(277),
+	    getTag = __webpack_require__(279),
+	    initCloneArray = __webpack_require__(281),
+	    initCloneByTag = __webpack_require__(282),
+	    initCloneObject = __webpack_require__(296),
+	    isArray = __webpack_require__(218),
+	    isHostObject = __webpack_require__(256),
+	    isObject = __webpack_require__(215);
 
 	/** `Object#toString` result references. */
 	var argsTag = '[object Arguments]',
@@ -52837,14 +50634,14 @@ var StellarSdk =
 
 
 /***/ },
-/* 310 */
+/* 239 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var stackClear = __webpack_require__(311),
-	    stackDelete = __webpack_require__(312),
-	    stackGet = __webpack_require__(316),
-	    stackHas = __webpack_require__(318),
-	    stackSet = __webpack_require__(320);
+	var stackClear = __webpack_require__(240),
+	    stackDelete = __webpack_require__(241),
+	    stackGet = __webpack_require__(245),
+	    stackHas = __webpack_require__(247),
+	    stackSet = __webpack_require__(249);
 
 	/**
 	 * Creates a stack cache object to store key-value pairs.
@@ -52874,7 +50671,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 311 */
+/* 240 */
 /***/ function(module, exports) {
 
 	/**
@@ -52892,10 +50689,10 @@ var StellarSdk =
 
 
 /***/ },
-/* 312 */
+/* 241 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var assocDelete = __webpack_require__(313);
+	var assocDelete = __webpack_require__(242);
 
 	/**
 	 * Removes `key` and its value from the stack.
@@ -52917,10 +50714,10 @@ var StellarSdk =
 
 
 /***/ },
-/* 313 */
+/* 242 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(global) {var assocIndexOf = __webpack_require__(314);
+	/* WEBPACK VAR INJECTION */(function(global) {var assocIndexOf = __webpack_require__(243);
 
 	/** Used for built-in method references. */
 	var arrayProto = global.Array.prototype;
@@ -52955,10 +50752,10 @@ var StellarSdk =
 	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
 
 /***/ },
-/* 314 */
+/* 243 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var eq = __webpack_require__(315);
+	var eq = __webpack_require__(244);
 
 	/**
 	 * Gets the index at which the first occurrence of `key` is found in `array`
@@ -52983,7 +50780,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 315 */
+/* 244 */
 /***/ function(module, exports) {
 
 	/**
@@ -53024,10 +50821,10 @@ var StellarSdk =
 
 
 /***/ },
-/* 316 */
+/* 245 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var assocGet = __webpack_require__(317);
+	var assocGet = __webpack_require__(246);
 
 	/**
 	 * Gets the stack value for `key`.
@@ -53049,10 +50846,10 @@ var StellarSdk =
 
 
 /***/ },
-/* 317 */
+/* 246 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var assocIndexOf = __webpack_require__(314);
+	var assocIndexOf = __webpack_require__(243);
 
 	/**
 	 * Gets the associative array value for `key`.
@@ -53071,10 +50868,10 @@ var StellarSdk =
 
 
 /***/ },
-/* 318 */
+/* 247 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var assocHas = __webpack_require__(319);
+	var assocHas = __webpack_require__(248);
 
 	/**
 	 * Checks if a stack value for `key` exists.
@@ -53096,10 +50893,10 @@ var StellarSdk =
 
 
 /***/ },
-/* 319 */
+/* 248 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var assocIndexOf = __webpack_require__(314);
+	var assocIndexOf = __webpack_require__(243);
 
 	/**
 	 * Checks if an associative array value for `key` exists.
@@ -53117,11 +50914,11 @@ var StellarSdk =
 
 
 /***/ },
-/* 320 */
+/* 249 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var MapCache = __webpack_require__(321),
-	    assocSet = __webpack_require__(337);
+	var MapCache = __webpack_require__(250),
+	    assocSet = __webpack_require__(266);
 
 	/** Used as the size to enable large array optimizations. */
 	var LARGE_ARRAY_SIZE = 200;
@@ -53159,14 +50956,14 @@ var StellarSdk =
 
 
 /***/ },
-/* 321 */
+/* 250 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var mapClear = __webpack_require__(322),
-	    mapDelete = __webpack_require__(329),
-	    mapGet = __webpack_require__(333),
-	    mapHas = __webpack_require__(335),
-	    mapSet = __webpack_require__(336);
+	var mapClear = __webpack_require__(251),
+	    mapDelete = __webpack_require__(258),
+	    mapGet = __webpack_require__(262),
+	    mapHas = __webpack_require__(264),
+	    mapSet = __webpack_require__(265);
 
 	/**
 	 * Creates a map cache object to store key-value pairs.
@@ -53196,11 +50993,11 @@ var StellarSdk =
 
 
 /***/ },
-/* 322 */
+/* 251 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var Hash = __webpack_require__(323),
-	    Map = __webpack_require__(328);
+	var Hash = __webpack_require__(252),
+	    Map = __webpack_require__(257);
 
 	/**
 	 * Removes all key-value entries from the map.
@@ -53217,10 +51014,10 @@ var StellarSdk =
 
 
 /***/ },
-/* 323 */
+/* 252 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(global) {var nativeCreate = __webpack_require__(324);
+	/* WEBPACK VAR INJECTION */(function(global) {var nativeCreate = __webpack_require__(253);
 
 	/** Used for built-in method references. */
 	var objectProto = global.Object.prototype;
@@ -53241,10 +51038,10 @@ var StellarSdk =
 	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
 
 /***/ },
-/* 324 */
+/* 253 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var getNative = __webpack_require__(325);
+	var getNative = __webpack_require__(254);
 
 	/* Built-in method references that are verified to be native. */
 	var nativeCreate = getNative(Object, 'create');
@@ -53253,10 +51050,10 @@ var StellarSdk =
 
 
 /***/ },
-/* 325 */
+/* 254 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var isNative = __webpack_require__(326);
+	var isNative = __webpack_require__(255);
 
 	/**
 	 * Gets the native function at `key` of `object`.
@@ -53275,12 +51072,12 @@ var StellarSdk =
 
 
 /***/ },
-/* 326 */
+/* 255 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(global) {var isFunction = __webpack_require__(285),
-	    isHostObject = __webpack_require__(327),
-	    isObjectLike = __webpack_require__(290);
+	/* WEBPACK VAR INJECTION */(function(global) {var isFunction = __webpack_require__(214),
+	    isHostObject = __webpack_require__(256),
+	    isObjectLike = __webpack_require__(219);
 
 	/** Used to match `RegExp` [syntax characters](http://ecma-international.org/ecma-262/6.0/#sec-patterns). */
 	var reRegExpChar = /[\\^$.*+?()[\]{}|]/g;
@@ -53335,7 +51132,7 @@ var StellarSdk =
 	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
 
 /***/ },
-/* 327 */
+/* 256 */
 /***/ function(module, exports) {
 
 	/**
@@ -53361,10 +51158,10 @@ var StellarSdk =
 
 
 /***/ },
-/* 328 */
+/* 257 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(global) {var getNative = __webpack_require__(325);
+	/* WEBPACK VAR INJECTION */(function(global) {var getNative = __webpack_require__(254);
 
 	/* Built-in method references that are verified to be native. */
 	var Map = getNative(global, 'Map');
@@ -53374,13 +51171,13 @@ var StellarSdk =
 	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
 
 /***/ },
-/* 329 */
+/* 258 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var Map = __webpack_require__(328),
-	    assocDelete = __webpack_require__(313),
-	    hashDelete = __webpack_require__(330),
-	    isKeyable = __webpack_require__(332);
+	var Map = __webpack_require__(257),
+	    assocDelete = __webpack_require__(242),
+	    hashDelete = __webpack_require__(259),
+	    isKeyable = __webpack_require__(261);
 
 	/**
 	 * Removes `key` and its value from the map.
@@ -53403,10 +51200,10 @@ var StellarSdk =
 
 
 /***/ },
-/* 330 */
+/* 259 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var hashHas = __webpack_require__(331);
+	var hashHas = __webpack_require__(260);
 
 	/**
 	 * Removes `key` and its value from the hash.
@@ -53424,10 +51221,10 @@ var StellarSdk =
 
 
 /***/ },
-/* 331 */
+/* 260 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(global) {var nativeCreate = __webpack_require__(324);
+	/* WEBPACK VAR INJECTION */(function(global) {var nativeCreate = __webpack_require__(253);
 
 	/** Used for built-in method references. */
 	var objectProto = global.Object.prototype;
@@ -53452,7 +51249,7 @@ var StellarSdk =
 	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
 
 /***/ },
-/* 332 */
+/* 261 */
 /***/ function(module, exports) {
 
 	/**
@@ -53472,13 +51269,13 @@ var StellarSdk =
 
 
 /***/ },
-/* 333 */
+/* 262 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var Map = __webpack_require__(328),
-	    assocGet = __webpack_require__(317),
-	    hashGet = __webpack_require__(334),
-	    isKeyable = __webpack_require__(332);
+	var Map = __webpack_require__(257),
+	    assocGet = __webpack_require__(246),
+	    hashGet = __webpack_require__(263),
+	    isKeyable = __webpack_require__(261);
 
 	/**
 	 * Gets the map value for `key`.
@@ -53501,10 +51298,10 @@ var StellarSdk =
 
 
 /***/ },
-/* 334 */
+/* 263 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(global) {var nativeCreate = __webpack_require__(324);
+	/* WEBPACK VAR INJECTION */(function(global) {var nativeCreate = __webpack_require__(253);
 
 	/** Used to stand-in for `undefined` hash values. */
 	var HASH_UNDEFINED = '__lodash_hash_undefined__';
@@ -53536,13 +51333,13 @@ var StellarSdk =
 	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
 
 /***/ },
-/* 335 */
+/* 264 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var Map = __webpack_require__(328),
-	    assocHas = __webpack_require__(319),
-	    hashHas = __webpack_require__(331),
-	    isKeyable = __webpack_require__(332);
+	var Map = __webpack_require__(257),
+	    assocHas = __webpack_require__(248),
+	    hashHas = __webpack_require__(260),
+	    isKeyable = __webpack_require__(261);
 
 	/**
 	 * Checks if a map value for `key` exists.
@@ -53565,13 +51362,13 @@ var StellarSdk =
 
 
 /***/ },
-/* 336 */
+/* 265 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var Map = __webpack_require__(328),
-	    assocSet = __webpack_require__(337),
-	    hashSet = __webpack_require__(338),
-	    isKeyable = __webpack_require__(332);
+	var Map = __webpack_require__(257),
+	    assocSet = __webpack_require__(266),
+	    hashSet = __webpack_require__(267),
+	    isKeyable = __webpack_require__(261);
 
 	/**
 	 * Sets the map `key` to `value`.
@@ -53599,10 +51396,10 @@ var StellarSdk =
 
 
 /***/ },
-/* 337 */
+/* 266 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var assocIndexOf = __webpack_require__(314);
+	var assocIndexOf = __webpack_require__(243);
 
 	/**
 	 * Sets the associative array `key` to `value`.
@@ -53625,10 +51422,10 @@ var StellarSdk =
 
 
 /***/ },
-/* 338 */
+/* 267 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var nativeCreate = __webpack_require__(324);
+	var nativeCreate = __webpack_require__(253);
 
 	/** Used to stand-in for `undefined` hash values. */
 	var HASH_UNDEFINED = '__lodash_hash_undefined__';
@@ -53649,7 +51446,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 339 */
+/* 268 */
 /***/ function(module, exports) {
 
 	/**
@@ -53677,10 +51474,10 @@ var StellarSdk =
 
 
 /***/ },
-/* 340 */
+/* 269 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(global) {var eq = __webpack_require__(315);
+	/* WEBPACK VAR INJECTION */(function(global) {var eq = __webpack_require__(244);
 
 	/** Used for built-in method references. */
 	var objectProto = global.Object.prototype;
@@ -53712,11 +51509,11 @@ var StellarSdk =
 	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
 
 /***/ },
-/* 341 */
+/* 270 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var copyObject = __webpack_require__(342),
-	    keys = __webpack_require__(296);
+	var copyObject = __webpack_require__(271),
+	    keys = __webpack_require__(225);
 
 	/**
 	 * The base implementation of `_.assign` without support for multiple sources
@@ -53735,10 +51532,10 @@ var StellarSdk =
 
 
 /***/ },
-/* 342 */
+/* 271 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var copyObjectWith = __webpack_require__(343);
+	var copyObjectWith = __webpack_require__(272);
 
 	/**
 	 * Copies properties of `source` to `object`.
@@ -53757,10 +51554,10 @@ var StellarSdk =
 
 
 /***/ },
-/* 343 */
+/* 272 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var assignValue = __webpack_require__(340);
+	var assignValue = __webpack_require__(269);
 
 	/**
 	 * This function is like `copyObject` except that it accepts a function to
@@ -53792,11 +51589,11 @@ var StellarSdk =
 
 
 /***/ },
-/* 344 */
+/* 273 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var baseFor = __webpack_require__(345),
-	    keys = __webpack_require__(296);
+	var baseFor = __webpack_require__(274),
+	    keys = __webpack_require__(225);
 
 	/**
 	 * The base implementation of `_.forOwn` without support for iteratee shorthands.
@@ -53814,10 +51611,10 @@ var StellarSdk =
 
 
 /***/ },
-/* 345 */
+/* 274 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var createBaseFor = __webpack_require__(346);
+	var createBaseFor = __webpack_require__(275);
 
 	/**
 	 * The base implementation of `baseForIn` and `baseForOwn` which iterates
@@ -53837,7 +51634,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 346 */
+/* 275 */
 /***/ function(module, exports) {
 
 	/**
@@ -53868,7 +51665,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 347 */
+/* 276 */
 /***/ function(module, exports) {
 
 	/**
@@ -53894,11 +51691,11 @@ var StellarSdk =
 
 
 /***/ },
-/* 348 */
+/* 277 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var copyObject = __webpack_require__(342),
-	    getSymbols = __webpack_require__(349);
+	var copyObject = __webpack_require__(271),
+	    getSymbols = __webpack_require__(278);
 
 	/**
 	 * Copies own symbol properties of `source` to `object`.
@@ -53916,7 +51713,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 349 */
+/* 278 */
 /***/ function(module, exports) {
 
 	/** Built-in value references. */
@@ -53937,11 +51734,11 @@ var StellarSdk =
 
 
 /***/ },
-/* 350 */
+/* 279 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(global) {var Map = __webpack_require__(328),
-	    Set = __webpack_require__(351);
+	/* WEBPACK VAR INJECTION */(function(global) {var Map = __webpack_require__(257),
+	    Set = __webpack_require__(280);
 
 	/** `Object#toString` result references. */
 	var mapTag = '[object Map]',
@@ -53999,10 +51796,10 @@ var StellarSdk =
 	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
 
 /***/ },
-/* 351 */
+/* 280 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(global) {var getNative = __webpack_require__(325);
+	/* WEBPACK VAR INJECTION */(function(global) {var getNative = __webpack_require__(254);
 
 	/* Built-in method references that are verified to be native. */
 	var Set = getNative(global, 'Set');
@@ -54012,7 +51809,7 @@ var StellarSdk =
 	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
 
 /***/ },
-/* 352 */
+/* 281 */
 /***/ function(module, exports) {
 
 	/* WEBPACK VAR INJECTION */(function(global) {/** Used for built-in method references. */
@@ -54045,15 +51842,15 @@ var StellarSdk =
 	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
 
 /***/ },
-/* 353 */
+/* 282 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var cloneBuffer = __webpack_require__(354),
-	    cloneMap = __webpack_require__(356),
-	    cloneRegExp = __webpack_require__(360),
-	    cloneSet = __webpack_require__(361),
-	    cloneSymbol = __webpack_require__(364),
-	    cloneTypedArray = __webpack_require__(366);
+	var cloneBuffer = __webpack_require__(283),
+	    cloneMap = __webpack_require__(285),
+	    cloneRegExp = __webpack_require__(289),
+	    cloneSet = __webpack_require__(290),
+	    cloneSymbol = __webpack_require__(293),
+	    cloneTypedArray = __webpack_require__(295);
 
 	/** `Object#toString` result references. */
 	var boolTag = '[object Boolean]',
@@ -54125,10 +51922,10 @@ var StellarSdk =
 
 
 /***/ },
-/* 354 */
+/* 283 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var Uint8Array = __webpack_require__(355);
+	var Uint8Array = __webpack_require__(284);
 
 	/**
 	 * Creates a clone of `buffer`.
@@ -54150,7 +51947,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 355 */
+/* 284 */
 /***/ function(module, exports) {
 
 	/* WEBPACK VAR INJECTION */(function(global) {/** Built-in value references. */
@@ -54161,12 +51958,12 @@ var StellarSdk =
 	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
 
 /***/ },
-/* 356 */
+/* 285 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var addMapEntry = __webpack_require__(357),
-	    arrayReduce = __webpack_require__(358),
-	    mapToArray = __webpack_require__(359);
+	var addMapEntry = __webpack_require__(286),
+	    arrayReduce = __webpack_require__(287),
+	    mapToArray = __webpack_require__(288);
 
 	/**
 	 * Creates a clone of `map`.
@@ -54184,7 +51981,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 357 */
+/* 286 */
 /***/ function(module, exports) {
 
 	/**
@@ -54204,7 +52001,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 358 */
+/* 287 */
 /***/ function(module, exports) {
 
 	/**
@@ -54235,7 +52032,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 359 */
+/* 288 */
 /***/ function(module, exports) {
 
 	/**
@@ -54259,7 +52056,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 360 */
+/* 289 */
 /***/ function(module, exports) {
 
 	/** Used to match `RegExp` flags from their coerced string values. */
@@ -54284,12 +52081,12 @@ var StellarSdk =
 
 
 /***/ },
-/* 361 */
+/* 290 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var addSetEntry = __webpack_require__(362),
-	    arrayReduce = __webpack_require__(358),
-	    setToArray = __webpack_require__(363);
+	var addSetEntry = __webpack_require__(291),
+	    arrayReduce = __webpack_require__(287),
+	    setToArray = __webpack_require__(292);
 
 	/**
 	 * Creates a clone of `set`.
@@ -54307,7 +52104,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 362 */
+/* 291 */
 /***/ function(module, exports) {
 
 	/**
@@ -54327,7 +52124,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 363 */
+/* 292 */
 /***/ function(module, exports) {
 
 	/**
@@ -54351,10 +52148,10 @@ var StellarSdk =
 
 
 /***/ },
-/* 364 */
+/* 293 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var Symbol = __webpack_require__(365);
+	var Symbol = __webpack_require__(294);
 
 	/** Used to convert symbols to primitives and strings. */
 	var symbolProto = Symbol ? Symbol.prototype : undefined,
@@ -54375,7 +52172,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 365 */
+/* 294 */
 /***/ function(module, exports) {
 
 	/* WEBPACK VAR INJECTION */(function(global) {/** Built-in value references. */
@@ -54386,10 +52183,10 @@ var StellarSdk =
 	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
 
 /***/ },
-/* 366 */
+/* 295 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var cloneBuffer = __webpack_require__(354);
+	var cloneBuffer = __webpack_require__(283);
 
 	/**
 	 * Creates a clone of `typedArray`.
@@ -54410,11 +52207,11 @@ var StellarSdk =
 
 
 /***/ },
-/* 367 */
+/* 296 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var baseCreate = __webpack_require__(368),
-	    isFunction = __webpack_require__(285);
+	var baseCreate = __webpack_require__(297),
+	    isFunction = __webpack_require__(214);
 
 	/**
 	 * Initializes an object clone.
@@ -54432,10 +52229,10 @@ var StellarSdk =
 
 
 /***/ },
-/* 368 */
+/* 297 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var isObject = __webpack_require__(286);
+	var isObject = __webpack_require__(215);
 
 	/**
 	 * The base implementation of `_.create` without support for assigning
@@ -54461,11 +52258,11 @@ var StellarSdk =
 
 
 /***/ },
-/* 369 */
+/* 298 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var createPadding = __webpack_require__(370),
-	    toString = __webpack_require__(372);
+	var createPadding = __webpack_require__(299),
+	    toString = __webpack_require__(301);
 
 	/**
 	 * Pads `string` on the right side if it's shorter than `length`. Padding
@@ -54498,13 +52295,13 @@ var StellarSdk =
 
 
 /***/ },
-/* 370 */
+/* 299 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var repeat = __webpack_require__(371),
-	    stringSize = __webpack_require__(374),
-	    stringToArray = __webpack_require__(375),
-	    toInteger = __webpack_require__(291);
+	var repeat = __webpack_require__(300),
+	    stringSize = __webpack_require__(303),
+	    stringToArray = __webpack_require__(304),
+	    toInteger = __webpack_require__(220);
 
 	/** Used to compose unicode character classes. */
 	var rsAstralRange = '\\ud800-\\udfff',
@@ -54551,11 +52348,11 @@ var StellarSdk =
 
 
 /***/ },
-/* 371 */
+/* 300 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var toInteger = __webpack_require__(291),
-	    toString = __webpack_require__(372);
+	var toInteger = __webpack_require__(220),
+	    toString = __webpack_require__(301);
 
 	/** Used as references for various `Number` constants. */
 	var MAX_SAFE_INTEGER = 9007199254740991;
@@ -54608,11 +52405,11 @@ var StellarSdk =
 
 
 /***/ },
-/* 372 */
+/* 301 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var Symbol = __webpack_require__(365),
-	    isSymbol = __webpack_require__(373);
+	var Symbol = __webpack_require__(294),
+	    isSymbol = __webpack_require__(302);
 
 	/** Used as references for various `Number` constants. */
 	var INFINITY = 1 / 0;
@@ -54660,10 +52457,10 @@ var StellarSdk =
 
 
 /***/ },
-/* 373 */
+/* 302 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(global) {var isObjectLike = __webpack_require__(290);
+	/* WEBPACK VAR INJECTION */(function(global) {var isObjectLike = __webpack_require__(219);
 
 	/** `Object#toString` result references. */
 	var symbolTag = '[object Symbol]';
@@ -54703,7 +52500,7 @@ var StellarSdk =
 	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
 
 /***/ },
-/* 374 */
+/* 303 */
 /***/ function(module, exports) {
 
 	/** Used to compose unicode character classes. */
@@ -54757,7 +52554,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 375 */
+/* 304 */
 /***/ function(module, exports) {
 
 	/** Used to compose unicode character classes. */
@@ -54801,12 +52598,12 @@ var StellarSdk =
 
 
 /***/ },
-/* 376 */
+/* 305 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var charsEndIndex = __webpack_require__(377),
-	    stringToArray = __webpack_require__(375),
-	    toString = __webpack_require__(372);
+	var charsEndIndex = __webpack_require__(306),
+	    stringToArray = __webpack_require__(304),
+	    toString = __webpack_require__(301);
 
 	/** Used to match leading and trailing whitespace. */
 	var reTrimEnd = /\s+$/;
@@ -54849,10 +52646,10 @@ var StellarSdk =
 
 
 /***/ },
-/* 377 */
+/* 306 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var baseIndexOf = __webpack_require__(280);
+	var baseIndexOf = __webpack_require__(209);
 
 	/**
 	 * Used by `_.trim` and `_.trimEnd` to get the index of the last string symbol
@@ -54874,7 +52671,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 378 */
+/* 307 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var __WEBPACK_AMD_DEFINE_RESULT__;/*! bignumber.js v2.1.3 https://github.com/MikeMcl/bignumber.js/LICENCE */
@@ -57576,7 +55373,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 379 */
+/* 308 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -57597,7 +55394,7 @@ var StellarSdk =
 	  value: true
 	});
 
-	var BigNumber = _interopRequire(__webpack_require__(378));
+	var BigNumber = _interopRequire(__webpack_require__(307));
 
 	var MAX_INT = (1 << 31 >>> 0) - 1;
 	function best_r(number) {
@@ -57638,13 +55435,13 @@ var StellarSdk =
 	}
 
 /***/ },
-/* 380 */
+/* 309 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var isFunction = __webpack_require__(285),
-	    isObjectLike = __webpack_require__(290),
-	    keys = __webpack_require__(296),
-	    size = __webpack_require__(381);
+	var isFunction = __webpack_require__(214),
+	    isObjectLike = __webpack_require__(219),
+	    keys = __webpack_require__(225),
+	    size = __webpack_require__(310);
 
 	/**
 	 * Checks if `value` is empty. A value is considered empty unless it's an
@@ -57683,13 +55480,13 @@ var StellarSdk =
 
 
 /***/ },
-/* 381 */
+/* 310 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var isArrayLike = __webpack_require__(282),
-	    isString = __webpack_require__(288),
-	    keys = __webpack_require__(296),
-	    stringSize = __webpack_require__(374);
+	var isArrayLike = __webpack_require__(211),
+	    isString = __webpack_require__(217),
+	    keys = __webpack_require__(225),
+	    stringSize = __webpack_require__(303);
 
 	/**
 	 * Gets the size of `collection` by returning its length for array-like
@@ -57726,10 +55523,10 @@ var StellarSdk =
 
 
 /***/ },
-/* 382 */
+/* 311 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(global) {var isObjectLike = __webpack_require__(290);
+	/* WEBPACK VAR INJECTION */(function(global) {var isObjectLike = __webpack_require__(219);
 
 	/** `Object#toString` result references. */
 	var boolTag = '[object Boolean]';
@@ -57769,10 +55566,10 @@ var StellarSdk =
 	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
 
 /***/ },
-/* 383 */
+/* 312 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(global) {var isObjectLike = __webpack_require__(290);
+	/* WEBPACK VAR INJECTION */(function(global) {var isObjectLike = __webpack_require__(219);
 
 	/** `Object#toString` result references. */
 	var numberTag = '[object Number]';
@@ -57821,7 +55618,7 @@ var StellarSdk =
 	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
 
 /***/ },
-/* 384 */
+/* 313 */
 /***/ function(module, exports) {
 
 	/* WEBPACK VAR INJECTION */(function(global) {/* Built-in method references for those with the same name as other `lodash` methods. */
@@ -57860,13 +55657,13 @@ var StellarSdk =
 	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
 
 /***/ },
-/* 385 */
+/* 314 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var arrayMap = __webpack_require__(295),
-	    baseIteratee = __webpack_require__(386),
-	    baseMap = __webpack_require__(415),
-	    isArray = __webpack_require__(289);
+	var arrayMap = __webpack_require__(224),
+	    baseIteratee = __webpack_require__(315),
+	    baseMap = __webpack_require__(344),
+	    isArray = __webpack_require__(218);
 
 	/**
 	 * Creates an array of values by running each element in `collection` through
@@ -57918,14 +55715,14 @@ var StellarSdk =
 
 
 /***/ },
-/* 386 */
+/* 315 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var baseMatches = __webpack_require__(387),
-	    baseMatchesProperty = __webpack_require__(400),
-	    identity = __webpack_require__(412),
-	    isArray = __webpack_require__(289),
-	    property = __webpack_require__(413);
+	var baseMatches = __webpack_require__(316),
+	    baseMatchesProperty = __webpack_require__(329),
+	    identity = __webpack_require__(341),
+	    isArray = __webpack_require__(218),
+	    property = __webpack_require__(342);
 
 	/**
 	 * The base implementation of `_.iteratee`.
@@ -57954,11 +55751,11 @@ var StellarSdk =
 
 
 /***/ },
-/* 387 */
+/* 316 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var baseIsMatch = __webpack_require__(388),
-	    getMatchData = __webpack_require__(396);
+	var baseIsMatch = __webpack_require__(317),
+	    getMatchData = __webpack_require__(325);
 
 	/**
 	 * The base implementation of `_.matches` which doesn't clone `source`.
@@ -57990,11 +55787,11 @@ var StellarSdk =
 
 
 /***/ },
-/* 388 */
+/* 317 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var Stack = __webpack_require__(310),
-	    baseIsEqual = __webpack_require__(389);
+	var Stack = __webpack_require__(239),
+	    baseIsEqual = __webpack_require__(318);
 
 	/** Used to compose bitmasks for comparison styles. */
 	var UNORDERED_COMPARE_FLAG = 1,
@@ -58057,12 +55854,12 @@ var StellarSdk =
 
 
 /***/ },
-/* 389 */
+/* 318 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var baseIsEqualDeep = __webpack_require__(390),
-	    isObject = __webpack_require__(286),
-	    isObjectLike = __webpack_require__(290);
+	var baseIsEqualDeep = __webpack_require__(319),
+	    isObject = __webpack_require__(215),
+	    isObjectLike = __webpack_require__(219);
 
 	/**
 	 * The base implementation of `_.isEqual` which supports partial comparisons
@@ -58093,17 +55890,17 @@ var StellarSdk =
 
 
 /***/ },
-/* 390 */
+/* 319 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(global) {var Stack = __webpack_require__(310),
-	    equalArrays = __webpack_require__(391),
-	    equalByTag = __webpack_require__(393),
-	    equalObjects = __webpack_require__(394),
-	    getTag = __webpack_require__(350),
-	    isArray = __webpack_require__(289),
-	    isHostObject = __webpack_require__(327),
-	    isTypedArray = __webpack_require__(395);
+	/* WEBPACK VAR INJECTION */(function(global) {var Stack = __webpack_require__(239),
+	    equalArrays = __webpack_require__(320),
+	    equalByTag = __webpack_require__(322),
+	    equalObjects = __webpack_require__(323),
+	    getTag = __webpack_require__(279),
+	    isArray = __webpack_require__(218),
+	    isHostObject = __webpack_require__(256),
+	    isTypedArray = __webpack_require__(324);
 
 	/** Used to compose bitmasks for comparison styles. */
 	var PARTIAL_COMPARE_FLAG = 2;
@@ -58183,10 +55980,10 @@ var StellarSdk =
 	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
 
 /***/ },
-/* 391 */
+/* 320 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var arraySome = __webpack_require__(392);
+	var arraySome = __webpack_require__(321);
 
 	/** Used to compose bitmasks for comparison styles. */
 	var UNORDERED_COMPARE_FLAG = 1,
@@ -58261,7 +56058,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 392 */
+/* 321 */
 /***/ function(module, exports) {
 
 	/**
@@ -58289,13 +56086,13 @@ var StellarSdk =
 
 
 /***/ },
-/* 393 */
+/* 322 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var Symbol = __webpack_require__(365),
-	    Uint8Array = __webpack_require__(355),
-	    mapToArray = __webpack_require__(359),
-	    setToArray = __webpack_require__(363);
+	var Symbol = __webpack_require__(294),
+	    Uint8Array = __webpack_require__(284),
+	    mapToArray = __webpack_require__(288),
+	    setToArray = __webpack_require__(292);
 
 	/** Used to compose bitmasks for comparison styles. */
 	var UNORDERED_COMPARE_FLAG = 1,
@@ -58383,11 +56180,11 @@ var StellarSdk =
 
 
 /***/ },
-/* 394 */
+/* 323 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var baseHas = __webpack_require__(297),
-	    keys = __webpack_require__(296);
+	var baseHas = __webpack_require__(226),
+	    keys = __webpack_require__(225);
 
 	/** Used to compose bitmasks for comparison styles. */
 	var PARTIAL_COMPARE_FLAG = 2;
@@ -58471,11 +56268,11 @@ var StellarSdk =
 
 
 /***/ },
-/* 395 */
+/* 324 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(global) {var isLength = __webpack_require__(287),
-	    isObjectLike = __webpack_require__(290);
+	/* WEBPACK VAR INJECTION */(function(global) {var isLength = __webpack_require__(216),
+	    isObjectLike = __webpack_require__(219);
 
 	/** `Object#toString` result references. */
 	var argsTag = '[object Arguments]',
@@ -58552,11 +56349,11 @@ var StellarSdk =
 	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
 
 /***/ },
-/* 396 */
+/* 325 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var isStrictComparable = __webpack_require__(397),
-	    toPairs = __webpack_require__(398);
+	var isStrictComparable = __webpack_require__(326),
+	    toPairs = __webpack_require__(327);
 
 	/**
 	 * Gets the property names, values, and compare flags of `object`.
@@ -58579,10 +56376,10 @@ var StellarSdk =
 
 
 /***/ },
-/* 397 */
+/* 326 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var isObject = __webpack_require__(286);
+	var isObject = __webpack_require__(215);
 
 	/**
 	 * Checks if `value` is suitable for strict equality comparisons, i.e. `===`.
@@ -58600,11 +56397,11 @@ var StellarSdk =
 
 
 /***/ },
-/* 398 */
+/* 327 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var baseToPairs = __webpack_require__(399),
-	    keys = __webpack_require__(296);
+	var baseToPairs = __webpack_require__(328),
+	    keys = __webpack_require__(225);
 
 	/**
 	 * Creates an array of own enumerable key-value pairs for `object`.
@@ -58634,10 +56431,10 @@ var StellarSdk =
 
 
 /***/ },
-/* 399 */
+/* 328 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var arrayMap = __webpack_require__(295);
+	var arrayMap = __webpack_require__(224);
 
 	/**
 	 * The base implementation of `_.toPairs` and `_.toPairsIn` which creates an array
@@ -58658,12 +56455,12 @@ var StellarSdk =
 
 
 /***/ },
-/* 400 */
+/* 329 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var baseIsEqual = __webpack_require__(389),
-	    get = __webpack_require__(401),
-	    hasIn = __webpack_require__(406);
+	var baseIsEqual = __webpack_require__(318),
+	    get = __webpack_require__(330),
+	    hasIn = __webpack_require__(335);
 
 	/** Used to compose bitmasks for comparison styles. */
 	var UNORDERED_COMPARE_FLAG = 1,
@@ -58690,10 +56487,10 @@ var StellarSdk =
 
 
 /***/ },
-/* 401 */
+/* 330 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var baseGet = __webpack_require__(402);
+	var baseGet = __webpack_require__(331);
 
 	/**
 	 * Gets the value at `path` of `object`. If the resolved value is
@@ -58728,11 +56525,11 @@ var StellarSdk =
 
 
 /***/ },
-/* 402 */
+/* 331 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var baseToPath = __webpack_require__(403),
-	    isKey = __webpack_require__(405);
+	var baseToPath = __webpack_require__(332),
+	    isKey = __webpack_require__(334);
 
 	/**
 	 * The base implementation of `_.get` without support for default values.
@@ -58758,11 +56555,11 @@ var StellarSdk =
 
 
 /***/ },
-/* 403 */
+/* 332 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var isArray = __webpack_require__(289),
-	    stringToPath = __webpack_require__(404);
+	var isArray = __webpack_require__(218),
+	    stringToPath = __webpack_require__(333);
 
 	/**
 	 * The base implementation of `_.toPath` which only converts `value` to a
@@ -58780,10 +56577,10 @@ var StellarSdk =
 
 
 /***/ },
-/* 404 */
+/* 333 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var toString = __webpack_require__(372);
+	var toString = __webpack_require__(301);
 
 	/** Used to match property names within property paths. */
 	var rePropName = /[^.[\]]+|\[(?:(-?\d+(?:\.\d+)?)|(["'])((?:(?!\2)[^\\]|\\.)*?)\2)\]/g;
@@ -58810,10 +56607,10 @@ var StellarSdk =
 
 
 /***/ },
-/* 405 */
+/* 334 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var isArray = __webpack_require__(289);
+	var isArray = __webpack_require__(218);
 
 	/** Used to match property names within property paths. */
 	var reIsDeepProp = /\.|\[(?:[^[\]]*|(["'])(?:(?!\1)[^\\]|\\.)*?\1)\]/,
@@ -58840,11 +56637,11 @@ var StellarSdk =
 
 
 /***/ },
-/* 406 */
+/* 335 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var baseHasIn = __webpack_require__(407),
-	    hasPath = __webpack_require__(408);
+	var baseHasIn = __webpack_require__(336),
+	    hasPath = __webpack_require__(337);
 
 	/**
 	 * Checks if `path` is a direct or inherited property of `object`.
@@ -58879,7 +56676,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 407 */
+/* 336 */
 /***/ function(module, exports) {
 
 	/**
@@ -58898,18 +56695,18 @@ var StellarSdk =
 
 
 /***/ },
-/* 408 */
+/* 337 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var baseToPath = __webpack_require__(403),
-	    isArguments = __webpack_require__(301),
-	    isArray = __webpack_require__(289),
-	    isIndex = __webpack_require__(303),
-	    isKey = __webpack_require__(405),
-	    isLength = __webpack_require__(287),
-	    isString = __webpack_require__(288),
-	    last = __webpack_require__(409),
-	    parent = __webpack_require__(410);
+	var baseToPath = __webpack_require__(332),
+	    isArguments = __webpack_require__(230),
+	    isArray = __webpack_require__(218),
+	    isIndex = __webpack_require__(232),
+	    isKey = __webpack_require__(334),
+	    isLength = __webpack_require__(216),
+	    isString = __webpack_require__(217),
+	    last = __webpack_require__(338),
+	    parent = __webpack_require__(339);
 
 	/**
 	 * Checks if `path` exists on `object`.
@@ -58941,7 +56738,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 409 */
+/* 338 */
 /***/ function(module, exports) {
 
 	/**
@@ -58966,11 +56763,11 @@ var StellarSdk =
 
 
 /***/ },
-/* 410 */
+/* 339 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var baseSlice = __webpack_require__(411),
-	    get = __webpack_require__(401);
+	var baseSlice = __webpack_require__(340),
+	    get = __webpack_require__(330);
 
 	/**
 	 * Gets the parent value at `path` of `object`.
@@ -58988,7 +56785,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 411 */
+/* 340 */
 /***/ function(module, exports) {
 
 	/**
@@ -59025,7 +56822,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 412 */
+/* 341 */
 /***/ function(module, exports) {
 
 	/**
@@ -59051,12 +56848,12 @@ var StellarSdk =
 
 
 /***/ },
-/* 413 */
+/* 342 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var baseProperty = __webpack_require__(284),
-	    basePropertyDeep = __webpack_require__(414),
-	    isKey = __webpack_require__(405);
+	var baseProperty = __webpack_require__(213),
+	    basePropertyDeep = __webpack_require__(343),
+	    isKey = __webpack_require__(334);
 
 	/**
 	 * Creates a function that returns the value at `path` of a given object.
@@ -59087,10 +56884,10 @@ var StellarSdk =
 
 
 /***/ },
-/* 414 */
+/* 343 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var baseGet = __webpack_require__(402);
+	var baseGet = __webpack_require__(331);
 
 	/**
 	 * A specialized version of `baseProperty` which supports deep paths.
@@ -59109,11 +56906,11 @@ var StellarSdk =
 
 
 /***/ },
-/* 415 */
+/* 344 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var baseEach = __webpack_require__(416),
-	    isArrayLike = __webpack_require__(282);
+	var baseEach = __webpack_require__(345),
+	    isArrayLike = __webpack_require__(211);
 
 	/**
 	 * The base implementation of `_.map` without support for iteratee shorthands.
@@ -59137,11 +56934,11 @@ var StellarSdk =
 
 
 /***/ },
-/* 416 */
+/* 345 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var baseForOwn = __webpack_require__(344),
-	    createBaseEach = __webpack_require__(417);
+	var baseForOwn = __webpack_require__(273),
+	    createBaseEach = __webpack_require__(346);
 
 	/**
 	 * The base implementation of `_.forEach` without support for iteratee shorthands.
@@ -59157,10 +56954,10 @@ var StellarSdk =
 
 
 /***/ },
-/* 417 */
+/* 346 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var isArrayLike = __webpack_require__(282);
+	var isArrayLike = __webpack_require__(211);
 
 	/**
 	 * Creates a `baseEach` or `baseEachRight` function.
@@ -59195,20 +56992,20 @@ var StellarSdk =
 
 
 /***/ },
-/* 418 */
+/* 347 */
 /***/ function(module, exports, __webpack_require__) {
 
-	module.exports = __webpack_require__(419);
+	module.exports = __webpack_require__(348);
 
 
 /***/ },
-/* 419 */
+/* 348 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var arrayEach = __webpack_require__(339),
-	    baseEach = __webpack_require__(416),
-	    isArray = __webpack_require__(289),
-	    toFunction = __webpack_require__(420);
+	var arrayEach = __webpack_require__(268),
+	    baseEach = __webpack_require__(345),
+	    isArray = __webpack_require__(218),
+	    toFunction = __webpack_require__(349);
 
 	/**
 	 * Iterates over elements of `collection` invoking `iteratee` for each element.
@@ -59248,10 +57045,10 @@ var StellarSdk =
 
 
 /***/ },
-/* 420 */
+/* 349 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var identity = __webpack_require__(412);
+	var identity = __webpack_require__(341);
 
 	/**
 	 * Converts `value` to a function if it's not one.
@@ -59268,7 +57065,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 421 */
+/* 350 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -59285,29 +57082,29 @@ var StellarSdk =
 	    value: true
 	});
 
-	var xdr = _interopRequire(__webpack_require__(194));
+	var xdr = _interopRequire(__webpack_require__(122));
 
-	var UnsignedHyper = __webpack_require__(195).UnsignedHyper;
+	var UnsignedHyper = __webpack_require__(123).UnsignedHyper;
 
-	var hash = __webpack_require__(232).hash;
+	var hash = __webpack_require__(161).hash;
 
-	var Keypair = __webpack_require__(259).Keypair;
+	var Keypair = __webpack_require__(188).Keypair;
 
-	var Account = __webpack_require__(422).Account;
+	var Account = __webpack_require__(351).Account;
 
-	var Operation = __webpack_require__(306).Operation;
+	var Operation = __webpack_require__(235).Operation;
 
-	var Transaction = __webpack_require__(305).Transaction;
+	var Transaction = __webpack_require__(234).Transaction;
 
-	var Memo = __webpack_require__(423).Memo;
+	var Memo = __webpack_require__(352).Memo;
 
-	var BigNumber = _interopRequire(__webpack_require__(378));
+	var BigNumber = _interopRequire(__webpack_require__(307));
 
-	var clone = _interopRequire(__webpack_require__(308));
+	var clone = _interopRequire(__webpack_require__(237));
 
-	var map = _interopRequire(__webpack_require__(385));
+	var map = _interopRequire(__webpack_require__(314));
 
-	var isUndefined = _interopRequire(__webpack_require__(263));
+	var isUndefined = _interopRequire(__webpack_require__(192));
 
 	var BASE_FEE = 0; // Stroops
 	var MIN_LEDGER = 0;
@@ -59447,7 +57244,7 @@ var StellarSdk =
 	})();
 
 /***/ },
-/* 422 */
+/* 351 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -59462,13 +57259,13 @@ var StellarSdk =
 	    value: true
 	});
 
-	var BigNumber = _interopRequire(__webpack_require__(378));
+	var BigNumber = _interopRequire(__webpack_require__(307));
 
-	var isString = _interopRequire(__webpack_require__(288));
+	var isString = _interopRequire(__webpack_require__(217));
 
-	var Keypair = __webpack_require__(259).Keypair;
+	var Keypair = __webpack_require__(188).Keypair;
 
-	var decodeCheck = __webpack_require__(265).decodeCheck;
+	var decodeCheck = __webpack_require__(194).decodeCheck;
 
 	var Account = exports.Account = (function () {
 	    /**
@@ -59557,7 +57354,7 @@ var StellarSdk =
 	})();
 
 /***/ },
-/* 423 */
+/* 352 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {"use strict";
@@ -59572,17 +57369,17 @@ var StellarSdk =
 	    value: true
 	});
 
-	var xdr = _interopRequire(__webpack_require__(194));
+	var xdr = _interopRequire(__webpack_require__(122));
 
-	var isUndefined = _interopRequire(__webpack_require__(263));
+	var isUndefined = _interopRequire(__webpack_require__(192));
 
-	var isNull = _interopRequire(__webpack_require__(264));
+	var isNull = _interopRequire(__webpack_require__(193));
 
-	var isString = _interopRequire(__webpack_require__(288));
+	var isString = _interopRequire(__webpack_require__(217));
 
-	var UnsignedHyper = __webpack_require__(195).UnsignedHyper;
+	var UnsignedHyper = __webpack_require__(123).UnsignedHyper;
 
-	var BigNumber = _interopRequire(__webpack_require__(378));
+	var BigNumber = _interopRequire(__webpack_require__(307));
 
 	/**
 	 * `Memo` represents memos attached to transactions. Use static methods to create memos.
@@ -59753,17 +57550,15 @@ var StellarSdk =
 
 	    return Memo;
 	})();
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(162).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(89).Buffer))
 
 /***/ },
-/* 424 */
+/* 353 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {"use strict";
 
 	var _interopRequireWildcard = function (obj) { return obj && obj.__esModule ? obj : { "default": obj }; };
-
-	var _interopRequire = function (obj) { return obj && obj.__esModule ? obj["default"] : obj; };
 
 	var _createClass = (function () { function defineProperties(target, props) { for (var key in props) { var prop = props[key]; prop.configurable = true; if (prop.value) prop.writable = true; } Object.defineProperties(target, props); } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
 
@@ -59773,18 +57568,19 @@ var StellarSdk =
 	    value: true
 	});
 
-	var nacl = _interopRequire(__webpack_require__(243));
+	var ed25519Lib = __webpack_require__(!(function webpackMissingModule() { var e = new Error("Cannot find module \"./util/ed25519_lib\""); e.code = 'MODULE_NOT_FOUND'; throw e; }())).ed25519Lib;
 
-	var hash = __webpack_require__(232).hash;
+	var hash = __webpack_require__(161).hash;
 
-	var xdr = __webpack_require__(193).xdr;
+	var xdr = __webpack_require__(121).xdr;
 
-	var verify = __webpack_require__(242).verify;
+	var verify = __webpack_require__(171).verify;
 
-	var strkey = _interopRequireWildcard(__webpack_require__(265));
+	var strkey = _interopRequireWildcard(__webpack_require__(194));
 
-	var crypto = __webpack_require__(244);
-	var Mnemonic = __webpack_require__(425);
+	var crypto = __webpack_require__(173);
+	var Random = __webpack_require__(172).randomBytes;
+	var Mnemonic = __webpack_require__(354);
 
 	var MASTER_SECRET = new Buffer("Stellar seed");
 	var PRIVATEKEY_LENGTH = 32;
@@ -59824,9 +57620,10 @@ var StellarSdk =
 	        _setPrivateKey: {
 	            value: function _setPrivateKey(value) {
 	                if (value.length !== PRIVATEKEY_LENGTH) throw new Error("Private key must be 32 bytes.");
-	                if (nacl.util.compareWithSafeKeyMask(value) === 1) this.privateKey = new Buffer(nacl.util.modN(value));else this.privateKey = value;
-	                var kp = nacl.util.getPublic(this.privateKey);
-	                this.publicKey = new Buffer(kp.publicKey);
+
+	                this.privateKey = ed25519Lib.safeModL(value);
+
+	                this.publicKey = new Buffer(ed25519Lib.getPublic(this.privateKey));
 	                this._identifier = hash(this.publicKey);
 	                this._fingerprint = this._identifier.slice(0, 4).readUInt32BE(0);
 	            }
@@ -59902,10 +57699,10 @@ var StellarSdk =
 	                var hd = new HDKey(this.versions);
 	                if (isPrivate) {
 	                    if (this.privateKey.length !== PRIVATEKEY_LENGTH) throw new Error("Wrong private key");
-	                    hd._setPrivateKey(new Buffer(nacl.util.numberAdd(this.privateKey, ILN)));
+	                    hd._setPrivateKey(new Buffer(ed25519Lib.numberAdd(this.privateKey, ILN)));
 	                } else {
-	                    var G_IL = new Buffer(nacl.util.getPublic(ILN).publicKey);
-	                    hd._setPublicKey(new Buffer(nacl.util.publicKeyAdd(this.publicKey, G_IL)));
+	                    var G_IL = new Buffer(ed25519Lib.getPublic(ILN));
+	                    hd._setPublicKey(new Buffer(ed25519Lib.publicKeyAdd(this.publicKey, G_IL)));
 	                }
 
 	                hd.chainCode = IR;
@@ -59960,7 +57757,7 @@ var StellarSdk =
 	             * Create Master Private Key 
 	             * <Chain Code[0:32] || PrivateKey[32:64]>
 	             * @param path {string} 
-	             * @returns {string} ExtendedKey For example: `MDGQVOKHW4VEJRU2TETD6DBRKEO5ERCNF353LW5WBFW3JJWQ2BRQ6KDD`
+	             * @returns {string} ExtendedKey For example: `MBSVNJHSPKNXCFN3BFHKFPRD5JPWORXLXDX6FMRARJQPGV5VB6D2XF6QQAJH46I3NAEAKAKE4IH5573EE3WK6INFAZSQZK7CPH7KVVSVLX7A====`
 	             */
 
 	            value: function getMasterPriv(path) {
@@ -59969,12 +57766,12 @@ var StellarSdk =
 	                if (path == "_") {
 	                    this.privateKey.copy(buffer, 0);
 	                    this.chainCode.copy(buffer, PRIVATEKEY_LENGTH);
-	                    return strkey.encodeWithoutPad(HDKey._version().mpriv.str, buffer);
+	                    return strkey.encodeCheck(HDKey._version().mpriv.str, buffer);
 	                }
 	                var mkp = this.derive(path);
 	                mkp.privateKey.copy(buffer, 0);
 	                mkp.chainCode.copy(buffer, PRIVATEKEY_LENGTH);
-	                return strkey.encodeWithoutPad(HDKey._version().mpriv.str, buffer);
+	                return strkey.encodeCheck(HDKey._version().mpriv.str, buffer);
 	            }
 	        },
 	        getMasterPub: {
@@ -59983,7 +57780,7 @@ var StellarSdk =
 	             * Create Master Public Key
 	             * <Chain Code[0:32] || PublicKey[32:64]>
 	             * @param  path {string}
-	             * @returns {string} ExtendedKey For example: `PDGQVOKHW4VEJRU2TETD6DBRKEO5ERCNF353LW5WBFW3JJWQ2BRQ6KDD`
+	             * @returns {string} ExtendedKey For example: `PA5SNFCW46Z5KTWAPOCJE5F4HACWCL4C6OAIFVNYVI3HGSE6E2XPZRTX74F4BVYIIBVPY4FNDCOMPEFXQZEAG7V3WBRVSOZWRF2S75DJCJJA====`
 	             */
 
 	            value: function getMasterPub(path) {
@@ -59991,12 +57788,12 @@ var StellarSdk =
 	                if (path == "_") {
 	                    this.chainCode.copy(buffer, 0);
 	                    this.publicKey.copy(buffer, CHAINCODE_LENGTH);
-	                    return strkey.encodeWithoutPad(HDKey._version().mpub.str, buffer);
+	                    return strkey.encodeCheck(HDKey._version().mpub.str, buffer);
 	                }
 	                var mkp = this.derive(path);
 	                mkp.chainCode.copy(buffer, 0);
 	                mkp.publicKey.copy(buffer, CHAINCODE_LENGTH);
-	                return strkey.encodeWithoutPad(HDKey._version().mpub.str, buffer);
+	                return strkey.encodeCheck(HDKey._version().mpub.str, buffer);
 	            }
 	        },
 	        accountId: {
@@ -60092,7 +57889,8 @@ var StellarSdk =
 	        _wordlist: {
 	            value: function _wordlist() {
 	                return {
-	                    eng: Mnemonic.Words.ENGLISH
+	                    eng: Mnemonic.Words.ENGLISH,
+	                    ukr: Mnemonic.Words.UKRAINIAN
 	                };
 	            }
 	        },
@@ -60105,8 +57903,8 @@ var StellarSdk =
 	             */
 
 	            value: function fromMasterSeed(seed, version) {
-	                var I = crypto.createHmac("sha512", MASTER_SECRET).update(seed).digest();
 
+	                var I = crypto.createHmac("sha512", MASTER_SECRET).update(seed).digest();
 	                var IL = I.slice(0, PRIVATEKEY_LENGTH);
 	                var IR = I.slice(PRIVATEKEY_LENGTH);
 
@@ -60131,12 +57929,11 @@ var StellarSdk =
 	             */
 
 	            value: function fromExtendedKey(strEncKey) {
-	                var hdkVersion = undefined;
 	                var keyBuffer = strkey.decodeCheck(HDKey._version().hdk.str, strEncKey);
 	                var xdrHDkey = xdr.HdKeySerialization.fromXDR(keyBuffer);
 	                var version = xdrHDkey.version();
 	                var hdkey = new HDKey(version);
-	                console.log(version, this._version().mpub.byte);
+
 	                if (version === this._version().mpriv.byte) hdkey._setPrivateKey(xdrHDkey.key());else if (version === this._version().mpub.byte) hdkey._setPublicKey(xdrHDkey.key());else throw new Error("Version mismatch: does not match private or public");
 
 	                hdkey.depth = xdrHDkey.depth();
@@ -60196,23 +57993,22 @@ var StellarSdk =
 	             */
 
 	            value: function random() {
-	                var rawSeed = new Buffer(nacl.randomBytes(SEED_LENGTH));
+	                var rawSeed = new Buffer(Random(SEED_LENGTH));
 
-	                return this.fromMasterSeed(rawSeed, 96);
+	                return this.fromMasterSeed(rawSeed, HDKey._version().mpriv.byte);
 	            }
 	        },
 	        getMnemonic: {
 
 	            /**
 	             * Generate random seed & encode it into phrase
-	             * @param {string} [lang] default eng for English
+	             * @param {string} [lang] default "eng" for English
 	             * @returns {string}
 	             */
 
 	            value: function getMnemonic(lang) {
 	                lang = lang || "eng";
-	                var rawSeed = new Buffer(nacl.randomBytes(SEED_LENGTH));
-	                console.log(rawSeed);
+	                var rawSeed = new Buffer(Random(SEED_LENGTH));
 	                var mnemo = new Mnemonic(rawSeed, HDKey._wordlist()[lang]);
 	                return mnemo.phrase;
 	            }
@@ -60261,7 +58057,7 @@ var StellarSdk =
 	                data = new Uint8Array(data.toJSON().data);
 	                secretKey = new Uint8Array(secretKey.toJSON().data);
 
-	                var signature = nacl.sign.hdk(data, secretKey);
+	                var signature = ed25519Lib.signHDK(data, secretKey);
 
 	                return new Buffer(signature);
 	            }
@@ -60270,17 +58066,17 @@ var StellarSdk =
 
 	    return HDKey;
 	})();
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(162).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(89).Buffer))
 
 /***/ },
-/* 425 */
+/* 354 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {"use strict";
 
-	var hash = __webpack_require__(232).hash;
+	var hash = __webpack_require__(161).hash;
 
-	var unorm = __webpack_require__(426);
+	var unorm = __webpack_require__(355);
 
 	/**
 	 * This is an immutable class that represents a BIP39 Mnemonic code.
@@ -60366,7 +58162,7 @@ var StellarSdk =
 	    });
 	});
 
-	Mnemonic.Words = __webpack_require__(427);
+	Mnemonic.Words = __webpack_require__(356);
 
 	/**
 	 * Will return a boolean if the mnemonic is valid
@@ -60381,12 +58177,9 @@ var StellarSdk =
 	 * @returns {boolean}
 	 */
 	Mnemonic.isValid = function (mnemonic, wordlist) {
-	    mnemonic = unorm.nfkd(mnemonic);
 	    wordlist = wordlist || Mnemonic._getDictionary(mnemonic);
 
-	    if (!wordlist) {
-	        return false;
-	    }
+	    if (!wordlist) return false;
 
 	    var words = mnemonic.split(" ");
 	    var bin = "";
@@ -60450,16 +58243,16 @@ var StellarSdk =
 	 * @returns {Buffer}
 	 */
 	Mnemonic.toSeed = function (mnemonic, wordlist) {
-	    mnemonic = unorm.nfkd(mnemonic);
+
 	    wordlist = wordlist || Mnemonic._getDictionary(mnemonic);
 
-	    if (!wordlist) return false;
+	    if (!wordlist) throw new Error("Invalid mnemonic phrase");
 
 	    var words = mnemonic.split(" ");
 	    var bin = "";
 	    for (var i = 0; i < words.length; i++) {
 	        var ind = wordlist.indexOf(words[i]);
-	        if (ind < 0) return false;
+	        if (ind < 0) throw new Error("Invalid mnemonic phrase");
 	        bin = bin + ("00000000000" + ind.toString(2)).slice(-11);
 	    }
 
@@ -60553,10 +58346,10 @@ var StellarSdk =
 	};
 
 	module.exports = Mnemonic;
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(162).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(89).Buffer))
 
 /***/ },
-/* 426 */
+/* 355 */
 /***/ function(module, exports, __webpack_require__) {
 
 	(function (root) {
@@ -61004,17 +58797,18 @@ var StellarSdk =
 
 
 /***/ },
-/* 427 */
+/* 356 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
 
 	module.exports = {
-	    ENGLISH: __webpack_require__(428)
+	    ENGLISH: __webpack_require__(357),
+	    UKRAINIAN: __webpack_require__(358)
 	};
 
 /***/ },
-/* 428 */
+/* 357 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -61024,24 +58818,25 @@ var StellarSdk =
 	module.exports = english;
 
 /***/ },
-/* 429 */
+/* 358 */
+/***/ function(module, exports) {
+
+	"use strict";
+
+	var ukrainian = ["або", "абонент", "абрикос", "аванс", "авіація", "автобус", "автомат", "агент", "адвокат", "адреса", "азбест", "азбука", "азот", "акрил", "акробат", "акт", "актив", "активно", "актор", "актриса", "акула", "акцент", "акція", "алгебра", "алмаз", "альбом", "альфа", "альянс", "ампер", "аналіз", "ананас", "ангел", "антена", "антонім", "аптека", "арена", "арка", "аркада", "аркуш", "армія", "аромат", "арсенал", "архів", "аспект", "астма", "асфальт", "атака", "атестат", "атланта", "атлас", "атом", "атрибут", "аудит", "аудитор", "аудіо", "аукціон", "баба", "бабуся", "бавовна", "багаж", "бажання", "базар", "базіка", "байдарка", "байка", "байт", "балада", "баланс", "балет", "бали", "бампер", "банан", "банда", "бандура", "банер", "банк", "барабан", "барон", "басейн", "батарея", "батіг", "батько", "бачення", "бджола", "без", "безлад", "безліч", "безпека", "бензин", "берег", "береза", "березень", "бесіда", "бетон", "бик", "біблія", "бігун", "бізнес", "бій", "бікіні", "білий", "більше", "біологія", "бісер", "ближче", "близнюк", "близько", "блиск", "блідий", "блогер", "блок", "блондин", "блюдо", "блюз", "бобер", "боби", "бовдур", "богатир", "боєць", "бокс", "боксер", "болт", "бомба", "бондар", "бонус", "борода", "боротьба", "борошно", "борщ", "боулінг", "браслет", "брат", "бренд", "брехня", "бринза", "брід", "брокер", "броня", "брошура", "буде", "будинок", "будити", "будівля", "будні", "будова", "буйвіл", "букет", "булава", "було", "бульвар", "бункер", "бунт", "бунчук", "буріння", "буряк", "бути", "буфер", "бюджет", "бюро", "вага", "вагон", "важкий", "важко", "важливо", "вакуум", "вакцина", "валовий", "валун", "валюта", "ваніль", "ванна", "вантаж", "вапно", "варення", "варіант", "ватра", "вважати", "вводити", "вгору", "вдова", "вдячний", "ведмідь", "вежа", "великий", "верба", "верблюд", "верес", "вересень", "версія", "верхній", "вершина", "вершник", "веселий", "веселка", "весілля", "весна", "ветеран", "вечеря", "вечір", "вечірка", "вживати", "взуття", "взяти", "вибачте", "вибір", "вибори", "вибрати", "вибух", "вигадка", "вигляд", "вигода", "виграш", "вид", "виданий", "видання", "видимий", "вижити", "визнати", "виїзд", "виклик", "викуп", "вилазка", "вилка", "вимога", "винахід", "винний", "вино", "виняток", "випадок", "випічка", "виплата", "вираз", "виріс", "вирок", "висновок", "високий", "високо", "висота", "витвір", "витік", "витрата", "вихід", "вишня", "вище", "вищий", "вівця", "відбір", "відвага", "відгук", "відділ", "відео", "відмова", "відомий", "відсоток", "відчути", "відьма", "віз", "візит", "візок", "військо", "вікінг", "вікно", "вініл", "вірити", "вірус", "вірш", "вісім", "вісник", "вісті", "вісь", "вітамін", "вітання", "вітер", "вітраж", "вітрило", "вітрина", "вічний", "вішати", "вказати", "включено", "включно", "вкусити", "влада", "власник", "влучати", "вмикати", "вмикач", "вміння", "вміщати", "внесок", "вниз", "вночі", "вогнище", "вогонь", "вода", "водень", "водій", "водний", "воїн", "вокал", "волога", "вологий", "волокно", "волосся", "вольт", "воля", "ворог", "ворожка", "ворона", "воротар", "вплив", "враження", "врожай", "все", "всесвіт", "вставка", "всюди", "втеча", "втрата", "вугілля", "вуглець", "вугляр", "вуж", "вузол", "вузький", "вулиця", "вухо", "вхід", "вчений", "вчитель", "вчора", "вщент", "гавань", "гаджет", "гадюка", "газель", "газета", "газон", "галера", "галузь", "галушка", "гальма", "гамак", "гаманець", "ганьба", "гараж", "гарбуз", "гармата", "гарний", "гарячий", "гвардія", "гвинт", "гель", "генезис", "генерал", "гени", "геній", "геном", "генсека", "гепард", "герой", "герцог", "гетьман", "гібрид", "гігант", "гігієна", "гілка", "гірко", "гість", "гітара", "гладкий", "глибина", "глибоко", "глибший", "глина", "глухий", "глюкоза", "глядач", "гнів", "гніздо", "гном", "година", "годинник", "голий", "голова", "голос", "голосно", "гончар", "гопак", "гора", "гордий", "горіти", "горіх", "горішки", "горло", "гормон", "горобець", "горщик", "гості", "гострий", "готель", "готовий", "гравець", "грамота", "грант", "грати", "граф", "графік", "гребінь", "гребля", "гриб", "грибник", "гриль", "гріх", "громада", "гроші", "грубо", "грудень", "груди", "грудня", "груша", "губа", "гукати", "гурман", "гурток", "гуру", "дайвінг", "далеко", "далі", "даремно", "дарма", "датчик", "дах", "дбати", "два", "двері", "двигун", "двір", "двічі", "дебати", "дебют", "декан", "дельта", "день", "депо", "депозит", "дерево", "держава", "десятина", "десятка", "десять", "дефект", "дефіцит", "дефолт", "децибел", "джаз", "джем", "джерело", "джинси", "джип", "джоуль", "джунглі", "дзвін", "дзвінок", "дзеркало", "диван", "дивізія", "дивний", "диво", "дизайн", "дизель", "дикий", "дикун", "дим", "димар", "динамік", "диплом", "диск", "дискета", "дисплей", "дитина", "дитя", "діабет", "діагноз", "діалог", "діамант", "діаметр", "діва", "дівка", "дівчина", "дід", "дідусь", "дієвий", "дієта", "дійсний", "дійсно", "ділянка", "дітей", "діти", "дно", "доба", "добавка", "добро", "довго", "довжина", "довіра", "довше", "договір", "доданий", "додаток", "дозвіл", "доказ", "доктор", "документ", "долар", "долина", "домашня", "домен", "домкрат", "донор", "донька", "доріжка", "дорога", "дорогий", "досада", "досвід", "досить", "доступ", "досяг", "досягти", "дотик", "дохід", "доходи", "дошка", "дощ", "дракон", "драма", "дріт", "друг", "другий", "дружба", "дружина", "дуель", "дуже", "думати", "думка", "дурний", "дурниця", "душа", "дюжина", "дюйм", "дядько", "дякувати", "екзамен", "екіпаж", "екран", "екскурс", "експерт", "експрес", "екстра", "електрик", "електрон", "елемент", "еліта", "елітний", "емоція", "енергія", "епізод", "епілог", "епічний", "епос", "епоха", "етап", "етика", "етичний", "ефект", "єдиний", "жанр", "жарт", "жертва", "жива", "живий", "живіт", "живопис", "житель", "жити", "житло", "життя", "жінка", "жовтень", "жовтий", "журнал", "забава", "забутий", "завада", "завжди", "завод", "завтра", "загалом", "загар", "загроза", "задача", "задній", "заєць", "зазнати", "зазор", "зайнято", "заклик", "закон", "закрити", "зал", "залишок", "залізо", "заміна", "замість", "замок", "запаси", "запах", "запис", "заповіт", "запуск", "зарядка", "засіб", "заслуга", "заспів", "застава", "затока", "захист", "захищати", "захід", "захопити", "заявник", "збирати", "збиток", "збір", "збірка", "збірник", "збори", "зброя", "звалище", "званий", "звичка", "звід", "звук", "згадати", "згадка", "згинати", "згідно", "згодом", "зграя", "здавати", "здатний", "здобути", "зелений", "земля", "зерно", "зима", "зібрання", "зір", "зірка", "злам", "злива", "злий", "зло", "злодій", "злочин", "змагання", "зменшити", "змінити", "зміст", "змія", "змусити", "знайти", "знання", "значний", "значно", "значок", "знижка", "знищення", "знищити", "знімний", "знімок", "знову", "зозуля", "зокрема", "золотий", "золото", "зоопарк", "зоря", "зоряне", "зошит", "зрада", "зразок", "зрілий", "зробити", "зручний", "зсув", "зупинка", "зустріч", "ідея", "їжа", "їжачок", "імбир", "імпорт", "індекс", "інжир", "іноді", "інститут", "інший", "інші", "іржа", "іспит", "їсти", "істота", "йти", "кабель", "кабіна", "кабінет", "каблук", "каблучка", "кава", "кавун", "кадр", "кажан", "казанок", "казати", "казино", "казка", "кайман", "калина", "калорія", "кальцій", "камера", "камінь", "кампус", "канапа", "канат", "канон", "канцлер", "каньйон", "капелюх", "капітан", "каплиця", "капот", "капсула", "капуста", "капці", "карабін", "караоке", "карта", "картина", "картопля", "касета", "каталог", "катання", "катер", "католик", "кафе", "кафедра", "квадрат", "квант", "квартира", "квасоля", "квиток", "квітень", "квітка", "келих", "кемпінг", "керманич", "кермо", "кетяг", "кефір", "кидати", "килим", "килимок", "кисень", "кислота", "кицька", "кільце", "кімната", "кінець", "кінь", "кістка", "кіт", "кітель", "кішка", "клавіша", "клапан", "клас", "класика", "клен", "клієнт", "клімат", "клініка", "кліп", "кліпси", "кліринг", "клітина", "клуб", "ключ", "кнопка", "князь", "кобза", "коваль", "ковбой", "ковдра", "код", "кодекс", "кожен", "кожух", "козак", "козел", "колега", "колесо", "колиска", "коліно", "колір", "коло", "колода", "колонія", "колонка", "кольчуга", "колядка", "команда", "комар", "комаха", "комедія", "комікс", "комісар", "комісія", "комітет", "комфорт", "конгрес", "конкурс", "консоль", "консул", "контакт", "контроль", "концерт", "конюх", "копати", "копія", "корабель", "кордон", "коридор", "корисно", "користь", "корівка", "коріння", "корінь", "коробка", "корова", "королева", "король", "коротко", "корпус", "коса", "костюм", "котедж", "котрий", "кохання", "кошеня", "кошик", "кошти", "краватка", "крадій", "країна", "край", "крайній", "крамниця", "крапка", "крапля", "краса", "красень", "красиво", "красуня", "кратер", "краще", "кращий", "кредит", "крем", "кремній", "крига", "крило", "кришка", "крізь", "круглий", "кулак", "кулачок", "кульбаба", "культ", "культура", "куля", "купець", "купити", "купівля", "купол", "курага", "куратор", "курка", "курорт", "курс", "курсор", "кухар", "кухня", "кущ", "лавина", "лазер", "лампа", "ланцюг", "лань", "лапки", "ласкаво", "латка", "латунь", "лебідь", "лев", "легенда", "легкий", "легко", "ледачий", "ледве", "леді", "лекція", "лелека", "лижа", "лимон", "липень", "липкий", "лисий", "лисиця", "лист", "листопад", "лихо", "лицар", "лівий", "лідер", "ліжко", "лізти", "лікар", "лікарня", "лікоть", "лінза", "лінійка", "лінія", "ліра", "лірика", "лірник", "ліс", "лісовик", "літак", "літати", "літера", "літній", "літо", "ліфт", "ліхтар", "логіка", "логотип", "лоза", "локатор", "лом", "лопата", "лосось", "лось", "лотерея", "лотос", "лощина", "луна", "лунати", "лунка", "любов", "люди", "людина", "людство", "люк", "лютий", "лякати", "лялька", "ляпас", "мабуть", "магазин", "магія", "магніт", "мазь", "майдан", "майже", "майно", "майор", "майстер", "макіяж", "малеча", "малювати", "малюнок", "маляр", "мама", "мамонт", "мандри", "манера", "манікюр", "марафон", "маркер", "мармур", "марш", "маршал", "маршрут", "масив", "маска", "масло", "материк", "мати", "матовий", "матриця", "матрос", "матуся", "машина", "машиніст", "меблі", "мед", "медаль", "медик", "медична", "медіана", "мелодія", "мельник", "менше", "менший", "меню", "мережа", "мета", "метелик", "метод", "метраж", "метро", "мийка", "милий", "милість", "мило", "минуле", "минулий", "мирно", "митний", "миттєво", "мить", "мишей", "мідь", "мільйон", "мільярд", "мінерал", "міністр", "мінус", "місія", "містечко", "місто", "місяць", "міф", "міхур", "міцний", "мішень", "мішок", "млин", "млинець", "мова", "модель", "модем", "модерн", "можливо", "мозок", "мокро", "молитва", "молодий", "молодь", "молоко", "молоток", "момент", "монарх", "монах", "монета", "монітор", "моно", "монтаж", "монумент", "морква", "мороз", "морозиво", "морський", "мотузка", "мох", "мрія", "мудрий", "мужність", "музей", "музика", "мураха", "мустанг", "муха", "набрати", "набути", "навички", "навіть", "навколо", "навпаки", "навряд", "навчання", "навчити", "нагляд", "нагота", "надія", "назад", "назва", "накидка", "належно", "намет", "намисто", "намір", "напевно", "напій", "напрям", "народ", "насіння", "насолода", "насос", "настрій", "наступ", "натовп", "натрій", "натяк", "наука", "наукова", "нафта", "нахаба", "нахил", "начерк", "небо", "негайно", "нежить", "нейлон", "немовля", "неон", "нерв", "нести", "нижче", "нижчий", "низький", "нині", "нитка", "ніж", "ніжний", "нікель", "ніколи", "німий", "нічна", "нічого", "новий", "новина", "новинка", "нога", "ножиці", "номер", "норма", "носити", "носій", "нотатки", "ноти", "ньютон", "нюх", "нянька", "оазис", "обачно", "оберт", "обід", "обідній", "область", "облік", "обмін", "оборот", "образ", "обрана", "обраний", "обрив", "обробка", "обсяг", "обух", "овації", "овес", "овоч", "огірок", "огляд", "один", "одиниця", "однак", "одяг", "ожина", "озеро", "ознака", "озноб", "озон", "оказія", "океан", "око", "окремий", "окремо", "оксамит", "окуляри", "олень", "олівець", "олія", "омана", "омар", "омела", "опади", "опера", "опис", "опікун", "опір", "оплата", "оптика", "оптом", "орбіта", "орган", "орден", "орел", "оренда", "оркестр", "освіта", "оселя", "осідати", "осінь", "основа", "особа", "острів", "отаман", "отара", "отвір", "отже", "отрута", "офіс", "офіцер", "охорона", "охоче", "оцінити", "оцінка", "очерет", "очі", "павук", "пагорб", "пазли", "пакет", "палац", "палець", "паливо", "палиця", "палички", "палітра", "палуба", "пальто", "паляниця", "пан", "панчоха", "папаха", "папір", "парад", "парк", "паркан", "пароль", "паром", "партія", "партнер", "пасажир", "пасивна", "пасіка", "паспорт", "паста", "пастух", "патруль", "пацієнт", "певно", "пейзаж", "пекар", "пензель", "перевал", "перемога", "перепис", "перерва", "перетин", "перехід", "перець", "період", "перо", "персона", "перукар", "перший", "пес", "петля", "печера", "печиво", "печінка", "пильний", "пиріг", "писанка", "писар", "писати", "питань", "піаніно", "південь", "півень", "північ", "пігулка", "підвал", "підйом", "підлога", "підошва", "підпис", "підхід", "пізніше", "пізно", "пікнік", "пілот", "пільги", "піна", "пінгвін", "піонер", "пірат", "пісний", "пісня", "пісок", "піч", "пішки", "плавати", "плавник", "плазма", "плакат", "план", "планшет", "пластик", "плече", "плита", "плитка", "площа", "плюс", "пляж", "пляма", "поблизу", "повага", "поверхня", "повинен", "повільно", "повінь", "повітря", "повний", "поворот", "поганий", "погано", "погляд", "погода", "погоня", "подача", "подвиг", "подія", "подорож", "подруга", "подушка", "подяка", "поезія", "поема", "позивач", "позика", "позиція", "покупець", "покупка", "поле", "політ", "поліція", "полотно", "полуниця", "полюс", "помідор", "помітно", "помічник", "понад", "поняття", "попит", "попіл", "порада", "поразка", "порив", "порося", "порох", "порошок", "портал", "портрет", "поруч", "порція", "порядно", "посадка", "посилка", "посібник", "послати", "послуга", "посмішка", "посол", "постійно", "постіль", "посуд", "потік", "потіха", "потреба", "потужно", "потяг", "почати", "початок", "почуття", "пошта", "поштовх", "пошук", "поява", "пояс", "правда", "правило", "право", "прагне", "пральня", "прапор", "праска", "праця", "предмет", "премія", "преса", "прибій", "прибуття", "привид", "пригода", "приз", "приймач", "прийти", "прилад", "приніс", "принц", "принцип", "присмак", "приток", "причеп", "причина", "прірва", "пробіг", "пробка", "пробний", "провал", "провина", "провулок", "прогноз", "програш", "прогрес", "продаж", "продукт", "проект", "прозорий", "проїзд", "прокат", "проліт", "промінь", "пророк", "просити", "простий", "простір", "просто", "протест", "проти", "протока", "профі", "профіль", "прохання", "прохід", "процес", "пряжа", "прямий", "птах", "птиця", "пузо", "пульс", "пункт", "пустеля", "путь", "пшениця", "пшоно", "равлик", "радар", "радий", "радити", "радіо", "радість", "радіус", "радник", "разом", "рай", "район", "ракета", "рамка", "ранг", "раніше", "ранок", "ранчо", "раптом", "рахунок", "реалізм", "ребро", "регіон", "режим", "режисер", "резерв", "резюме", "рейс", "рейтинг", "ремікс", "ремінь", "ремонт", "ресурс", "рецепт", "речі", "решта", "риба", "ризик", "рис", "ритм", "рідина", "рідко", "рідне", "рідний", "ріжок", "різати", "різдво", "різке", "рік", "ріпа", "річка", "робити", "родичі", "розвал", "розвиток", "розгін", "розділ", "розкіш", "розкол", "розмір", "розмова", "розпад", "розрив", "розряд", "розум", "ролик", "роль", "рости", "рот", "рояль", "рубін", "рулон", "руно", "рута", "рутина", "рух", "ручний", "рушник", "рушниця", "рюкзак", "ряд", "рядок", "садок", "сажа", "сазан", "салат", "сало", "сапсан", "сапфір", "сарай", "сатин", "сафарі", "свиня", "свідок", "свіжий", "світ", "світанок", "світло", "свічка", "свобода", "святий", "свято", "седан", "сезон", "секрет", "сектор", "секунда", "селище", "сенат", "сенс", "сержант", "серія", "серп", "серпень", "серце", "сестра", "сигнал", "сидіти", "сила", "сильно", "символ", "синиця", "синій", "синтез", "сир", "система", "сито", "сідло", "сіль", "сім", "сіно", "сірий", "січень", "скарб", "скарга", "сквер", "скіфи", "склад", "складно", "скриня", "скрипка", "слава", "слайд", "слід", "сліпий", "словник", "слово", "слон", "слух", "сльоза", "смак", "смачний", "смачно", "смерека", "сміх", "смуга", "сніг", "снігур", "собака", "собор", "сокира", "сокіл", "солдат", "сон", "сонце", "соняшник", "сопілка", "сором", "сорочка", "сорт", "сосна", "сотник", "сотня", "соус", "союз", "спадщина", "спалах", "спам", "спека", "спектр", "список", "спів", "співак", "спільно", "сплав", "спогад", "спокій", "спорт", "справа", "спрей", "спринт", "сприяти", "спроба", "спуск", "срібло", "ставка", "ставок", "стажист", "стан", "старий", "старт", "статус", "стать", "стебло", "стежка", "стеля", "стенд", "стерео", "стиліст", "стиль", "стимул", "стіл", "стілець", "стіна", "сто", "стовп", "сторож", "стоянка", "стояти", "страйк", "страх", "стрес", "стрибок", "стрічка", "строго", "студія", "ступа", "ступінь", "ступня", "стяг", "субота", "суд", "суддя", "судно", "сукня", "сума", "суміш", "сумний", "сумнів", "супер", "сусід", "сухий", "сучасний", "сфера", "схема", "схил", "сходи", "сцена", "сьомий", "сюжет", "сяйво", "табір", "табун", "таймер", "таким", "також", "таксі", "талант", "там", "танець", "таран", "тариф", "тату", "тварина", "твердий", "твій", "творець", "театр", "тебе", "текст", "телефон", "теля", "тема", "темрява", "теніс", "теорія", "тепла", "теплий", "тераса", "термін", "тест", "технік", "техно", "тигр", "тиждень", "тип", "типово", "тире", "тисяча", "титан", "тихий", "тиша", "тіло", "тільки", "тісно", "тобто", "товариш", "той", "токар", "тому", "тонкий", "торба", "торги", "торгівля", "торф", "точка", "точний", "точно", "трава", "травень", "травма", "тракт", "трамвай", "трап", "тренер", "третій", "три", "тримати", "триста", "трійка", "тріумф", "троль", "трос", "тротуар", "трохи", "троянда", "труба", "трюк", "туалет", "тулуб", "туман", "тундра", "тунель", "турбіна", "туризм", "турист", "турнір", "тюльпан", "тютюн", "тягар", "тягне", "удар", "удача", "узвіз", "укласти", "ультра", "умова", "ура", "ураган", "уривок", "урок", "уряд", "успіх", "устрій", "утіха", "ухвала", "участь", "учень", "уява", "уявний", "фаза", "файл", "факт", "фактор", "фантом", "фарба", "фарфор", "ферма", "фермер", "фея", "фіалка", "фіаско", "фігура", "фізика", "фікція", "філія", "фільм", "фільтр", "фінал", "фінанси", "фінік", "фіолет", "фіранка", "флешка", "флот", "фокус", "фонд", "фонтан", "форель", "фортеця", "форум", "фото", "фраза", "фреска", "фрукт", "фтор", "фургон", "хабар", "халепа", "хаос", "харч", "хата", "хатина", "хвала", "хватка", "хвилин", "хвиля", "хвіртка", "хвіст", "хворий", "хибно", "хімія", "хірург", "хліб", "хлібний", "хлопець", "хмара", "хміль", "ходити", "хор", "хорда", "хостел", "хотіти", "хребет", "хрін", "хробак", "хром", "хтось", "худоба", "хутір", "хутро", "цар", "цариця", "цвях", "цегла", "цемент", "ценз", "цензура", "центр", "церква", "цибуля", "цикл", "цирк", "циркуль", "цитата", "цитрус", "цифра", "цікаво", "ціле", "цілком", "цінний", "цукор", "цунамі", "чайові", "чапля", "чари", "чарка", "час", "часник", "часто", "чверть", "чебрець", "чемно", "червень", "червоний", "черга", "черевик", "череда", "через", "черешня", "чесний", "честь", "четвер", "чиж", "чимало", "число", "чистий", "читач", "чіпати", "чіпси", "чітко", "чобіт", "чоботи", "човен", "човник", "чоловік", "чорне", "чорний", "чорнила", "чотири", "чуб", "чудо", "чужий", "чутно", "шаблон", "шабля", "шайба", "шампунь", "шанс", "шафа", "шахи", "шахта", "швець", "швидко", "швидше", "шериф", "шерсть", "шибка", "шина", "широко", "широта", "ширше", "шифр", "шия", "шкіра", "школа", "школяр", "шлунок", "шлях", "шовк", "шолом", "шорти", "шостий", "штани", "штик", "шторм", "штраф", "штука", "шукач", "шум", "щастя", "щедрий", "щирий", "щітка", "щоденник", "щодня", "щодо", "щойно", "щука", "щур", "ювілей", "юнак", "юнга", "юність", "юрист", "яблуко", "явище", "явний", "ягода", "ягуар", "яєчня", "язик", "яйце", "який", "якір", "якість", "якщо", "ялинка", "яма", "ярлик", "ярус", "ясно", "яструб", "яхта"];
+
+	module.exports = ukrainian;
+
+/***/ },
+/* 359 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var isArray = __webpack_require__(27),
+	var baseGetTag = __webpack_require__(20),
+	    isArray = __webpack_require__(27),
 	    isObjectLike = __webpack_require__(26);
 
 	/** `Object#toString` result references. */
 	var stringTag = '[object String]';
-
-	/** Used for built-in method references. */
-	var objectProto = Object.prototype;
-
-	/**
-	 * Used to resolve the
-	 * [`toStringTag`](http://ecma-international.org/ecma-262/7.0/#sec-object.prototype.tostring)
-	 * of values.
-	 */
-	var objectToString = objectProto.toString;
 
 	/**
 	 * Checks if `value` is classified as a `String` primitive or object.
@@ -61062,14 +58857,14 @@ var StellarSdk =
 	 */
 	function isString(value) {
 	  return typeof value == 'string' ||
-	    (!isArray(value) && isObjectLike(value) && objectToString.call(value) == stringTag);
+	    (!isArray(value) && isObjectLike(value) && baseGetTag(value) == stringTag);
 	}
 
 	module.exports = isString;
 
 
 /***/ },
-/* 430 */
+/* 360 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -61084,7 +58879,7 @@ var StellarSdk =
 
 	function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
-	var _call_builder = __webpack_require__(10);
+	var _call_builder = __webpack_require__(8);
 
 	var AssetsCallBuilder = (function (_CallBuilder) {
 	    _inherits(AssetsCallBuilder, _CallBuilder);
@@ -61111,7 +58906,7 @@ var StellarSdk =
 	exports.AssetsCallBuilder = AssetsCallBuilder;
 
 /***/ },
-/* 431 */
+/* 361 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -61128,7 +58923,7 @@ var StellarSdk =
 
 	function _inherits(subClass, superClass) { if (typeof superClass !== 'function' && superClass !== null) { throw new TypeError('Super expression must either be null or a function, not ' + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
-	var _call_builder = __webpack_require__(10);
+	var _call_builder = __webpack_require__(8);
 
 	var CommissionCallBuilder = (function (_CallBuilder) {
 	    _inherits(CommissionCallBuilder, _CallBuilder);
@@ -61210,7 +59005,7 @@ var StellarSdk =
 	exports.CommissionCallBuilder = CommissionCallBuilder;
 
 /***/ },
-/* 432 */
+/* 362 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -61227,7 +59022,7 @@ var StellarSdk =
 
 	function _inherits(subClass, superClass) { if (typeof superClass !== 'function' && superClass !== null) { throw new TypeError('Super expression must either be null or a function, not ' + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
-	var _call_builder = __webpack_require__(10);
+	var _call_builder = __webpack_require__(8);
 
 	var AccountTraitsCallBuilder = (function (_CallBuilder) {
 	    _inherits(AccountTraitsCallBuilder, _CallBuilder);
@@ -61268,7 +59063,7 @@ var StellarSdk =
 	exports.AccountTraitsCallBuilder = AccountTraitsCallBuilder;
 
 /***/ },
-/* 433 */
+/* 363 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {"use strict";
@@ -61284,7 +59079,7 @@ var StellarSdk =
 
 	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-	var _stellarBase = __webpack_require__(193);
+	var _stellarBase = __webpack_require__(121);
 
 	var StellarBase = _interopRequireWildcard(_stellarBase);
 
@@ -61292,18 +59087,18 @@ var StellarSdk =
 
 	var StellarSdk = _interopRequireWildcard(_index2);
 
-	var _server = __webpack_require__(8);
+	var _server = __webpack_require__(6);
 
-	var _bignumberJs = __webpack_require__(434);
+	var _bignumberJs = __webpack_require__(364);
 
 	var _bignumberJs2 = _interopRequireDefault(_bignumberJs);
 
-	var _lodashIsString = __webpack_require__(429);
+	var _lodashIsString = __webpack_require__(359);
 
 	var _lodashIsString2 = _interopRequireDefault(_lodashIsString);
 
-	var toBluebirdRes = __webpack_require__(181).resolve;
-	var toBluebirdRej = __webpack_require__(181).reject;
+	var toBluebirdRes = __webpack_require__(109).resolve;
+	var toBluebirdRej = __webpack_require__(109).reject;
 
 	var ONE = 10000000;
 	var MAX_INT64 = '9223372036854775807';
@@ -62380,10 +60175,10 @@ var StellarSdk =
 	function fromAmount(value) {
 	    return new _bignumberJs2["default"](value).div(ONE).toString();
 	}
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(162).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(89).Buffer))
 
 /***/ },
-/* 434 */
+/* 364 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var __WEBPACK_AMD_DEFINE_RESULT__;/*! bignumber.js v2.4.0 https://github.com/MikeMcl/bignumber.js/LICENCE */
@@ -65126,7 +62921,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 435 */
+/* 365 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -65143,31 +62938,31 @@ var StellarSdk =
 
 	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError('Cannot call a class as a function'); } }
 
-	var _axios = __webpack_require__(125);
+	var _axios = __webpack_require__(52);
 
 	var _axios2 = _interopRequireDefault(_axios);
 
-	var _urijs = __webpack_require__(120);
+	var _urijs = __webpack_require__(47);
 
 	var _urijs2 = _interopRequireDefault(_urijs);
 
-	var _bluebird = __webpack_require__(181);
+	var _bluebird = __webpack_require__(109);
 
 	var _bluebird2 = _interopRequireDefault(_bluebird);
 
-	var _toml = __webpack_require__(436);
+	var _toml = __webpack_require__(366);
 
 	var _toml2 = _interopRequireDefault(_toml);
 
-	var _lodashIsString = __webpack_require__(429);
+	var _lodashIsString = __webpack_require__(359);
 
 	var _lodashIsString2 = _interopRequireDefault(_lodashIsString);
 
-	var _lodashPick = __webpack_require__(439);
+	var _lodashPick = __webpack_require__(369);
 
 	var _lodashPick2 = _interopRequireDefault(_lodashPick);
 
-	var _stellarBase = __webpack_require__(193);
+	var _stellarBase = __webpack_require__(121);
 
 	var FederationServer = (function () {
 	  /**
@@ -65360,11 +63155,11 @@ var StellarSdk =
 	exports.FederationServer = FederationServer;
 
 /***/ },
-/* 436 */
+/* 366 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var parser = __webpack_require__(437);
-	var compiler = __webpack_require__(438);
+	var parser = __webpack_require__(367);
+	var compiler = __webpack_require__(368);
 
 	module.exports = {
 	  parse: function(input) {
@@ -65375,7 +63170,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 437 */
+/* 367 */
 /***/ function(module, exports) {
 
 	module.exports = (function() {
@@ -69335,7 +67130,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 438 */
+/* 368 */
 /***/ function(module, exports) {
 
 	function compile(nodes) {
@@ -69538,14 +67333,13 @@ var StellarSdk =
 
 
 /***/ },
-/* 439 */
+/* 369 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var arrayMap = __webpack_require__(440),
-	    baseFlatten = __webpack_require__(441),
-	    basePick = __webpack_require__(444),
-	    baseRest = __webpack_require__(446),
-	    toKey = __webpack_require__(112);
+	var arrayMap = __webpack_require__(370),
+	    basePick = __webpack_require__(371),
+	    flatRest = __webpack_require__(381),
+	    toKey = __webpack_require__(392);
 
 	/**
 	 * Creates an object composed of the picked `object` properties.
@@ -69564,15 +67358,15 @@ var StellarSdk =
 	 * _.pick(object, ['a', 'c']);
 	 * // => { 'a': 1, 'c': 3 }
 	 */
-	var pick = baseRest(function(object, props) {
-	  return object == null ? {} : basePick(object, arrayMap(baseFlatten(props, 1), toKey));
+	var pick = flatRest(function(object, props) {
+	  return object == null ? {} : basePick(object, arrayMap(props, toKey));
 	});
 
 	module.exports = pick;
 
 
 /***/ },
-/* 440 */
+/* 370 */
 /***/ function(module, exports) {
 
 	/**
@@ -69586,7 +67380,7 @@ var StellarSdk =
 	 */
 	function arrayMap(array, iteratee) {
 	  var index = -1,
-	      length = array ? array.length : 0,
+	      length = array == null ? 0 : array.length,
 	      result = Array(length);
 
 	  while (++index < length) {
@@ -69599,11 +67393,333 @@ var StellarSdk =
 
 
 /***/ },
-/* 441 */
+/* 371 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var arrayPush = __webpack_require__(442),
-	    isFlattenable = __webpack_require__(443);
+	var basePickBy = __webpack_require__(372);
+
+	/**
+	 * The base implementation of `_.pick` without support for individual
+	 * property identifiers.
+	 *
+	 * @private
+	 * @param {Object} object The source object.
+	 * @param {string[]} props The property identifiers to pick.
+	 * @returns {Object} Returns the new object.
+	 */
+	function basePick(object, props) {
+	  object = Object(object);
+	  return basePickBy(object, props, function(value, key) {
+	    return key in object;
+	  });
+	}
+
+	module.exports = basePick;
+
+
+/***/ },
+/* 372 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var baseAssignValue = __webpack_require__(373);
+
+	/**
+	 * The base implementation of  `_.pickBy` without support for iteratee shorthands.
+	 *
+	 * @private
+	 * @param {Object} object The source object.
+	 * @param {string[]} props The property identifiers to pick from.
+	 * @param {Function} predicate The function invoked per property.
+	 * @returns {Object} Returns the new object.
+	 */
+	function basePickBy(object, props, predicate) {
+	  var index = -1,
+	      length = props.length,
+	      result = {};
+
+	  while (++index < length) {
+	    var key = props[index],
+	        value = object[key];
+
+	    if (predicate(value, key)) {
+	      baseAssignValue(result, key, value);
+	    }
+	  }
+	  return result;
+	}
+
+	module.exports = basePickBy;
+
+
+/***/ },
+/* 373 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var defineProperty = __webpack_require__(374);
+
+	/**
+	 * The base implementation of `assignValue` and `assignMergeValue` without
+	 * value checks.
+	 *
+	 * @private
+	 * @param {Object} object The object to modify.
+	 * @param {string} key The key of the property to assign.
+	 * @param {*} value The value to assign.
+	 */
+	function baseAssignValue(object, key, value) {
+	  if (key == '__proto__' && defineProperty) {
+	    defineProperty(object, key, {
+	      'configurable': true,
+	      'enumerable': true,
+	      'value': value,
+	      'writable': true
+	    });
+	  } else {
+	    object[key] = value;
+	  }
+	}
+
+	module.exports = baseAssignValue;
+
+
+/***/ },
+/* 374 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var getNative = __webpack_require__(375);
+
+	var defineProperty = (function() {
+	  try {
+	    var func = getNative(Object, 'defineProperty');
+	    func({}, '', {});
+	    return func;
+	  } catch (e) {}
+	}());
+
+	module.exports = defineProperty;
+
+
+/***/ },
+/* 375 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var baseIsNative = __webpack_require__(376),
+	    getValue = __webpack_require__(380);
+
+	/**
+	 * Gets the native function at `key` of `object`.
+	 *
+	 * @private
+	 * @param {Object} object The object to query.
+	 * @param {string} key The key of the method to get.
+	 * @returns {*} Returns the function if it's native, else `undefined`.
+	 */
+	function getNative(object, key) {
+	  var value = getValue(object, key);
+	  return baseIsNative(value) ? value : undefined;
+	}
+
+	module.exports = getNative;
+
+
+/***/ },
+/* 376 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var isFunction = __webpack_require__(42),
+	    isMasked = __webpack_require__(377),
+	    isObject = __webpack_require__(43),
+	    toSource = __webpack_require__(379);
+
+	/**
+	 * Used to match `RegExp`
+	 * [syntax characters](http://ecma-international.org/ecma-262/7.0/#sec-patterns).
+	 */
+	var reRegExpChar = /[\\^$.*+?()[\]{}|]/g;
+
+	/** Used to detect host constructors (Safari). */
+	var reIsHostCtor = /^\[object .+?Constructor\]$/;
+
+	/** Used for built-in method references. */
+	var funcProto = Function.prototype,
+	    objectProto = Object.prototype;
+
+	/** Used to resolve the decompiled source of functions. */
+	var funcToString = funcProto.toString;
+
+	/** Used to check objects for own properties. */
+	var hasOwnProperty = objectProto.hasOwnProperty;
+
+	/** Used to detect if a method is native. */
+	var reIsNative = RegExp('^' +
+	  funcToString.call(hasOwnProperty).replace(reRegExpChar, '\\$&')
+	  .replace(/hasOwnProperty|(function).*?(?=\\\()| for .+?(?=\\\])/g, '$1.*?') + '$'
+	);
+
+	/**
+	 * The base implementation of `_.isNative` without bad shim checks.
+	 *
+	 * @private
+	 * @param {*} value The value to check.
+	 * @returns {boolean} Returns `true` if `value` is a native function,
+	 *  else `false`.
+	 */
+	function baseIsNative(value) {
+	  if (!isObject(value) || isMasked(value)) {
+	    return false;
+	  }
+	  var pattern = isFunction(value) ? reIsNative : reIsHostCtor;
+	  return pattern.test(toSource(value));
+	}
+
+	module.exports = baseIsNative;
+
+
+/***/ },
+/* 377 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var coreJsData = __webpack_require__(378);
+
+	/** Used to detect methods masquerading as native. */
+	var maskSrcKey = (function() {
+	  var uid = /[^.]+$/.exec(coreJsData && coreJsData.keys && coreJsData.keys.IE_PROTO || '');
+	  return uid ? ('Symbol(src)_1.' + uid) : '';
+	}());
+
+	/**
+	 * Checks if `func` has its source masked.
+	 *
+	 * @private
+	 * @param {Function} func The function to check.
+	 * @returns {boolean} Returns `true` if `func` is masked, else `false`.
+	 */
+	function isMasked(func) {
+	  return !!maskSrcKey && (maskSrcKey in func);
+	}
+
+	module.exports = isMasked;
+
+
+/***/ },
+/* 378 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var root = __webpack_require__(22);
+
+	/** Used to detect overreaching core-js shims. */
+	var coreJsData = root['__core-js_shared__'];
+
+	module.exports = coreJsData;
+
+
+/***/ },
+/* 379 */
+/***/ function(module, exports) {
+
+	/** Used for built-in method references. */
+	var funcProto = Function.prototype;
+
+	/** Used to resolve the decompiled source of functions. */
+	var funcToString = funcProto.toString;
+
+	/**
+	 * Converts `func` to its source code.
+	 *
+	 * @private
+	 * @param {Function} func The function to convert.
+	 * @returns {string} Returns the source code.
+	 */
+	function toSource(func) {
+	  if (func != null) {
+	    try {
+	      return funcToString.call(func);
+	    } catch (e) {}
+	    try {
+	      return (func + '');
+	    } catch (e) {}
+	  }
+	  return '';
+	}
+
+	module.exports = toSource;
+
+
+/***/ },
+/* 380 */
+/***/ function(module, exports) {
+
+	/**
+	 * Gets the value at `key` of `object`.
+	 *
+	 * @private
+	 * @param {Object} [object] The object to query.
+	 * @param {string} key The key of the property to get.
+	 * @returns {*} Returns the property value.
+	 */
+	function getValue(object, key) {
+	  return object == null ? undefined : object[key];
+	}
+
+	module.exports = getValue;
+
+
+/***/ },
+/* 381 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var flatten = __webpack_require__(382),
+	    overRest = __webpack_require__(386),
+	    setToString = __webpack_require__(388);
+
+	/**
+	 * A specialized version of `baseRest` which flattens the rest array.
+	 *
+	 * @private
+	 * @param {Function} func The function to apply a rest parameter to.
+	 * @returns {Function} Returns the new function.
+	 */
+	function flatRest(func) {
+	  return setToString(overRest(func, undefined, flatten), func + '');
+	}
+
+	module.exports = flatRest;
+
+
+/***/ },
+/* 382 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var baseFlatten = __webpack_require__(383);
+
+	/**
+	 * Flattens `array` a single level deep.
+	 *
+	 * @static
+	 * @memberOf _
+	 * @since 0.1.0
+	 * @category Array
+	 * @param {Array} array The array to flatten.
+	 * @returns {Array} Returns the new flattened array.
+	 * @example
+	 *
+	 * _.flatten([1, [2, [3, [4]], 5]]);
+	 * // => [1, 2, [3, [4]], 5]
+	 */
+	function flatten(array) {
+	  var length = array == null ? 0 : array.length;
+	  return length ? baseFlatten(array, 1) : [];
+	}
+
+	module.exports = flatten;
+
+
+/***/ },
+/* 383 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var arrayPush = __webpack_require__(384),
+	    isFlattenable = __webpack_require__(385);
 
 	/**
 	 * The base implementation of `_.flatten` with support for restricting flattening.
@@ -69643,7 +67759,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 442 */
+/* 384 */
 /***/ function(module, exports) {
 
 	/**
@@ -69669,11 +67785,11 @@ var StellarSdk =
 
 
 /***/ },
-/* 443 */
+/* 385 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var Symbol = __webpack_require__(84),
-	    isArguments = __webpack_require__(20),
+	var Symbol = __webpack_require__(21),
+	    isArguments = __webpack_require__(18),
 	    isArray = __webpack_require__(27);
 
 	/** Built-in value references. */
@@ -69695,80 +67811,24 @@ var StellarSdk =
 
 
 /***/ },
-/* 444 */
+/* 386 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var basePickBy = __webpack_require__(445);
-
-	/**
-	 * The base implementation of `_.pick` without support for individual
-	 * property identifiers.
-	 *
-	 * @private
-	 * @param {Object} object The source object.
-	 * @param {string[]} props The property identifiers to pick.
-	 * @returns {Object} Returns the new object.
-	 */
-	function basePick(object, props) {
-	  object = Object(object);
-	  return basePickBy(object, props, function(value, key) {
-	    return key in object;
-	  });
-	}
-
-	module.exports = basePick;
-
-
-/***/ },
-/* 445 */
-/***/ function(module, exports) {
-
-	/**
-	 * The base implementation of  `_.pickBy` without support for iteratee shorthands.
-	 *
-	 * @private
-	 * @param {Object} object The source object.
-	 * @param {string[]} props The property identifiers to pick from.
-	 * @param {Function} predicate The function invoked per property.
-	 * @returns {Object} Returns the new object.
-	 */
-	function basePickBy(object, props, predicate) {
-	  var index = -1,
-	      length = props.length,
-	      result = {};
-
-	  while (++index < length) {
-	    var key = props[index],
-	        value = object[key];
-
-	    if (predicate(value, key)) {
-	      result[key] = value;
-	    }
-	  }
-	  return result;
-	}
-
-	module.exports = basePickBy;
-
-
-/***/ },
-/* 446 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var apply = __webpack_require__(447);
+	var apply = __webpack_require__(387);
 
 	/* Built-in method references for those with the same name as other `lodash` methods. */
 	var nativeMax = Math.max;
 
 	/**
-	 * The base implementation of `_.rest` which doesn't validate or coerce arguments.
+	 * A specialized version of `baseRest` which transforms the rest array.
 	 *
 	 * @private
 	 * @param {Function} func The function to apply a rest parameter to.
 	 * @param {number} [start=func.length-1] The start position of the rest parameter.
+	 * @param {Function} transform The rest array transform.
 	 * @returns {Function} Returns the new function.
 	 */
-	function baseRest(func, start) {
+	function overRest(func, start, transform) {
 	  start = nativeMax(start === undefined ? (func.length - 1) : start, 0);
 	  return function() {
 	    var args = arguments,
@@ -69784,16 +67844,16 @@ var StellarSdk =
 	    while (++index < start) {
 	      otherArgs[index] = args[index];
 	    }
-	    otherArgs[start] = array;
+	    otherArgs[start] = transform(array);
 	    return apply(func, this, otherArgs);
 	  };
 	}
 
-	module.exports = baseRest;
+	module.exports = overRest;
 
 
 /***/ },
-/* 447 */
+/* 387 */
 /***/ function(module, exports) {
 
 	/**
@@ -69820,7 +67880,192 @@ var StellarSdk =
 
 
 /***/ },
-/* 448 */
+/* 388 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var baseSetToString = __webpack_require__(389),
+	    shortOut = __webpack_require__(391);
+
+	/**
+	 * Sets the `toString` method of `func` to return `string`.
+	 *
+	 * @private
+	 * @param {Function} func The function to modify.
+	 * @param {Function} string The `toString` result.
+	 * @returns {Function} Returns `func`.
+	 */
+	var setToString = shortOut(baseSetToString);
+
+	module.exports = setToString;
+
+
+/***/ },
+/* 389 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var constant = __webpack_require__(390),
+	    defineProperty = __webpack_require__(374),
+	    identity = __webpack_require__(46);
+
+	/**
+	 * The base implementation of `setToString` without support for hot loop shorting.
+	 *
+	 * @private
+	 * @param {Function} func The function to modify.
+	 * @param {Function} string The `toString` result.
+	 * @returns {Function} Returns `func`.
+	 */
+	var baseSetToString = !defineProperty ? identity : function(func, string) {
+	  return defineProperty(func, 'toString', {
+	    'configurable': true,
+	    'enumerable': false,
+	    'value': constant(string),
+	    'writable': true
+	  });
+	};
+
+	module.exports = baseSetToString;
+
+
+/***/ },
+/* 390 */
+/***/ function(module, exports) {
+
+	/**
+	 * Creates a function that returns `value`.
+	 *
+	 * @static
+	 * @memberOf _
+	 * @since 2.4.0
+	 * @category Util
+	 * @param {*} value The value to return from the new function.
+	 * @returns {Function} Returns the new constant function.
+	 * @example
+	 *
+	 * var objects = _.times(2, _.constant({ 'a': 1 }));
+	 *
+	 * console.log(objects);
+	 * // => [{ 'a': 1 }, { 'a': 1 }]
+	 *
+	 * console.log(objects[0] === objects[1]);
+	 * // => true
+	 */
+	function constant(value) {
+	  return function() {
+	    return value;
+	  };
+	}
+
+	module.exports = constant;
+
+
+/***/ },
+/* 391 */
+/***/ function(module, exports) {
+
+	/** Used to detect hot functions by number of calls within a span of milliseconds. */
+	var HOT_COUNT = 800,
+	    HOT_SPAN = 16;
+
+	/* Built-in method references for those with the same name as other `lodash` methods. */
+	var nativeNow = Date.now;
+
+	/**
+	 * Creates a function that'll short out and invoke `identity` instead
+	 * of `func` when it's called `HOT_COUNT` or more times in `HOT_SPAN`
+	 * milliseconds.
+	 *
+	 * @private
+	 * @param {Function} func The function to restrict.
+	 * @returns {Function} Returns the new shortable function.
+	 */
+	function shortOut(func) {
+	  var count = 0,
+	      lastCalled = 0;
+
+	  return function() {
+	    var stamp = nativeNow(),
+	        remaining = HOT_SPAN - (stamp - lastCalled);
+
+	    lastCalled = stamp;
+	    if (remaining > 0) {
+	      if (++count >= HOT_COUNT) {
+	        return arguments[0];
+	      }
+	    } else {
+	      count = 0;
+	    }
+	    return func.apply(undefined, arguments);
+	  };
+	}
+
+	module.exports = shortOut;
+
+
+/***/ },
+/* 392 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var isSymbol = __webpack_require__(393);
+
+	/** Used as references for various `Number` constants. */
+	var INFINITY = 1 / 0;
+
+	/**
+	 * Converts `value` to a string key if it's not a string or symbol.
+	 *
+	 * @private
+	 * @param {*} value The value to inspect.
+	 * @returns {string|symbol} Returns the key.
+	 */
+	function toKey(value) {
+	  if (typeof value == 'string' || isSymbol(value)) {
+	    return value;
+	  }
+	  var result = (value + '');
+	  return (result == '0' && (1 / value) == -INFINITY) ? '-0' : result;
+	}
+
+	module.exports = toKey;
+
+
+/***/ },
+/* 393 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var baseGetTag = __webpack_require__(20),
+	    isObjectLike = __webpack_require__(26);
+
+	/** `Object#toString` result references. */
+	var symbolTag = '[object Symbol]';
+
+	/**
+	 * Checks if `value` is classified as a `Symbol` primitive or object.
+	 *
+	 * @static
+	 * @memberOf _
+	 * @since 4.0.0
+	 * @category Lang
+	 * @param {*} value The value to check.
+	 * @returns {boolean} Returns `true` if `value` is a symbol, else `false`.
+	 * @example
+	 *
+	 * _.isSymbol(Symbol.iterator);
+	 * // => true
+	 *
+	 * _.isSymbol('abc');
+	 * // => false
+	 */
+	function isSymbol(value) {
+	  return typeof value == 'symbol' ||
+	    (isObjectLike(value) && baseGetTag(value) == symbolTag);
+	}
+
+	module.exports = isSymbol;
+
+
+/***/ },
+/* 394 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -69835,11 +68080,11 @@ var StellarSdk =
 
 	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError('Cannot call a class as a function'); } }
 
-	var _stellarWalletJsSdk = __webpack_require__(449);
+	var _stellarWalletJsSdk = __webpack_require__(395);
 
 	var _stellarWalletJsSdk2 = _interopRequireDefault(_stellarWalletJsSdk);
 
-	var _stellarBase = __webpack_require__(193);
+	var _stellarBase = __webpack_require__(121);
 
 	//TODO: move scrypt params and wallet-server url to a config file
 
@@ -69916,29 +68161,29 @@ var StellarSdk =
 	exports.EncryptedWalletStorage = EncryptedWalletStorage;
 
 /***/ },
-/* 449 */
+/* 395 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	module.exports = __webpack_require__(450);
+	module.exports = __webpack_require__(396);
 
 /***/ },
-/* 450 */
+/* 396 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	var _ = __webpack_require__(451);
-	var errors = __webpack_require__(452);
-	var Promise = __webpack_require__(453);
-	var protocol = __webpack_require__(488);
+	var _ = __webpack_require__(397);
+	var errors = __webpack_require__(398);
+	var Promise = __webpack_require__(399);
+	var protocol = __webpack_require__(434);
 	var util = {
-	  crypto: __webpack_require__(501),
-	  totp: __webpack_require__(522),
-	  keypair: __webpack_require__(523)
+	  crypto: __webpack_require__(447),
+	  totp: __webpack_require__(468),
+	  keypair: __webpack_require__(469)
 	};
-	var Wallet = __webpack_require__(536);
+	var Wallet = __webpack_require__(482);
 
 	function createWalletObject(initData) {
 	  var wallet = new Wallet(initData);
@@ -69978,7 +68223,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 451 */
+/* 397 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var __WEBPACK_AMD_DEFINE_RESULT__;/* WEBPACK VAR INJECTION */(function(module, global) {/**
@@ -77140,15 +75385,15 @@ var StellarSdk =
 	  }
 	}.call(this));
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(4)(module), (function() { return this; }())))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(29)(module), (function() { return this; }())))
 
 /***/ },
-/* 452 */
+/* 398 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	var util = __webpack_require__(178);
+	var util = __webpack_require__(105);
 
 	Error.subclass = function(errorName) {
 	  var newError = function(message) {
@@ -77189,7 +75434,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 453 */
+/* 399 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -77217,11 +75462,11 @@ var StellarSdk =
 	 * 
 	 */
 	"use strict";
-	var Promise = __webpack_require__(454)();
+	var Promise = __webpack_require__(400)();
 	module.exports = Promise;
 
 /***/ },
-/* 454 */
+/* 400 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {/**
@@ -77257,19 +75502,19 @@ var StellarSdk =
 	    return bluebird;
 	}
 	module.exports = function() {
-	var util = __webpack_require__(455);
-	var async = __webpack_require__(457);
-	var errors = __webpack_require__(460);
+	var util = __webpack_require__(401);
+	var async = __webpack_require__(403);
+	var errors = __webpack_require__(406);
 
 	var INTERNAL = function(){};
 	var APPLY = {};
 	var NEXT_FILTER = {e: null};
 
-	var cast = __webpack_require__(461)(Promise, INTERNAL);
-	var PromiseArray = __webpack_require__(462)(Promise, INTERNAL, cast);
-	var CapturedTrace = __webpack_require__(463)();
-	var CatchFilter = __webpack_require__(464)(NEXT_FILTER);
-	var PromiseResolver = __webpack_require__(465);
+	var cast = __webpack_require__(407)(Promise, INTERNAL);
+	var PromiseArray = __webpack_require__(408)(Promise, INTERNAL, cast);
+	var CapturedTrace = __webpack_require__(409)();
+	var CatchFilter = __webpack_require__(410)(NEXT_FILTER);
+	var PromiseResolver = __webpack_require__(411);
 
 	var isArray = util.isArray;
 
@@ -77286,7 +75531,7 @@ var StellarSdk =
 	var markAsOriginatingFromRejection = errors.markAsOriginatingFromRejection;
 	var canAttach = errors.canAttach;
 	var thrower = util.thrower;
-	var apiRejection = __webpack_require__(466)(Promise);
+	var apiRejection = __webpack_require__(412)(Promise);
 
 
 	var makeSelfResolutionError = function Promise$_makeSelfResolutionError() {
@@ -78283,10 +76528,10 @@ var StellarSdk =
 	}
 
 	Promise._makeSelfResolutionError = makeSelfResolutionError;
-	__webpack_require__(467)(Promise, NEXT_FILTER, cast);
-	__webpack_require__(468)(Promise);
-	__webpack_require__(469)(Promise);
-	__webpack_require__(470)(Promise, PromiseArray, cast, INTERNAL);
+	__webpack_require__(413)(Promise, NEXT_FILTER, cast);
+	__webpack_require__(414)(Promise);
+	__webpack_require__(415)(Promise);
+	__webpack_require__(416)(Promise, PromiseArray, cast, INTERNAL);
 	Promise.RangeError = RangeError;
 	Promise.CancellationError = CancellationError;
 	Promise.TimeoutError = TimeoutError;
@@ -78298,23 +76543,23 @@ var StellarSdk =
 	util.toFastProperties(Promise);
 	util.toFastProperties(Promise.prototype);
 	Promise.Promise = Promise;
-	__webpack_require__(471)(Promise,INTERNAL,cast);
-	__webpack_require__(472)(Promise,INTERNAL,cast);
-	__webpack_require__(473)(Promise);
-	__webpack_require__(474)(Promise,apiRejection,INTERNAL,cast);
-	__webpack_require__(475)(Promise,PromiseArray,apiRejection,cast,INTERNAL);
-	__webpack_require__(476)(Promise);
-	__webpack_require__(477)(Promise,INTERNAL);
-	__webpack_require__(478)(Promise,PromiseArray,cast);
-	__webpack_require__(479)(Promise,PromiseArray,apiRejection,cast,INTERNAL);
-	__webpack_require__(480)(Promise,PromiseArray);
-	__webpack_require__(481)(Promise,PromiseArray,apiRejection);
-	__webpack_require__(482)(Promise,PromiseArray);
-	__webpack_require__(483)(Promise,INTERNAL);
-	__webpack_require__(484)(Promise,INTERNAL);
-	__webpack_require__(485)(Promise,PromiseArray);
-	__webpack_require__(486)(Promise,INTERNAL);
-	__webpack_require__(487)(Promise,apiRejection,cast);
+	__webpack_require__(417)(Promise,INTERNAL,cast);
+	__webpack_require__(418)(Promise,INTERNAL,cast);
+	__webpack_require__(419)(Promise);
+	__webpack_require__(420)(Promise,apiRejection,INTERNAL,cast);
+	__webpack_require__(421)(Promise,PromiseArray,apiRejection,cast,INTERNAL);
+	__webpack_require__(422)(Promise);
+	__webpack_require__(423)(Promise,INTERNAL);
+	__webpack_require__(424)(Promise,PromiseArray,cast);
+	__webpack_require__(425)(Promise,PromiseArray,apiRejection,cast,INTERNAL);
+	__webpack_require__(426)(Promise,PromiseArray);
+	__webpack_require__(427)(Promise,PromiseArray,apiRejection);
+	__webpack_require__(428)(Promise,PromiseArray);
+	__webpack_require__(429)(Promise,INTERNAL);
+	__webpack_require__(430)(Promise,INTERNAL);
+	__webpack_require__(431)(Promise,PromiseArray);
+	__webpack_require__(432)(Promise,INTERNAL);
+	__webpack_require__(433)(Promise,apiRejection,cast);
 
 	Promise.prototype = Promise.prototype;
 	return Promise;
@@ -78324,7 +76569,7 @@ var StellarSdk =
 	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(3)))
 
 /***/ },
-/* 455 */
+/* 401 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -78352,7 +76597,7 @@ var StellarSdk =
 	 * 
 	 */
 	"use strict";
-	var es5 = __webpack_require__(456);
+	var es5 = __webpack_require__(402);
 	var haveGetters = (function(){
 	    try {
 	        var o = {};
@@ -78600,7 +76845,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 456 */
+/* 402 */
 /***/ function(module, exports) {
 
 	/**
@@ -78695,7 +76940,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 457 */
+/* 403 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {/**
@@ -78723,10 +76968,10 @@ var StellarSdk =
 	 * 
 	 */
 	"use strict";
-	var schedule = __webpack_require__(458);
-	var Queue = __webpack_require__(459);
-	var errorObj = __webpack_require__(455).errorObj;
-	var tryCatch1 = __webpack_require__(455).tryCatch1;
+	var schedule = __webpack_require__(404);
+	var Queue = __webpack_require__(405);
+	var errorObj = __webpack_require__(401).errorObj;
+	var tryCatch1 = __webpack_require__(401).tryCatch1;
 	var _process = typeof process !== "undefined" ? process : void 0;
 
 	function Async() {
@@ -78815,7 +77060,7 @@ var StellarSdk =
 	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(3)))
 
 /***/ },
-/* 458 */
+/* 404 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {/**
@@ -78885,7 +77130,7 @@ var StellarSdk =
 	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(3)))
 
 /***/ },
-/* 459 */
+/* 405 */
 /***/ function(module, exports) {
 
 	/**
@@ -79008,7 +77253,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 460 */
+/* 406 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -79036,8 +77281,8 @@ var StellarSdk =
 	 * 
 	 */
 	"use strict";
-	var Objectfreeze = __webpack_require__(456).freeze;
-	var util = __webpack_require__(455);
+	var Objectfreeze = __webpack_require__(402).freeze;
+	var util = __webpack_require__(401);
 	var inherits = util.inherits;
 	var notEnumerableProp = util.notEnumerableProp;
 
@@ -79161,7 +77406,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 461 */
+/* 407 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -79190,8 +77435,8 @@ var StellarSdk =
 	 */
 	"use strict";
 	module.exports = function(Promise, INTERNAL) {
-	var util = __webpack_require__(455);
-	var canAttach = __webpack_require__(460).canAttach;
+	var util = __webpack_require__(401);
+	var canAttach = __webpack_require__(406).canAttach;
 	var errorObj = util.errorObj;
 	var isObject = util.isObject;
 
@@ -79302,7 +77547,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 462 */
+/* 408 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -79331,8 +77576,8 @@ var StellarSdk =
 	 */
 	"use strict";
 	module.exports = function(Promise, INTERNAL, cast) {
-	var canAttach = __webpack_require__(460).canAttach;
-	var util = __webpack_require__(455);
+	var canAttach = __webpack_require__(406).canAttach;
+	var util = __webpack_require__(401);
 	var isArray = util.isArray;
 
 	function toResolutionValue(val) {
@@ -79512,7 +77757,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 463 */
+/* 409 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -79541,8 +77786,8 @@ var StellarSdk =
 	 */
 	"use strict";
 	module.exports = function() {
-	var inherits = __webpack_require__(455).inherits;
-	var defineProperty = __webpack_require__(456).defineProperty;
+	var inherits = __webpack_require__(401).inherits;
+	var defineProperty = __webpack_require__(402).defineProperty;
 
 	var rignore = new RegExp(
 	    "\\b(?:[a-zA-Z0-9.]+\\$_\\w+|" +
@@ -79762,7 +78007,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 464 */
+/* 410 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -79791,11 +78036,11 @@ var StellarSdk =
 	 */
 	"use strict";
 	module.exports = function(NEXT_FILTER) {
-	var util = __webpack_require__(455);
-	var errors = __webpack_require__(460);
+	var util = __webpack_require__(401);
+	var errors = __webpack_require__(406);
 	var tryCatch1 = util.tryCatch1;
 	var errorObj = util.errorObj;
-	var keys = __webpack_require__(456).keys;
+	var keys = __webpack_require__(402).keys;
 	var TypeError = errors.TypeError;
 
 	function CatchFilter(instances, callback, promise) {
@@ -79864,7 +78109,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 465 */
+/* 411 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -79892,14 +78137,14 @@ var StellarSdk =
 	 * 
 	 */
 	"use strict";
-	var util = __webpack_require__(455);
+	var util = __webpack_require__(401);
 	var maybeWrapAsError = util.maybeWrapAsError;
-	var errors = __webpack_require__(460);
+	var errors = __webpack_require__(406);
 	var TimeoutError = errors.TimeoutError;
 	var OperationalError = errors.OperationalError;
-	var async = __webpack_require__(457);
+	var async = __webpack_require__(403);
 	var haveGetters = util.haveGetters;
-	var es5 = __webpack_require__(456);
+	var es5 = __webpack_require__(402);
 
 	function isUntypedError(obj) {
 	    return obj instanceof Error &&
@@ -80030,7 +78275,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 466 */
+/* 412 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -80059,7 +78304,7 @@ var StellarSdk =
 	 */
 	"use strict";
 	module.exports = function(Promise) {
-	var TypeError = __webpack_require__(460).TypeError;
+	var TypeError = __webpack_require__(406).TypeError;
 
 	function apiRejection(msg) {
 	    var error = new TypeError(msg);
@@ -80076,7 +78321,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 467 */
+/* 413 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -80105,7 +78350,7 @@ var StellarSdk =
 	 */
 	"use strict";
 	module.exports = function(Promise, NEXT_FILTER, cast) {
-	var util = __webpack_require__(455);
+	var util = __webpack_require__(401);
 	var wrapsPrimitiveReceiver = util.wrapsPrimitiveReceiver;
 	var isPrimitive = util.isPrimitive;
 	var thrower = util.thrower;
@@ -80204,7 +78449,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 468 */
+/* 414 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -80232,7 +78477,7 @@ var StellarSdk =
 	 * 
 	 */
 	"use strict";
-	var util = __webpack_require__(455);
+	var util = __webpack_require__(401);
 	var isPrimitive = util.isPrimitive;
 	var wrapsPrimitiveReceiver = util.wrapsPrimitiveReceiver;
 
@@ -80290,7 +78535,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 469 */
+/* 415 */
 /***/ function(module, exports) {
 
 	/**
@@ -80374,7 +78619,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 470 */
+/* 416 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -80404,7 +78649,7 @@ var StellarSdk =
 	"use strict";
 	module.exports =
 	function(Promise, PromiseArray, cast, INTERNAL) {
-	var util = __webpack_require__(455);
+	var util = __webpack_require__(401);
 	var canEvaluate = util.canEvaluate;
 	var tryCatch1 = util.tryCatch1;
 	var errorObj = util.errorObj;
@@ -80504,7 +78749,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 471 */
+/* 417 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -80543,9 +78788,9 @@ var StellarSdk =
 	};
 
 	module.exports = function(Promise, INTERNAL, cast) {
-	var util = __webpack_require__(455);
-	var errors = __webpack_require__(460);
-	var apiRejection = __webpack_require__(466)(Promise);
+	var util = __webpack_require__(401);
+	var errors = __webpack_require__(406);
+	var apiRejection = __webpack_require__(412)(Promise);
 	var TimeoutError = Promise.TimeoutError;
 
 	var afterTimeout = function Promise$_afterTimeout(promise, message, ms) {
@@ -80618,7 +78863,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 472 */
+/* 418 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -80647,8 +78892,8 @@ var StellarSdk =
 	 */
 	"use strict";
 	module.exports = function(Promise, INTERNAL, cast) {
-	var apiRejection = __webpack_require__(466)(Promise);
-	var isArray = __webpack_require__(455).isArray;
+	var apiRejection = __webpack_require__(412)(Promise);
+	var isArray = __webpack_require__(401).isArray;
 
 	var raceLater = function Promise$_raceLater(promise) {
 	    return promise.then(function(array) {
@@ -80698,7 +78943,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 473 */
+/* 419 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -80734,7 +78979,7 @@ var StellarSdk =
 	}
 
 	module.exports = function(Promise) {
-	var util = __webpack_require__(455);
+	var util = __webpack_require__(401);
 	var canEvaluate = util.canEvaluate;
 	var isIdentifier = util.isIdentifier;
 
@@ -80825,7 +79070,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 474 */
+/* 420 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -80854,10 +79099,10 @@ var StellarSdk =
 	 */
 	"use strict";
 	module.exports = function(Promise, apiRejection, INTERNAL, cast) {
-	var errors = __webpack_require__(460);
+	var errors = __webpack_require__(406);
 	var TypeError = errors.TypeError;
-	var deprecated = __webpack_require__(455).deprecated;
-	var util = __webpack_require__(455);
+	var deprecated = __webpack_require__(401).deprecated;
+	var util = __webpack_require__(401);
 	var errorObj = util.errorObj;
 	var tryCatch1 = util.tryCatch1;
 	var yieldHandlers = [];
@@ -80984,7 +79229,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 475 */
+/* 421 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -81013,7 +79258,7 @@ var StellarSdk =
 	 */
 	"use strict";
 	module.exports = function(Promise, PromiseArray, apiRejection, cast, INTERNAL) {
-	var util = __webpack_require__(455);
+	var util = __webpack_require__(401);
 	var tryCatch3 = util.tryCatch3;
 	var errorObj = util.errorObj;
 	var PENDING = {};
@@ -81141,7 +79386,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 476 */
+/* 422 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -81170,8 +79415,8 @@ var StellarSdk =
 	 */
 	"use strict";
 	module.exports = function(Promise) {
-	var util = __webpack_require__(455);
-	var async = __webpack_require__(457);
+	var util = __webpack_require__(401);
+	var async = __webpack_require__(403);
 	var tryCatch2 = util.tryCatch2;
 	var tryCatch1 = util.tryCatch1;
 	var errorObj = util.errorObj;
@@ -81225,7 +79470,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 477 */
+/* 423 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -81255,13 +79500,13 @@ var StellarSdk =
 	"use strict";
 	module.exports = function(Promise, INTERNAL) {
 	var THIS = {};
-	var util = __webpack_require__(455);
-	var nodebackForPromise = __webpack_require__(465)
+	var util = __webpack_require__(401);
+	var nodebackForPromise = __webpack_require__(411)
 	    ._nodebackForPromise;
 	var withAppended = util.withAppended;
 	var maybeWrapAsError = util.maybeWrapAsError;
 	var canEvaluate = util.canEvaluate;
-	var TypeError = __webpack_require__(460).TypeError;
+	var TypeError = __webpack_require__(406).TypeError;
 	var defaultSuffix = "Async";
 	var defaultFilter = function(name, func) {
 	    return util.isIdentifier(name) &&
@@ -81559,7 +79804,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 478 */
+/* 424 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -81588,10 +79833,10 @@ var StellarSdk =
 	 */
 	"use strict";
 	module.exports = function(Promise, PromiseArray, cast) {
-	var util = __webpack_require__(455);
-	var apiRejection = __webpack_require__(466)(Promise);
+	var util = __webpack_require__(401);
+	var apiRejection = __webpack_require__(412)(Promise);
 	var isObject = util.isObject;
-	var es5 = __webpack_require__(456);
+	var es5 = __webpack_require__(402);
 
 	function PropertiesPromiseArray(obj) {
 	    var keys = es5.keys(obj);
@@ -81675,7 +79920,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 479 */
+/* 425 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -81704,7 +79949,7 @@ var StellarSdk =
 	 */
 	"use strict";
 	module.exports = function(Promise, PromiseArray, apiRejection, cast, INTERNAL) {
-	var util = __webpack_require__(455);
+	var util = __webpack_require__(401);
 	var tryCatch4 = util.tryCatch4;
 	var tryCatch3 = util.tryCatch3;
 	var errorObj = util.errorObj;
@@ -81864,7 +80109,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 480 */
+/* 426 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -81895,7 +80140,7 @@ var StellarSdk =
 	module.exports =
 	    function(Promise, PromiseArray) {
 	var PromiseInspection = Promise.PromiseInspection;
-	var util = __webpack_require__(455);
+	var util = __webpack_require__(401);
 
 	function SettledPromiseArray(values) {
 	    this.constructor$(values);
@@ -81939,7 +80184,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 481 */
+/* 427 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -81969,9 +80214,9 @@ var StellarSdk =
 	"use strict";
 	module.exports =
 	function(Promise, PromiseArray, apiRejection) {
-	var util = __webpack_require__(455);
-	var RangeError = __webpack_require__(460).RangeError;
-	var AggregateError = __webpack_require__(460).AggregateError;
+	var util = __webpack_require__(401);
+	var RangeError = __webpack_require__(406).RangeError;
+	var AggregateError = __webpack_require__(406).AggregateError;
 	var isArray = util.isArray;
 
 
@@ -82108,7 +80353,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 482 */
+/* 428 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -82137,9 +80382,9 @@ var StellarSdk =
 	 */
 	"use strict";
 	module.exports = function(Promise, PromiseArray) {
-	var util = __webpack_require__(455);
-	var async = __webpack_require__(457);
-	var errors = __webpack_require__(460);
+	var util = __webpack_require__(401);
+	var async = __webpack_require__(403);
+	var errors = __webpack_require__(406);
 	var tryCatch1 = util.tryCatch1;
 	var errorObj = util.errorObj;
 
@@ -82228,7 +80473,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 483 */
+/* 429 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -82257,9 +80502,9 @@ var StellarSdk =
 	 */
 	"use strict";
 	module.exports = function(Promise, INTERNAL) {
-	var errors = __webpack_require__(460);
+	var errors = __webpack_require__(406);
 	var canAttach = errors.canAttach;
-	var async = __webpack_require__(457);
+	var async = __webpack_require__(403);
 	var CancellationError = errors.CancellationError;
 
 	Promise.prototype._cancel = function Promise$_cancel(reason) {
@@ -82312,7 +80557,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 484 */
+/* 430 */
 /***/ function(module, exports) {
 
 	/**
@@ -82354,7 +80599,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 485 */
+/* 431 */
 /***/ function(module, exports) {
 
 	/**
@@ -82408,7 +80653,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 486 */
+/* 432 */
 /***/ function(module, exports) {
 
 	/**
@@ -82450,7 +80695,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 487 */
+/* 433 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -82479,8 +80724,8 @@ var StellarSdk =
 	 */
 	"use strict";
 	module.exports = function (Promise, apiRejection, cast) {
-	    var TypeError = __webpack_require__(460).TypeError;
-	    var inherits = __webpack_require__(455).inherits;
+	    var TypeError = __webpack_require__(406).TypeError;
+	    var inherits = __webpack_require__(401).inherits;
 	    var PromiseInspection = Promise.PromiseInspection;
 
 	    function inspectionMapper(inspections) {
@@ -82648,14 +80893,14 @@ var StellarSdk =
 
 
 /***/ },
-/* 488 */
+/* 434 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	var _ = __webpack_require__(451);
-	var camelCase = __webpack_require__(489);
-	var Promise = __webpack_require__(453);
+	var _ = __webpack_require__(397);
+	var camelCase = __webpack_require__(435);
+	var Promise = __webpack_require__(399);
 
 	module.exports = {};
 
@@ -82676,15 +80921,15 @@ var StellarSdk =
 	_.each(protocolMethods, function(method) {
 	  module.exports[camelCase(method)] = function(params) {
 	    return Promise.resolve(params)
-	      .then(__webpack_require__(495)("./"+method));
+	      .then(__webpack_require__(441)("./"+method));
 	  }
 	});
 
 /***/ },
-/* 489 */
+/* 435 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var sentence = __webpack_require__(490);
+	var sentence = __webpack_require__(436);
 
 	/**
 	 * Camel case a string.
@@ -82704,14 +80949,14 @@ var StellarSdk =
 
 
 /***/ },
-/* 490 */
+/* 436 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var lowerCase = __webpack_require__(491)
+	var lowerCase = __webpack_require__(437)
 
-	var NON_WORD_REGEXP = __webpack_require__(492)
-	var CAMEL_CASE_REGEXP = __webpack_require__(493)
-	var TRAILING_DIGIT_REGEXP = __webpack_require__(494)
+	var NON_WORD_REGEXP = __webpack_require__(438)
+	var CAMEL_CASE_REGEXP = __webpack_require__(439)
+	var TRAILING_DIGIT_REGEXP = __webpack_require__(440)
 
 	/**
 	 * Sentence case a string.
@@ -82750,7 +80995,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 491 */
+/* 437 */
 /***/ function(module, exports) {
 
 	/**
@@ -82810,57 +81055,57 @@ var StellarSdk =
 
 
 /***/ },
-/* 492 */
+/* 438 */
 /***/ function(module, exports) {
 
 	module.exports = /[^\u0041-\u005A\u0061-\u007A\u00AA\u00B5\u00BA\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02C1\u02C6-\u02D1\u02E0-\u02E4\u02EC\u02EE\u0370-\u0374\u0376\u0377\u037A-\u037D\u0386\u0388-\u038A\u038C\u038E-\u03A1\u03A3-\u03F5\u03F7-\u0481\u048A-\u0527\u0531-\u0556\u0559\u0561-\u0587\u05D0-\u05EA\u05F0-\u05F2\u0620-\u064A\u066E\u066F\u0671-\u06D3\u06D5\u06E5\u06E6\u06EE\u06EF\u06FA-\u06FC\u06FF\u0710\u0712-\u072F\u074D-\u07A5\u07B1\u07CA-\u07EA\u07F4\u07F5\u07FA\u0800-\u0815\u081A\u0824\u0828\u0840-\u0858\u08A0\u08A2-\u08AC\u0904-\u0939\u093D\u0950\u0958-\u0961\u0971-\u0977\u0979-\u097F\u0985-\u098C\u098F\u0990\u0993-\u09A8\u09AA-\u09B0\u09B2\u09B6-\u09B9\u09BD\u09CE\u09DC\u09DD\u09DF-\u09E1\u09F0\u09F1\u0A05-\u0A0A\u0A0F\u0A10\u0A13-\u0A28\u0A2A-\u0A30\u0A32\u0A33\u0A35\u0A36\u0A38\u0A39\u0A59-\u0A5C\u0A5E\u0A72-\u0A74\u0A85-\u0A8D\u0A8F-\u0A91\u0A93-\u0AA8\u0AAA-\u0AB0\u0AB2\u0AB3\u0AB5-\u0AB9\u0ABD\u0AD0\u0AE0\u0AE1\u0B05-\u0B0C\u0B0F\u0B10\u0B13-\u0B28\u0B2A-\u0B30\u0B32\u0B33\u0B35-\u0B39\u0B3D\u0B5C\u0B5D\u0B5F-\u0B61\u0B71\u0B83\u0B85-\u0B8A\u0B8E-\u0B90\u0B92-\u0B95\u0B99\u0B9A\u0B9C\u0B9E\u0B9F\u0BA3\u0BA4\u0BA8-\u0BAA\u0BAE-\u0BB9\u0BD0\u0C05-\u0C0C\u0C0E-\u0C10\u0C12-\u0C28\u0C2A-\u0C33\u0C35-\u0C39\u0C3D\u0C58\u0C59\u0C60\u0C61\u0C85-\u0C8C\u0C8E-\u0C90\u0C92-\u0CA8\u0CAA-\u0CB3\u0CB5-\u0CB9\u0CBD\u0CDE\u0CE0\u0CE1\u0CF1\u0CF2\u0D05-\u0D0C\u0D0E-\u0D10\u0D12-\u0D3A\u0D3D\u0D4E\u0D60\u0D61\u0D7A-\u0D7F\u0D85-\u0D96\u0D9A-\u0DB1\u0DB3-\u0DBB\u0DBD\u0DC0-\u0DC6\u0E01-\u0E30\u0E32\u0E33\u0E40-\u0E46\u0E81\u0E82\u0E84\u0E87\u0E88\u0E8A\u0E8D\u0E94-\u0E97\u0E99-\u0E9F\u0EA1-\u0EA3\u0EA5\u0EA7\u0EAA\u0EAB\u0EAD-\u0EB0\u0EB2\u0EB3\u0EBD\u0EC0-\u0EC4\u0EC6\u0EDC-\u0EDF\u0F00\u0F40-\u0F47\u0F49-\u0F6C\u0F88-\u0F8C\u1000-\u102A\u103F\u1050-\u1055\u105A-\u105D\u1061\u1065\u1066\u106E-\u1070\u1075-\u1081\u108E\u10A0-\u10C5\u10C7\u10CD\u10D0-\u10FA\u10FC-\u1248\u124A-\u124D\u1250-\u1256\u1258\u125A-\u125D\u1260-\u1288\u128A-\u128D\u1290-\u12B0\u12B2-\u12B5\u12B8-\u12BE\u12C0\u12C2-\u12C5\u12C8-\u12D6\u12D8-\u1310\u1312-\u1315\u1318-\u135A\u1380-\u138F\u13A0-\u13F4\u1401-\u166C\u166F-\u167F\u1681-\u169A\u16A0-\u16EA\u1700-\u170C\u170E-\u1711\u1720-\u1731\u1740-\u1751\u1760-\u176C\u176E-\u1770\u1780-\u17B3\u17D7\u17DC\u1820-\u1877\u1880-\u18A8\u18AA\u18B0-\u18F5\u1900-\u191C\u1950-\u196D\u1970-\u1974\u1980-\u19AB\u19C1-\u19C7\u1A00-\u1A16\u1A20-\u1A54\u1AA7\u1B05-\u1B33\u1B45-\u1B4B\u1B83-\u1BA0\u1BAE\u1BAF\u1BBA-\u1BE5\u1C00-\u1C23\u1C4D-\u1C4F\u1C5A-\u1C7D\u1CE9-\u1CEC\u1CEE-\u1CF1\u1CF5\u1CF6\u1D00-\u1DBF\u1E00-\u1F15\u1F18-\u1F1D\u1F20-\u1F45\u1F48-\u1F4D\u1F50-\u1F57\u1F59\u1F5B\u1F5D\u1F5F-\u1F7D\u1F80-\u1FB4\u1FB6-\u1FBC\u1FBE\u1FC2-\u1FC4\u1FC6-\u1FCC\u1FD0-\u1FD3\u1FD6-\u1FDB\u1FE0-\u1FEC\u1FF2-\u1FF4\u1FF6-\u1FFC\u2071\u207F\u2090-\u209C\u2102\u2107\u210A-\u2113\u2115\u2119-\u211D\u2124\u2126\u2128\u212A-\u212D\u212F-\u2139\u213C-\u213F\u2145-\u2149\u214E\u2183\u2184\u2C00-\u2C2E\u2C30-\u2C5E\u2C60-\u2CE4\u2CEB-\u2CEE\u2CF2\u2CF3\u2D00-\u2D25\u2D27\u2D2D\u2D30-\u2D67\u2D6F\u2D80-\u2D96\u2DA0-\u2DA6\u2DA8-\u2DAE\u2DB0-\u2DB6\u2DB8-\u2DBE\u2DC0-\u2DC6\u2DC8-\u2DCE\u2DD0-\u2DD6\u2DD8-\u2DDE\u2E2F\u3005\u3006\u3031-\u3035\u303B\u303C\u3041-\u3096\u309D-\u309F\u30A1-\u30FA\u30FC-\u30FF\u3105-\u312D\u3131-\u318E\u31A0-\u31BA\u31F0-\u31FF\u3400-\u4DB5\u4E00-\u9FCC\uA000-\uA48C\uA4D0-\uA4FD\uA500-\uA60C\uA610-\uA61F\uA62A\uA62B\uA640-\uA66E\uA67F-\uA697\uA6A0-\uA6E5\uA717-\uA71F\uA722-\uA788\uA78B-\uA78E\uA790-\uA793\uA7A0-\uA7AA\uA7F8-\uA801\uA803-\uA805\uA807-\uA80A\uA80C-\uA822\uA840-\uA873\uA882-\uA8B3\uA8F2-\uA8F7\uA8FB\uA90A-\uA925\uA930-\uA946\uA960-\uA97C\uA984-\uA9B2\uA9CF\uAA00-\uAA28\uAA40-\uAA42\uAA44-\uAA4B\uAA60-\uAA76\uAA7A\uAA80-\uAAAF\uAAB1\uAAB5\uAAB6\uAAB9-\uAABD\uAAC0\uAAC2\uAADB-\uAADD\uAAE0-\uAAEA\uAAF2-\uAAF4\uAB01-\uAB06\uAB09-\uAB0E\uAB11-\uAB16\uAB20-\uAB26\uAB28-\uAB2E\uABC0-\uABE2\uAC00-\uD7A3\uD7B0-\uD7C6\uD7CB-\uD7FB\uF900-\uFA6D\uFA70-\uFAD9\uFB00-\uFB06\uFB13-\uFB17\uFB1D\uFB1F-\uFB28\uFB2A-\uFB36\uFB38-\uFB3C\uFB3E\uFB40\uFB41\uFB43\uFB44\uFB46-\uFBB1\uFBD3-\uFD3D\uFD50-\uFD8F\uFD92-\uFDC7\uFDF0-\uFDFB\uFE70-\uFE74\uFE76-\uFEFC\uFF21-\uFF3A\uFF41-\uFF5A\uFF66-\uFFBE\uFFC2-\uFFC7\uFFCA-\uFFCF\uFFD2-\uFFD7\uFFDA-\uFFDC\u0030-\u0039\u00B2\u00B3\u00B9\u00BC-\u00BE\u0660-\u0669\u06F0-\u06F9\u07C0-\u07C9\u0966-\u096F\u09E6-\u09EF\u09F4-\u09F9\u0A66-\u0A6F\u0AE6-\u0AEF\u0B66-\u0B6F\u0B72-\u0B77\u0BE6-\u0BF2\u0C66-\u0C6F\u0C78-\u0C7E\u0CE6-\u0CEF\u0D66-\u0D75\u0E50-\u0E59\u0ED0-\u0ED9\u0F20-\u0F33\u1040-\u1049\u1090-\u1099\u1369-\u137C\u16EE-\u16F0\u17E0-\u17E9\u17F0-\u17F9\u1810-\u1819\u1946-\u194F\u19D0-\u19DA\u1A80-\u1A89\u1A90-\u1A99\u1B50-\u1B59\u1BB0-\u1BB9\u1C40-\u1C49\u1C50-\u1C59\u2070\u2074-\u2079\u2080-\u2089\u2150-\u2182\u2185-\u2189\u2460-\u249B\u24EA-\u24FF\u2776-\u2793\u2CFD\u3007\u3021-\u3029\u3038-\u303A\u3192-\u3195\u3220-\u3229\u3248-\u324F\u3251-\u325F\u3280-\u3289\u32B1-\u32BF\uA620-\uA629\uA6E6-\uA6EF\uA830-\uA835\uA8D0-\uA8D9\uA900-\uA909\uA9D0-\uA9D9\uAA50-\uAA59\uABF0-\uABF9\uFF10-\uFF19]+/g
 
 
 /***/ },
-/* 493 */
+/* 439 */
 /***/ function(module, exports) {
 
 	module.exports = /([\u0061-\u007A\u00B5\u00DF-\u00F6\u00F8-\u00FF\u0101\u0103\u0105\u0107\u0109\u010B\u010D\u010F\u0111\u0113\u0115\u0117\u0119\u011B\u011D\u011F\u0121\u0123\u0125\u0127\u0129\u012B\u012D\u012F\u0131\u0133\u0135\u0137\u0138\u013A\u013C\u013E\u0140\u0142\u0144\u0146\u0148\u0149\u014B\u014D\u014F\u0151\u0153\u0155\u0157\u0159\u015B\u015D\u015F\u0161\u0163\u0165\u0167\u0169\u016B\u016D\u016F\u0171\u0173\u0175\u0177\u017A\u017C\u017E-\u0180\u0183\u0185\u0188\u018C\u018D\u0192\u0195\u0199-\u019B\u019E\u01A1\u01A3\u01A5\u01A8\u01AA\u01AB\u01AD\u01B0\u01B4\u01B6\u01B9\u01BA\u01BD-\u01BF\u01C6\u01C9\u01CC\u01CE\u01D0\u01D2\u01D4\u01D6\u01D8\u01DA\u01DC\u01DD\u01DF\u01E1\u01E3\u01E5\u01E7\u01E9\u01EB\u01ED\u01EF\u01F0\u01F3\u01F5\u01F9\u01FB\u01FD\u01FF\u0201\u0203\u0205\u0207\u0209\u020B\u020D\u020F\u0211\u0213\u0215\u0217\u0219\u021B\u021D\u021F\u0221\u0223\u0225\u0227\u0229\u022B\u022D\u022F\u0231\u0233-\u0239\u023C\u023F\u0240\u0242\u0247\u0249\u024B\u024D\u024F-\u0293\u0295-\u02AF\u0371\u0373\u0377\u037B-\u037D\u0390\u03AC-\u03CE\u03D0\u03D1\u03D5-\u03D7\u03D9\u03DB\u03DD\u03DF\u03E1\u03E3\u03E5\u03E7\u03E9\u03EB\u03ED\u03EF-\u03F3\u03F5\u03F8\u03FB\u03FC\u0430-\u045F\u0461\u0463\u0465\u0467\u0469\u046B\u046D\u046F\u0471\u0473\u0475\u0477\u0479\u047B\u047D\u047F\u0481\u048B\u048D\u048F\u0491\u0493\u0495\u0497\u0499\u049B\u049D\u049F\u04A1\u04A3\u04A5\u04A7\u04A9\u04AB\u04AD\u04AF\u04B1\u04B3\u04B5\u04B7\u04B9\u04BB\u04BD\u04BF\u04C2\u04C4\u04C6\u04C8\u04CA\u04CC\u04CE\u04CF\u04D1\u04D3\u04D5\u04D7\u04D9\u04DB\u04DD\u04DF\u04E1\u04E3\u04E5\u04E7\u04E9\u04EB\u04ED\u04EF\u04F1\u04F3\u04F5\u04F7\u04F9\u04FB\u04FD\u04FF\u0501\u0503\u0505\u0507\u0509\u050B\u050D\u050F\u0511\u0513\u0515\u0517\u0519\u051B\u051D\u051F\u0521\u0523\u0525\u0527\u0561-\u0587\u1D00-\u1D2B\u1D6B-\u1D77\u1D79-\u1D9A\u1E01\u1E03\u1E05\u1E07\u1E09\u1E0B\u1E0D\u1E0F\u1E11\u1E13\u1E15\u1E17\u1E19\u1E1B\u1E1D\u1E1F\u1E21\u1E23\u1E25\u1E27\u1E29\u1E2B\u1E2D\u1E2F\u1E31\u1E33\u1E35\u1E37\u1E39\u1E3B\u1E3D\u1E3F\u1E41\u1E43\u1E45\u1E47\u1E49\u1E4B\u1E4D\u1E4F\u1E51\u1E53\u1E55\u1E57\u1E59\u1E5B\u1E5D\u1E5F\u1E61\u1E63\u1E65\u1E67\u1E69\u1E6B\u1E6D\u1E6F\u1E71\u1E73\u1E75\u1E77\u1E79\u1E7B\u1E7D\u1E7F\u1E81\u1E83\u1E85\u1E87\u1E89\u1E8B\u1E8D\u1E8F\u1E91\u1E93\u1E95-\u1E9D\u1E9F\u1EA1\u1EA3\u1EA5\u1EA7\u1EA9\u1EAB\u1EAD\u1EAF\u1EB1\u1EB3\u1EB5\u1EB7\u1EB9\u1EBB\u1EBD\u1EBF\u1EC1\u1EC3\u1EC5\u1EC7\u1EC9\u1ECB\u1ECD\u1ECF\u1ED1\u1ED3\u1ED5\u1ED7\u1ED9\u1EDB\u1EDD\u1EDF\u1EE1\u1EE3\u1EE5\u1EE7\u1EE9\u1EEB\u1EED\u1EEF\u1EF1\u1EF3\u1EF5\u1EF7\u1EF9\u1EFB\u1EFD\u1EFF-\u1F07\u1F10-\u1F15\u1F20-\u1F27\u1F30-\u1F37\u1F40-\u1F45\u1F50-\u1F57\u1F60-\u1F67\u1F70-\u1F7D\u1F80-\u1F87\u1F90-\u1F97\u1FA0-\u1FA7\u1FB0-\u1FB4\u1FB6\u1FB7\u1FBE\u1FC2-\u1FC4\u1FC6\u1FC7\u1FD0-\u1FD3\u1FD6\u1FD7\u1FE0-\u1FE7\u1FF2-\u1FF4\u1FF6\u1FF7\u210A\u210E\u210F\u2113\u212F\u2134\u2139\u213C\u213D\u2146-\u2149\u214E\u2184\u2C30-\u2C5E\u2C61\u2C65\u2C66\u2C68\u2C6A\u2C6C\u2C71\u2C73\u2C74\u2C76-\u2C7B\u2C81\u2C83\u2C85\u2C87\u2C89\u2C8B\u2C8D\u2C8F\u2C91\u2C93\u2C95\u2C97\u2C99\u2C9B\u2C9D\u2C9F\u2CA1\u2CA3\u2CA5\u2CA7\u2CA9\u2CAB\u2CAD\u2CAF\u2CB1\u2CB3\u2CB5\u2CB7\u2CB9\u2CBB\u2CBD\u2CBF\u2CC1\u2CC3\u2CC5\u2CC7\u2CC9\u2CCB\u2CCD\u2CCF\u2CD1\u2CD3\u2CD5\u2CD7\u2CD9\u2CDB\u2CDD\u2CDF\u2CE1\u2CE3\u2CE4\u2CEC\u2CEE\u2CF3\u2D00-\u2D25\u2D27\u2D2D\uA641\uA643\uA645\uA647\uA649\uA64B\uA64D\uA64F\uA651\uA653\uA655\uA657\uA659\uA65B\uA65D\uA65F\uA661\uA663\uA665\uA667\uA669\uA66B\uA66D\uA681\uA683\uA685\uA687\uA689\uA68B\uA68D\uA68F\uA691\uA693\uA695\uA697\uA723\uA725\uA727\uA729\uA72B\uA72D\uA72F-\uA731\uA733\uA735\uA737\uA739\uA73B\uA73D\uA73F\uA741\uA743\uA745\uA747\uA749\uA74B\uA74D\uA74F\uA751\uA753\uA755\uA757\uA759\uA75B\uA75D\uA75F\uA761\uA763\uA765\uA767\uA769\uA76B\uA76D\uA76F\uA771-\uA778\uA77A\uA77C\uA77F\uA781\uA783\uA785\uA787\uA78C\uA78E\uA791\uA793\uA7A1\uA7A3\uA7A5\uA7A7\uA7A9\uA7FA\uFB00-\uFB06\uFB13-\uFB17\uFF41-\uFF5A])([\u0041-\u005A\u00C0-\u00D6\u00D8-\u00DE\u0100\u0102\u0104\u0106\u0108\u010A\u010C\u010E\u0110\u0112\u0114\u0116\u0118\u011A\u011C\u011E\u0120\u0122\u0124\u0126\u0128\u012A\u012C\u012E\u0130\u0132\u0134\u0136\u0139\u013B\u013D\u013F\u0141\u0143\u0145\u0147\u014A\u014C\u014E\u0150\u0152\u0154\u0156\u0158\u015A\u015C\u015E\u0160\u0162\u0164\u0166\u0168\u016A\u016C\u016E\u0170\u0172\u0174\u0176\u0178\u0179\u017B\u017D\u0181\u0182\u0184\u0186\u0187\u0189-\u018B\u018E-\u0191\u0193\u0194\u0196-\u0198\u019C\u019D\u019F\u01A0\u01A2\u01A4\u01A6\u01A7\u01A9\u01AC\u01AE\u01AF\u01B1-\u01B3\u01B5\u01B7\u01B8\u01BC\u01C4\u01C7\u01CA\u01CD\u01CF\u01D1\u01D3\u01D5\u01D7\u01D9\u01DB\u01DE\u01E0\u01E2\u01E4\u01E6\u01E8\u01EA\u01EC\u01EE\u01F1\u01F4\u01F6-\u01F8\u01FA\u01FC\u01FE\u0200\u0202\u0204\u0206\u0208\u020A\u020C\u020E\u0210\u0212\u0214\u0216\u0218\u021A\u021C\u021E\u0220\u0222\u0224\u0226\u0228\u022A\u022C\u022E\u0230\u0232\u023A\u023B\u023D\u023E\u0241\u0243-\u0246\u0248\u024A\u024C\u024E\u0370\u0372\u0376\u0386\u0388-\u038A\u038C\u038E\u038F\u0391-\u03A1\u03A3-\u03AB\u03CF\u03D2-\u03D4\u03D8\u03DA\u03DC\u03DE\u03E0\u03E2\u03E4\u03E6\u03E8\u03EA\u03EC\u03EE\u03F4\u03F7\u03F9\u03FA\u03FD-\u042F\u0460\u0462\u0464\u0466\u0468\u046A\u046C\u046E\u0470\u0472\u0474\u0476\u0478\u047A\u047C\u047E\u0480\u048A\u048C\u048E\u0490\u0492\u0494\u0496\u0498\u049A\u049C\u049E\u04A0\u04A2\u04A4\u04A6\u04A8\u04AA\u04AC\u04AE\u04B0\u04B2\u04B4\u04B6\u04B8\u04BA\u04BC\u04BE\u04C0\u04C1\u04C3\u04C5\u04C7\u04C9\u04CB\u04CD\u04D0\u04D2\u04D4\u04D6\u04D8\u04DA\u04DC\u04DE\u04E0\u04E2\u04E4\u04E6\u04E8\u04EA\u04EC\u04EE\u04F0\u04F2\u04F4\u04F6\u04F8\u04FA\u04FC\u04FE\u0500\u0502\u0504\u0506\u0508\u050A\u050C\u050E\u0510\u0512\u0514\u0516\u0518\u051A\u051C\u051E\u0520\u0522\u0524\u0526\u0531-\u0556\u10A0-\u10C5\u10C7\u10CD\u1E00\u1E02\u1E04\u1E06\u1E08\u1E0A\u1E0C\u1E0E\u1E10\u1E12\u1E14\u1E16\u1E18\u1E1A\u1E1C\u1E1E\u1E20\u1E22\u1E24\u1E26\u1E28\u1E2A\u1E2C\u1E2E\u1E30\u1E32\u1E34\u1E36\u1E38\u1E3A\u1E3C\u1E3E\u1E40\u1E42\u1E44\u1E46\u1E48\u1E4A\u1E4C\u1E4E\u1E50\u1E52\u1E54\u1E56\u1E58\u1E5A\u1E5C\u1E5E\u1E60\u1E62\u1E64\u1E66\u1E68\u1E6A\u1E6C\u1E6E\u1E70\u1E72\u1E74\u1E76\u1E78\u1E7A\u1E7C\u1E7E\u1E80\u1E82\u1E84\u1E86\u1E88\u1E8A\u1E8C\u1E8E\u1E90\u1E92\u1E94\u1E9E\u1EA0\u1EA2\u1EA4\u1EA6\u1EA8\u1EAA\u1EAC\u1EAE\u1EB0\u1EB2\u1EB4\u1EB6\u1EB8\u1EBA\u1EBC\u1EBE\u1EC0\u1EC2\u1EC4\u1EC6\u1EC8\u1ECA\u1ECC\u1ECE\u1ED0\u1ED2\u1ED4\u1ED6\u1ED8\u1EDA\u1EDC\u1EDE\u1EE0\u1EE2\u1EE4\u1EE6\u1EE8\u1EEA\u1EEC\u1EEE\u1EF0\u1EF2\u1EF4\u1EF6\u1EF8\u1EFA\u1EFC\u1EFE\u1F08-\u1F0F\u1F18-\u1F1D\u1F28-\u1F2F\u1F38-\u1F3F\u1F48-\u1F4D\u1F59\u1F5B\u1F5D\u1F5F\u1F68-\u1F6F\u1FB8-\u1FBB\u1FC8-\u1FCB\u1FD8-\u1FDB\u1FE8-\u1FEC\u1FF8-\u1FFB\u2102\u2107\u210B-\u210D\u2110-\u2112\u2115\u2119-\u211D\u2124\u2126\u2128\u212A-\u212D\u2130-\u2133\u213E\u213F\u2145\u2183\u2C00-\u2C2E\u2C60\u2C62-\u2C64\u2C67\u2C69\u2C6B\u2C6D-\u2C70\u2C72\u2C75\u2C7E-\u2C80\u2C82\u2C84\u2C86\u2C88\u2C8A\u2C8C\u2C8E\u2C90\u2C92\u2C94\u2C96\u2C98\u2C9A\u2C9C\u2C9E\u2CA0\u2CA2\u2CA4\u2CA6\u2CA8\u2CAA\u2CAC\u2CAE\u2CB0\u2CB2\u2CB4\u2CB6\u2CB8\u2CBA\u2CBC\u2CBE\u2CC0\u2CC2\u2CC4\u2CC6\u2CC8\u2CCA\u2CCC\u2CCE\u2CD0\u2CD2\u2CD4\u2CD6\u2CD8\u2CDA\u2CDC\u2CDE\u2CE0\u2CE2\u2CEB\u2CED\u2CF2\uA640\uA642\uA644\uA646\uA648\uA64A\uA64C\uA64E\uA650\uA652\uA654\uA656\uA658\uA65A\uA65C\uA65E\uA660\uA662\uA664\uA666\uA668\uA66A\uA66C\uA680\uA682\uA684\uA686\uA688\uA68A\uA68C\uA68E\uA690\uA692\uA694\uA696\uA722\uA724\uA726\uA728\uA72A\uA72C\uA72E\uA732\uA734\uA736\uA738\uA73A\uA73C\uA73E\uA740\uA742\uA744\uA746\uA748\uA74A\uA74C\uA74E\uA750\uA752\uA754\uA756\uA758\uA75A\uA75C\uA75E\uA760\uA762\uA764\uA766\uA768\uA76A\uA76C\uA76E\uA779\uA77B\uA77D\uA77E\uA780\uA782\uA784\uA786\uA78B\uA78D\uA790\uA792\uA7A0\uA7A2\uA7A4\uA7A6\uA7A8\uA7AA\uFF21-\uFF3A\u0030-\u0039\u00B2\u00B3\u00B9\u00BC-\u00BE\u0660-\u0669\u06F0-\u06F9\u07C0-\u07C9\u0966-\u096F\u09E6-\u09EF\u09F4-\u09F9\u0A66-\u0A6F\u0AE6-\u0AEF\u0B66-\u0B6F\u0B72-\u0B77\u0BE6-\u0BF2\u0C66-\u0C6F\u0C78-\u0C7E\u0CE6-\u0CEF\u0D66-\u0D75\u0E50-\u0E59\u0ED0-\u0ED9\u0F20-\u0F33\u1040-\u1049\u1090-\u1099\u1369-\u137C\u16EE-\u16F0\u17E0-\u17E9\u17F0-\u17F9\u1810-\u1819\u1946-\u194F\u19D0-\u19DA\u1A80-\u1A89\u1A90-\u1A99\u1B50-\u1B59\u1BB0-\u1BB9\u1C40-\u1C49\u1C50-\u1C59\u2070\u2074-\u2079\u2080-\u2089\u2150-\u2182\u2185-\u2189\u2460-\u249B\u24EA-\u24FF\u2776-\u2793\u2CFD\u3007\u3021-\u3029\u3038-\u303A\u3192-\u3195\u3220-\u3229\u3248-\u324F\u3251-\u325F\u3280-\u3289\u32B1-\u32BF\uA620-\uA629\uA6E6-\uA6EF\uA830-\uA835\uA8D0-\uA8D9\uA900-\uA909\uA9D0-\uA9D9\uAA50-\uAA59\uABF0-\uABF9\uFF10-\uFF19])/g
 
 
 /***/ },
-/* 494 */
+/* 440 */
 /***/ function(module, exports) {
 
 	module.exports = /([\u0030-\u0039\u00B2\u00B3\u00B9\u00BC-\u00BE\u0660-\u0669\u06F0-\u06F9\u07C0-\u07C9\u0966-\u096F\u09E6-\u09EF\u09F4-\u09F9\u0A66-\u0A6F\u0AE6-\u0AEF\u0B66-\u0B6F\u0B72-\u0B77\u0BE6-\u0BF2\u0C66-\u0C6F\u0C78-\u0C7E\u0CE6-\u0CEF\u0D66-\u0D75\u0E50-\u0E59\u0ED0-\u0ED9\u0F20-\u0F33\u1040-\u1049\u1090-\u1099\u1369-\u137C\u16EE-\u16F0\u17E0-\u17E9\u17F0-\u17F9\u1810-\u1819\u1946-\u194F\u19D0-\u19DA\u1A80-\u1A89\u1A90-\u1A99\u1B50-\u1B59\u1BB0-\u1BB9\u1C40-\u1C49\u1C50-\u1C59\u2070\u2074-\u2079\u2080-\u2089\u2150-\u2182\u2185-\u2189\u2460-\u249B\u24EA-\u24FF\u2776-\u2793\u2CFD\u3007\u3021-\u3029\u3038-\u303A\u3192-\u3195\u3220-\u3229\u3248-\u324F\u3251-\u325F\u3280-\u3289\u32B1-\u32BF\uA620-\uA629\uA6E6-\uA6EF\uA830-\uA835\uA8D0-\uA8D9\uA900-\uA909\uA9D0-\uA9D9\uAA50-\uAA59\uABF0-\uABF9\uFF10-\uFF19])([^\u0030-\u0039\u00B2\u00B3\u00B9\u00BC-\u00BE\u0660-\u0669\u06F0-\u06F9\u07C0-\u07C9\u0966-\u096F\u09E6-\u09EF\u09F4-\u09F9\u0A66-\u0A6F\u0AE6-\u0AEF\u0B66-\u0B6F\u0B72-\u0B77\u0BE6-\u0BF2\u0C66-\u0C6F\u0C78-\u0C7E\u0CE6-\u0CEF\u0D66-\u0D75\u0E50-\u0E59\u0ED0-\u0ED9\u0F20-\u0F33\u1040-\u1049\u1090-\u1099\u1369-\u137C\u16EE-\u16F0\u17E0-\u17E9\u17F0-\u17F9\u1810-\u1819\u1946-\u194F\u19D0-\u19DA\u1A80-\u1A89\u1A90-\u1A99\u1B50-\u1B59\u1BB0-\u1BB9\u1C40-\u1C49\u1C50-\u1C59\u2070\u2074-\u2079\u2080-\u2089\u2150-\u2182\u2185-\u2189\u2460-\u249B\u24EA-\u24FF\u2776-\u2793\u2CFD\u3007\u3021-\u3029\u3038-\u303A\u3192-\u3195\u3220-\u3229\u3248-\u324F\u3251-\u325F\u3280-\u3289\u32B1-\u32BF\uA620-\uA629\uA6E6-\uA6EF\uA830-\uA835\uA8D0-\uA8D9\uA900-\uA909\uA9D0-\uA9D9\uAA50-\uAA59\uABF0-\uABF9\uFF10-\uFF19])/g
 
 
 /***/ },
-/* 495 */
+/* 441 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var map = {
-		"./change_password": 496,
-		"./change_password.js": 496,
-		"./common": 497,
-		"./common.js": 497,
-		"./create_wallet": 510,
-		"./create_wallet.js": 510,
-		"./delete_wallet": 511,
-		"./delete_wallet.js": 511,
-		"./disable_totp": 512,
-		"./disable_totp.js": 512,
-		"./enable_recovery": 513,
-		"./enable_recovery.js": 513,
-		"./enable_totp": 514,
-		"./enable_totp.js": 514,
-		"./get_lock_version": 517,
-		"./get_lock_version.js": 517,
-		"./index": 488,
-		"./index.js": 488,
-		"./login": 518,
-		"./login.js": 518,
-		"./lost_totp_device": 519,
-		"./lost_totp_device.js": 519,
-		"./show_recovery": 520,
-		"./show_recovery.js": 520,
-		"./update_main_data": 521,
-		"./update_main_data.js": 521
+		"./change_password": 442,
+		"./change_password.js": 442,
+		"./common": 443,
+		"./common.js": 443,
+		"./create_wallet": 456,
+		"./create_wallet.js": 456,
+		"./delete_wallet": 457,
+		"./delete_wallet.js": 457,
+		"./disable_totp": 458,
+		"./disable_totp.js": 458,
+		"./enable_recovery": 459,
+		"./enable_recovery.js": 459,
+		"./enable_totp": 460,
+		"./enable_totp.js": 460,
+		"./get_lock_version": 463,
+		"./get_lock_version.js": 463,
+		"./index": 434,
+		"./index.js": 434,
+		"./login": 464,
+		"./login.js": 464,
+		"./lost_totp_device": 465,
+		"./lost_totp_device.js": 465,
+		"./show_recovery": 466,
+		"./show_recovery.js": 466,
+		"./update_main_data": 467,
+		"./update_main_data.js": 467
 	};
 	function webpackContext(req) {
 		return __webpack_require__(webpackContextResolve(req));
@@ -82873,24 +81118,24 @@ var StellarSdk =
 	};
 	webpackContext.resolve = webpackContextResolve;
 	module.exports = webpackContext;
-	webpackContext.id = 495;
+	webpackContext.id = 441;
 
 
 /***/ },
-/* 496 */
+/* 442 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	var _ = __webpack_require__(451);
-	var common = __webpack_require__(497);
-	var crypto = __webpack_require__(501);
-	var errors = __webpack_require__(452);
-	var nacl = __webpack_require__(503);
-	var Promise = __webpack_require__(453);
-	var request = __webpack_require__(498);
-	var sjcl = __webpack_require__(504);
-	var validate = __webpack_require__(509);
+	var _ = __webpack_require__(397);
+	var common = __webpack_require__(443);
+	var crypto = __webpack_require__(447);
+	var errors = __webpack_require__(398);
+	var nacl = __webpack_require__(449);
+	var Promise = __webpack_require__(399);
+	var request = __webpack_require__(444);
+	var sjcl = __webpack_require__(450);
+	var validate = __webpack_require__(455);
 
 	module.exports = function (params) {
 	  return Promise.resolve(params)
@@ -82978,15 +81223,15 @@ var StellarSdk =
 
 
 /***/ },
-/* 497 */
+/* 443 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	var _ = __webpack_require__(451);
-	var errors = __webpack_require__(452);
-	var Promise = __webpack_require__(453);
-	var request = __webpack_require__(498);
+	var _ = __webpack_require__(397);
+	var errors = __webpack_require__(398);
+	var Promise = __webpack_require__(399);
+	var request = __webpack_require__(444);
 
 	module.exports = {
 	  totpCodeToString: totpCodeToString,
@@ -83068,15 +81313,15 @@ var StellarSdk =
 	}
 
 /***/ },
-/* 498 */
+/* 444 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
 	 * Module dependencies.
 	 */
 
-	var Emitter = __webpack_require__(499);
-	var reduce = __webpack_require__(500);
+	var Emitter = __webpack_require__(445);
+	var reduce = __webpack_require__(446);
 
 	/**
 	 * Root reference for iframes.
@@ -84150,7 +82395,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 499 */
+/* 445 */
 /***/ function(module, exports) {
 
 	
@@ -84320,7 +82565,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 500 */
+/* 446 */
 /***/ function(module, exports) {
 
 	
@@ -84349,17 +82594,17 @@ var StellarSdk =
 	};
 
 /***/ },
-/* 501 */
+/* 447 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {'use strict';
 
-	var _ = __webpack_require__(451);
-	var base58 = __webpack_require__(502);
-	var crypto  = __webpack_require__(244);
-	var errors = __webpack_require__(452);
-	var nacl = __webpack_require__(503);
-	var sjcl = __webpack_require__(504);
+	var _ = __webpack_require__(397);
+	var base58 = __webpack_require__(448);
+	var crypto  = __webpack_require__(173);
+	var errors = __webpack_require__(398);
+	var nacl = __webpack_require__(449);
+	var sjcl = __webpack_require__(450);
 
 	module.exports = {
 	  calculateMasterKey: calculateMasterKey,
@@ -84477,10 +82722,10 @@ var StellarSdk =
 	  return words;
 	}
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(162).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(89).Buffer))
 
 /***/ },
-/* 502 */
+/* 448 */
 /***/ function(module, exports) {
 
 	// Base58 encoding/decoding
@@ -84571,7 +82816,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 503 */
+/* 449 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {(function(nacl) {
@@ -85765,7 +84010,7 @@ var StellarSdk =
 	    }
 	  } else if (true) {
 	    // Node.js.
-	    crypto = __webpack_require__(244);
+	    crypto = __webpack_require__(173);
 	    if (crypto) {
 	      nacl.setPRNG(function(x, n) {
 	        var i, v = crypto.randomBytes(n);
@@ -85777,18 +84022,18 @@ var StellarSdk =
 
 	})(typeof module !== 'undefined' && module.exports ? module.exports : (window.nacl = window.nacl || {}));
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(162).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(89).Buffer))
 
 /***/ },
-/* 504 */
+/* 450 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// We're using stellar-lib's Seed to generate address and keypair in keypair.js.
 	// However, for some legacy browsers we need to add some entropy to sjcl using
 	// crypto.ensureEntropy method. Rather then doing this for both instances
 	// (stellar-wallet-js-sdk & stellar-lib) let's switch to stellar-lib's sjcl.
-	var sjcl = __webpack_require__(505).sjcl;
-	__webpack_require__(508).extendSjcl(sjcl);
+	var sjcl = __webpack_require__(451).sjcl;
+	__webpack_require__(454).extendSjcl(sjcl);
 
 	var randomWords = sjcl.random.randomWords;
 
@@ -85809,7 +84054,7 @@ var StellarSdk =
 	module.exports = sjcl;
 
 /***/ },
-/* 505 */
+/* 451 */
 /***/ function(module, exports, __webpack_require__) {
 
 	function filterErr(code, done) {
@@ -85985,14 +84230,14 @@ var StellarSdk =
 
 	// Going up three levels is needed to escape the src-cov folder used for the
 	// test coverage stuff.
-	exports.sjcl = __webpack_require__(506);
-	exports.jsbn = __webpack_require__(507);
+	exports.sjcl = __webpack_require__(452);
+	exports.jsbn = __webpack_require__(453);
 
 	// vim:sw=2:sts=2:ts=8:et
 
 
 /***/ },
-/* 506 */
+/* 452 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;"use strict";function q(a){throw a;}var u=void 0,v=!1;var sjcl={cipher:{},hash:{},keyexchange:{},mode:{},misc:{},codec:{},exception:{corrupt:function(a){this.toString=function(){return"CORRUPT: "+this.message};this.message=a},invalid:function(a){this.toString=function(){return"INVALID: "+this.message};this.message=a},bug:function(a){this.toString=function(){return"BUG: "+this.message};this.message=a},notReady:function(a){this.toString=function(){return"NOT READY: "+this.message};this.message=a}}};
@@ -86038,7 +84283,7 @@ var StellarSdk =
 	b){var c,d,e=this.D[a],f=[];for(d in e)e.hasOwnProperty(d)&&e[d]===b&&f.push(d);for(c=0;c<f.length;c++)d=f[c],delete e[d]},da:function(){Q(1)},ga:function(a){var b,c;try{b=a.x||a.clientX||a.offsetX||0,c=a.y||a.clientY||a.offsetY||0}catch(d){c=b=0}0!=b&&0!=c&&sjcl.random.addEntropy([b,c],2,"mouse");Q(0)},fa:function(){Q(2)},X:function(a){a=a.accelerationIncludingGravity.x||a.accelerationIncludingGravity.y||a.accelerationIncludingGravity.z;if(window.orientation){var b=window.orientation;"number"===
 	typeof b&&sjcl.random.addEntropy(b,1,"accelerometer")}a&&sjcl.random.addEntropy(a,2,"accelerometer");Q(0)}};function ga(a,b){var c,d=sjcl.random.D[a],e=[];for(c in d)d.hasOwnProperty(c)&&e.push(d[c]);for(c=0;c<e.length;c++)e[c](b)}function Q(a){"undefined"!==typeof window&&window.performance&&"function"===typeof window.performance.now?sjcl.random.addEntropy(window.performance.now(),a,"loadtime"):sjcl.random.addEntropy((new Date).valueOf(),a,"loadtime")}
 	function fa(a){a.b=B(a).concat(B(a));a.F=new sjcl.cipher.aes(a.b)}function B(a){for(var b=0;4>b&&!(a.l[b]=a.l[b]+1|0,a.l[b]);b++);return a.F.encrypt(a.l)}function P(a,b){return function(){b.apply(a,arguments)}}sjcl.random=new sjcl.prng(6);
-	a:try{var R,S,X,Y;if(Y="undefined"!==typeof module){var Z;if(Z=module.exports){var ha;try{ha=__webpack_require__(244)}catch(ma){ha=null}Z=(S=ha)&&S.randomBytes}Y=Z}if(Y)R=S.randomBytes(128),R=new Uint32Array((new Uint8Array(R)).buffer),sjcl.random.addEntropy(R,1024,"crypto['randomBytes']");else if("undefined"!==typeof window&&"undefined"!==typeof Uint32Array){X=new Uint32Array(32);if(window.crypto&&window.crypto.getRandomValues)window.crypto.getRandomValues(X);else if(window.msCrypto&&window.msCrypto.getRandomValues)window.msCrypto.getRandomValues(X);
+	a:try{var R,S,X,Y;if(Y="undefined"!==typeof module){var Z;if(Z=module.exports){var ha;try{ha=__webpack_require__(173)}catch(ma){ha=null}Z=(S=ha)&&S.randomBytes}Y=Z}if(Y)R=S.randomBytes(128),R=new Uint32Array((new Uint8Array(R)).buffer),sjcl.random.addEntropy(R,1024,"crypto['randomBytes']");else if("undefined"!==typeof window&&"undefined"!==typeof Uint32Array){X=new Uint32Array(32);if(window.crypto&&window.crypto.getRandomValues)window.crypto.getRandomValues(X);else if(window.msCrypto&&window.msCrypto.getRandomValues)window.msCrypto.getRandomValues(X);
 	else break a;sjcl.random.addEntropy(X,1024,"crypto['getRandomValues']")}}catch(pa){"undefined"!==typeof window&&window.console&&(console.log("There was an error collecting entropy from the browser:"),console.log(pa))}
 	sjcl.json={defaults:{v:1,iter:1E3,ks:128,ts:64,mode:"ccm",adata:"",cipher:"aes"},aa:function(a,b,c,d){c=c||{};d=d||{};var e=sjcl.json,f=e.k({iv:sjcl.random.randomWords(4,0)},e.defaults),g;e.k(f,c);c=f.adata;"string"===typeof f.salt&&(f.salt=sjcl.codec.base64.toBits(f.salt));"string"===typeof f.iv&&(f.iv=sjcl.codec.base64.toBits(f.iv));(!sjcl.mode[f.mode]||!sjcl.cipher[f.cipher]||"string"===typeof a&&100>=f.iter||64!==f.ts&&96!==f.ts&&128!==f.ts||128!==f.ks&&192!==f.ks&&0x100!==f.ks||2>f.iv.length||
 	4<f.iv.length)&&q(new sjcl.exception.invalid("json encrypt: invalid parameters"));"string"===typeof a?(g=sjcl.misc.cachedPbkdf2(a,f),a=g.key.slice(0,f.ks/32),f.salt=g.salt):sjcl.ecc&&a instanceof sjcl.ecc.elGamal.publicKey&&(g=a.kem(),f.kemtag=g.tag,a=g.key.slice(0,f.ks/32));"string"===typeof b&&(b=sjcl.codec.utf8String.toBits(b));"string"===typeof c&&(c=sjcl.codec.utf8String.toBits(c));g=new sjcl.cipher[f.cipher](a);e.k(d,f);d.key=a;f.ct=sjcl.mode[f.mode].encrypt(g,b,f.iv,c,f.ts);return f},encrypt:function(a,
@@ -86078,7 +84323,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 507 */
+/* 453 */
 /***/ function(module, exports) {
 
 	// Copyright (c) 2005  Tom Wu
@@ -87294,10 +85539,10 @@ var StellarSdk =
 
 
 /***/ },
-/* 508 */
+/* 454 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var sjcl = __webpack_require__(506);
+	var sjcl = __webpack_require__(452);
 
 	var scrypt = function(passwd, salt, N, r, p, dkLen) {
 
@@ -87473,13 +85718,13 @@ var StellarSdk =
 	};
 
 /***/ },
-/* 509 */
+/* 455 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var _       = __webpack_require__(451);
-	var errors  = __webpack_require__(452);
-	var nacl = __webpack_require__(503);
-	var Promise = __webpack_require__(453);
+	var _       = __webpack_require__(397);
+	var errors  = __webpack_require__(398);
+	var nacl = __webpack_require__(449);
+	var Promise = __webpack_require__(399);
 
 	var validate = module.exports;
 
@@ -87540,20 +85785,20 @@ var StellarSdk =
 
 
 /***/ },
-/* 510 */
+/* 456 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	var _ = __webpack_require__(451);
-	var common = __webpack_require__(497);
-	var crypto = __webpack_require__(501);
-	var errors = __webpack_require__(452);
-	var nacl = __webpack_require__(503);
-	var Promise = __webpack_require__(453);
-	var request = __webpack_require__(498);
-	var sjcl = __webpack_require__(504);
-	var validate = __webpack_require__(509);
+	var _ = __webpack_require__(397);
+	var common = __webpack_require__(443);
+	var crypto = __webpack_require__(447);
+	var errors = __webpack_require__(398);
+	var nacl = __webpack_require__(449);
+	var Promise = __webpack_require__(399);
+	var request = __webpack_require__(444);
+	var sjcl = __webpack_require__(450);
+	var validate = __webpack_require__(455);
 
 	module.exports = function (params) {
 	  return Promise.resolve(params)
@@ -87645,15 +85890,15 @@ var StellarSdk =
 
 
 /***/ },
-/* 511 */
+/* 457 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	var errors = __webpack_require__(452);
-	var Promise = __webpack_require__(453);
-	var request = __webpack_require__(498);
-	var signRequest = __webpack_require__(501).signRequest;
+	var errors = __webpack_require__(398);
+	var Promise = __webpack_require__(399);
+	var request = __webpack_require__(444);
+	var signRequest = __webpack_require__(447).signRequest;
 
 	module.exports = function(params) {
 	  var resolver = Promise.pending();
@@ -87681,18 +85926,18 @@ var StellarSdk =
 
 
 /***/ },
-/* 512 */
+/* 458 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	var _ = __webpack_require__(451);
-	var common = __webpack_require__(497);
-	var crypto = __webpack_require__(501);
-	var errors = __webpack_require__(452);
-	var Promise = __webpack_require__(453);
-	var request = __webpack_require__(498);
-	var validate = __webpack_require__(509);
+	var _ = __webpack_require__(397);
+	var common = __webpack_require__(443);
+	var crypto = __webpack_require__(447);
+	var errors = __webpack_require__(398);
+	var Promise = __webpack_require__(399);
+	var request = __webpack_require__(444);
+	var validate = __webpack_require__(455);
 
 	module.exports = function (params) {
 	  return Promise.resolve(params)
@@ -87738,19 +85983,19 @@ var StellarSdk =
 
 
 /***/ },
-/* 513 */
+/* 459 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	var _ = __webpack_require__(451);
-	var base58 = __webpack_require__(502);
-	var crypto = __webpack_require__(501);
-	var errors = __webpack_require__(452);
-	var sjcl = __webpack_require__(504);
-	var Promise = __webpack_require__(453);
-	var request = __webpack_require__(498);
-	var validate = __webpack_require__(509);
+	var _ = __webpack_require__(397);
+	var base58 = __webpack_require__(448);
+	var crypto = __webpack_require__(447);
+	var errors = __webpack_require__(398);
+	var sjcl = __webpack_require__(450);
+	var Promise = __webpack_require__(399);
+	var request = __webpack_require__(444);
+	var validate = __webpack_require__(455);
 
 	module.exports = function (params) {
 	  return Promise.resolve(params)
@@ -87807,19 +86052,19 @@ var StellarSdk =
 
 
 /***/ },
-/* 514 */
+/* 460 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	var _ = __webpack_require__(451);
-	var base32 = __webpack_require__(515);
-	var common = __webpack_require__(497);
-	var crypto = __webpack_require__(501);
-	var errors = __webpack_require__(452);
-	var Promise = __webpack_require__(453);
-	var request = __webpack_require__(498);
-	var validate = __webpack_require__(509);
+	var _ = __webpack_require__(397);
+	var base32 = __webpack_require__(461);
+	var common = __webpack_require__(443);
+	var crypto = __webpack_require__(447);
+	var errors = __webpack_require__(398);
+	var Promise = __webpack_require__(399);
+	var request = __webpack_require__(444);
+	var validate = __webpack_require__(455);
 
 	module.exports = function (params) {
 	  return Promise.resolve(params)
@@ -87875,7 +86120,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 515 */
+/* 461 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/*                                                                              
@@ -87900,14 +86145,14 @@ var StellarSdk =
 	THE SOFTWARE.
 	*/
 
-	var base32 = __webpack_require__(516);
+	var base32 = __webpack_require__(462);
 
 	exports.encode = base32.encode;
 	exports.decode = base32.decode;
 
 
 /***/ },
-/* 516 */
+/* 462 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {/*                                                                              
@@ -88036,20 +86281,20 @@ var StellarSdk =
 	    return decoded.slice(0, plainPos);
 	};
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(162).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(89).Buffer))
 
 /***/ },
-/* 517 */
+/* 463 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	var _ = __webpack_require__(451);
-	var crypto = __webpack_require__(501);
-	var errors = __webpack_require__(452);
-	var Promise = __webpack_require__(453);
-	var request = __webpack_require__(498);
-	var validate = __webpack_require__(509);
+	var _ = __webpack_require__(397);
+	var crypto = __webpack_require__(447);
+	var errors = __webpack_require__(398);
+	var Promise = __webpack_require__(399);
+	var request = __webpack_require__(444);
+	var validate = __webpack_require__(455);
 
 	module.exports = function (params) {
 	  return Promise.resolve(params)
@@ -88091,20 +86336,20 @@ var StellarSdk =
 
 
 /***/ },
-/* 518 */
+/* 464 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	var _ = __webpack_require__(451);
-	var common = __webpack_require__(497);
-	var crypto = __webpack_require__(501);
-	var errors = __webpack_require__(452);
-	var nacl = __webpack_require__(503);
-	var Promise = __webpack_require__(453);
-	var request = __webpack_require__(498);
-	var sjcl = __webpack_require__(504);
-	var validate = __webpack_require__(509);
+	var _ = __webpack_require__(397);
+	var common = __webpack_require__(443);
+	var crypto = __webpack_require__(447);
+	var errors = __webpack_require__(398);
+	var nacl = __webpack_require__(449);
+	var Promise = __webpack_require__(399);
+	var request = __webpack_require__(444);
+	var sjcl = __webpack_require__(450);
+	var validate = __webpack_require__(455);
 
 	module.exports = function (params) {
 	  return Promise.resolve(params)
@@ -88196,19 +86441,19 @@ var StellarSdk =
 	}
 
 /***/ },
-/* 519 */
+/* 465 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	var _ = __webpack_require__(451);
-	var common = __webpack_require__(497);
-	var crypto = __webpack_require__(501);
-	var errors = __webpack_require__(452);
-	var Promise = __webpack_require__(453);
-	var request = __webpack_require__(498);
-	var sjcl = __webpack_require__(504);
-	var validate = __webpack_require__(509);
+	var _ = __webpack_require__(397);
+	var common = __webpack_require__(443);
+	var crypto = __webpack_require__(447);
+	var errors = __webpack_require__(398);
+	var Promise = __webpack_require__(399);
+	var request = __webpack_require__(444);
+	var sjcl = __webpack_require__(450);
+	var validate = __webpack_require__(455);
 
 	module.exports = function (params) {
 	  return Promise.resolve(params)
@@ -88258,21 +86503,21 @@ var StellarSdk =
 
 
 /***/ },
-/* 520 */
+/* 466 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	var _ = __webpack_require__(451);
-	var base58 = __webpack_require__(502);
-	var common = __webpack_require__(497);
-	var crypto = __webpack_require__(501);
-	var errors = __webpack_require__(452);
-	var nacl = __webpack_require__(503);
-	var Promise = __webpack_require__(453);
-	var request = __webpack_require__(498);
-	var sjcl = __webpack_require__(504);
-	var validate = __webpack_require__(509);
+	var _ = __webpack_require__(397);
+	var base58 = __webpack_require__(448);
+	var common = __webpack_require__(443);
+	var crypto = __webpack_require__(447);
+	var errors = __webpack_require__(398);
+	var nacl = __webpack_require__(449);
+	var Promise = __webpack_require__(399);
+	var request = __webpack_require__(444);
+	var sjcl = __webpack_require__(450);
+	var validate = __webpack_require__(455);
 
 	module.exports = function (params) {
 	  return Promise.resolve(params)
@@ -88336,17 +86581,17 @@ var StellarSdk =
 
 
 /***/ },
-/* 521 */
+/* 467 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	var _ = __webpack_require__(451);
-	var crypto = __webpack_require__(501);
-	var errors = __webpack_require__(452);
-	var Promise = __webpack_require__(453);
-	var request = __webpack_require__(498);
-	var validate = __webpack_require__(509);
+	var _ = __webpack_require__(397);
+	var crypto = __webpack_require__(447);
+	var errors = __webpack_require__(398);
+	var Promise = __webpack_require__(399);
+	var request = __webpack_require__(444);
+	var validate = __webpack_require__(455);
 
 	module.exports = function (params) {
 	  return Promise.resolve(params)
@@ -88406,13 +86651,13 @@ var StellarSdk =
 
 
 /***/ },
-/* 522 */
+/* 468 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var _ = __webpack_require__(451);
-	var errors = __webpack_require__(452);
-	var nacl = __webpack_require__(503);
-	var base32 = __webpack_require__(515);
+	var _ = __webpack_require__(397);
+	var errors = __webpack_require__(398);
+	var nacl = __webpack_require__(449);
+	var base32 = __webpack_require__(461);
 
 	function generateRandomTotpKey() {
 	  var key = nacl.randomBytes(10);
@@ -88444,13 +86689,13 @@ var StellarSdk =
 	};
 
 /***/ },
-/* 523 */
+/* 469 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var _ = __webpack_require__(451);
-	var errors = __webpack_require__(452);
-	var nacl = __webpack_require__(503);
-	var Seed = __webpack_require__(524).Seed;
+	var _ = __webpack_require__(397);
+	var errors = __webpack_require__(398);
+	var nacl = __webpack_require__(449);
+	var Seed = __webpack_require__(470).Seed;
 
 	function generateKeyPair(seed) {
 	  if(seed){
@@ -88478,25 +86723,25 @@ var StellarSdk =
 
 
 /***/ },
-/* 524 */
+/* 470 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//
 	// Seed support
 	//
 
-	var extend = __webpack_require__(525);
-	var utils  = __webpack_require__(505);
+	var extend = __webpack_require__(471);
+	var utils  = __webpack_require__(451);
 	var sjcl   = utils.sjcl;
 
 	var BigInteger = utils.jsbn.BigInteger;
 
-	var Base    = __webpack_require__(526).Base;
-	var UInt    = __webpack_require__(527).UInt;
-	var UInt256 = __webpack_require__(529).UInt256;
-	var UInt160 = __webpack_require__(530).UInt160;
-	var KeyPair = __webpack_require__(531).KeyPair;
-	var Crypt   = __webpack_require__(533).Crypt;
+	var Base    = __webpack_require__(472).Base;
+	var UInt    = __webpack_require__(473).UInt;
+	var UInt256 = __webpack_require__(475).UInt256;
+	var UInt160 = __webpack_require__(476).UInt160;
+	var KeyPair = __webpack_require__(477).KeyPair;
+	var Crypt   = __webpack_require__(479).Crypt;
 
 	var Seed = extend(function () {
 	  // Internal form: NaN or BigInteger
@@ -88596,7 +86841,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 525 */
+/* 471 */
 /***/ function(module, exports) {
 
 	var hasOwn = Object.prototype.hasOwnProperty;
@@ -88680,12 +86925,12 @@ var StellarSdk =
 
 
 /***/ },
-/* 526 */
+/* 472 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var sjcl    = __webpack_require__(505).sjcl;
-	var utils   = __webpack_require__(505);
-	var extend  = __webpack_require__(525);
+	var sjcl    = __webpack_require__(451).sjcl;
+	var utils   = __webpack_require__(451);
+	var extend  = __webpack_require__(471);
 
 	var BigInteger = utils.jsbn.BigInteger;
 
@@ -88854,12 +87099,12 @@ var StellarSdk =
 
 
 /***/ },
-/* 527 */
+/* 473 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var utils   = __webpack_require__(505);
+	var utils   = __webpack_require__(451);
 	var sjcl    = utils.sjcl;
-	var config  = __webpack_require__(528);
+	var config  = __webpack_require__(474);
 
 	var BigInteger = utils.jsbn.BigInteger;
 
@@ -89156,12 +87401,12 @@ var StellarSdk =
 
 
 /***/ },
-/* 528 */
+/* 474 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// This object serves as a singleton to store config options
 
-	var extend = __webpack_require__(525);
+	var extend = __webpack_require__(471);
 
 	var config = module.exports = {
 	  load: function (newOpts) {
@@ -89172,12 +87417,12 @@ var StellarSdk =
 
 
 /***/ },
-/* 529 */
+/* 475 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var utils  = __webpack_require__(505);
-	var extend = __webpack_require__(525);
-	var UInt   = __webpack_require__(527).UInt;
+	var utils  = __webpack_require__(451);
+	var extend = __webpack_require__(471);
+	var UInt   = __webpack_require__(473).UInt;
 
 	//
 	// UInt256 support
@@ -89201,17 +87446,17 @@ var StellarSdk =
 
 
 /***/ },
-/* 530 */
+/* 476 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var utils   = __webpack_require__(505);
-	var config  = __webpack_require__(528);
-	var extend  = __webpack_require__(525);
+	var utils   = __webpack_require__(451);
+	var config  = __webpack_require__(474);
+	var extend  = __webpack_require__(471);
 
 	var BigInteger = utils.jsbn.BigInteger;
 
-	var UInt = __webpack_require__(527).UInt;
-	var Base = __webpack_require__(526).Base;
+	var UInt = __webpack_require__(473).UInt;
+	var Base = __webpack_require__(472).Base;
 
 	//
 	// UInt160 support
@@ -89308,16 +87553,16 @@ var StellarSdk =
 
 
 /***/ },
-/* 531 */
+/* 477 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var sjcl = __webpack_require__(505).sjcl;
-	var tnacl = __webpack_require__(532);
+	var sjcl = __webpack_require__(451).sjcl;
+	var tnacl = __webpack_require__(478);
 
-	var UInt160 = __webpack_require__(530).UInt160;
-	var UInt256 = __webpack_require__(529).UInt256;
-	var Base    = __webpack_require__(526).Base;
-	var Crypt   = __webpack_require__(533).Crypt;
+	var UInt160 = __webpack_require__(476).UInt160;
+	var UInt256 = __webpack_require__(475).UInt256;
+	var Base    = __webpack_require__(472).Base;
+	var Crypt   = __webpack_require__(479).Crypt;
 
 	/**
 	 * Creates an ED25519 key pair for signing.
@@ -89405,7 +87650,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 532 */
+/* 478 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {(function(nacl) {
@@ -90587,7 +88832,7 @@ var StellarSdk =
 	    }
 	  } else if (true) {
 	    // Node.js.
-	    crypto = __webpack_require__(244);
+	    crypto = __webpack_require__(173);
 	    if (crypto) {
 	      nacl.setPRNG(function(x, n) {
 	        var i, v = crypto.randomBytes(n);
@@ -90599,22 +88844,22 @@ var StellarSdk =
 
 	})(typeof module !== 'undefined' && module.exports ? module.exports : (window.nacl = window.nacl || {}));
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(162).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(89).Buffer))
 
 /***/ },
-/* 533 */
+/* 479 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(Buffer) {var sjcl        = __webpack_require__(505).sjcl;
-	var base        = __webpack_require__(526).Base;
-	var Seed        = __webpack_require__(524).Seed;
-	var UInt160     = __webpack_require__(530).UInt160;
-	var UInt256     = __webpack_require__(529).UInt256;
-	var request     = __webpack_require__(534);
-	var querystring = __webpack_require__(150);
-	var extend      = __webpack_require__(525);
-	var parser      = __webpack_require__(148);
-	var ripemd160   = __webpack_require__(535);
+	/* WEBPACK VAR INJECTION */(function(Buffer) {var sjcl        = __webpack_require__(451).sjcl;
+	var base        = __webpack_require__(472).Base;
+	var Seed        = __webpack_require__(470).Seed;
+	var UInt160     = __webpack_require__(476).UInt160;
+	var UInt256     = __webpack_require__(475).UInt256;
+	var request     = __webpack_require__(480);
+	var querystring = __webpack_require__(77);
+	var extend      = __webpack_require__(471);
+	var parser      = __webpack_require__(75);
+	var ripemd160   = __webpack_require__(481);
 	var Crypt       = { };
 
 	var cryptConfig = {
@@ -90934,18 +89179,18 @@ var StellarSdk =
 
 	exports.Crypt = Crypt;
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(162).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(89).Buffer))
 
 /***/ },
-/* 534 */
+/* 480 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
 	 * Module dependencies.
 	 */
 
-	var Emitter = __webpack_require__(499);
-	var reduce = __webpack_require__(500);
+	var Emitter = __webpack_require__(445);
+	var reduce = __webpack_require__(446);
 
 	/**
 	 * Root reference for iframes.
@@ -91992,7 +90237,7 @@ var StellarSdk =
 
 
 /***/ },
-/* 535 */
+/* 481 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {
@@ -92201,21 +90446,21 @@ var StellarSdk =
 
 
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(162).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(89).Buffer))
 
 /***/ },
-/* 536 */
+/* 482 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	var _ = __webpack_require__(451);
-	var crypto = __webpack_require__(501);
-	var errors = __webpack_require__(452);
-	var sjcl = __webpack_require__(504);
-	var nacl = __webpack_require__(503);
-	var Promise = __webpack_require__(453);
-	var protocol = __webpack_require__(488);
+	var _ = __webpack_require__(397);
+	var crypto = __webpack_require__(447);
+	var errors = __webpack_require__(398);
+	var sjcl = __webpack_require__(450);
+	var nacl = __webpack_require__(449);
+	var Promise = __webpack_require__(399);
+	var protocol = __webpack_require__(434);
 
 	function Wallet(p) {
 	  var params = _.cloneDeep(p);
