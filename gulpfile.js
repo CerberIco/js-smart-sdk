@@ -87,7 +87,7 @@ gulp.task('test:init-istanbul', ['clean-coverage'], function () {
 });
 
 gulp.task('test:integration', ['build:node', 'test:init-istanbul'], function() {
-  return gulp.src(["test/test-helper.js", "test/unit/**/*.js", "test/integration/**/*.js"])
+  return gulp.src(["test/test-helper.js", "test/integration/**/*.js"])
     .pipe(plugins.mocha({
       reporter: ['spec']
     }))

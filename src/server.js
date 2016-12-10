@@ -335,6 +335,21 @@ export class Server {
     }
 
     /**
+    * Updates max reversal duration options
+    * @param {string|Number} maxDuration - max reversal duration in seconds
+    * @returns {Promise} Returns a promise to the error if failed to set max reversal duration
+    */
+     setMaxReversalDuration(maxDuration, signer, bankMasterAccountId) {
+        var self = this;
+        return self.loadAccount(bankMasterAccountId).then(function (source) {
+            var op = StellarSdk.Operation.setMaxReversalDuration(maxDuration);
+            var tx = new StellarSdk.TransactionBuilder(source).addOperation(op).build();
+            tx.sign(signer);
+            return self.submitTransaction(tx);
+        });
+     }
+
+    /**
      * Returns new {@link FriendbotBuilder} object configured with the current Horizon server configuration.
      * @returns {FriendbotBuilder}
      * @private
