@@ -49061,16 +49061,18 @@ var StellarSdk =
 	                    throw new Error("Must provide an accountType for a create user operation");
 	                }
 
-	                var scratchCard = {};
-	                if (!isUndefined(opts.asset) && this.isValidAmount(opts.amount)) {
-	                    scratchCard = new xdr.ScratchCard({
-	                        asset: opts.asset.toXdrObject(),
-	                        amount: this._toXDRAmount(opts.amount) });
-	                }
-
 	                var attributes = {};
 	                attributes.destination = Keypair.fromAccountId(opts.destination).xdrAccountId();
-	                attributes.body = new xdr.CreateAccountOpBody(this._accountTypeFromNumber(opts.accountType), scratchCard);
+
+	                if (!isUndefined(opts.asset) && this.isValidAmount(opts.amount)) {
+	                    var scratchCard = new xdr.ScratchCard({
+	                        asset: opts.asset.toXdrObject(),
+	                        amount: this._toXDRAmount(opts.amount) });
+	                    attributes.body = new xdr.CreateAccountOpBody(this._accountTypeFromNumber(opts.accountType), scratchCard);
+	                } else {
+	                    attributes.body = new xdr.CreateAccountOpBody(this._accountTypeFromNumber(opts.accountType));
+	                }
+
 	                var createAccount = new xdr.CreateAccountOp(attributes);
 
 	                var opAttributes = {};
