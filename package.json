@@ -111,7 +111,7 @@
     "js-xdr": "^1.0.0",
     "jsdoc": "jsdoc3/jsdoc#master",
     "lodash": "^4.0.1",
-    "stellar-base": "git+https://atticlab:Iy0qoqIbLDYgUop0Pegcxpl0MNQbtxXv@bitbucket.org/atticlab/js-smart-base.git#nbu",
+    "stellar-base": "git+https://atticlab:Iy0qoqIbLDYgUop0Pegcxpl0MNQbtxXv@bitbucket.org/atticlab/js-smart-base.git#feature/external",
     "superagent": "^1.1.0",
     "toml": "^2.3.0",
     "urijs": "^1.16.0",
