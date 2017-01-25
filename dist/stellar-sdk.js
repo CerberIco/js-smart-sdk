@@ -2784,7 +2784,9 @@ var StellarSdk =
 	      };
 
 	      es.onerror = options.onerror;
-	      es.onopen = options.onopen.bind(es);
+	      es.onopen = function (e) {
+	        options.onopen(es, e);
+	      };
 
 	      // Check message intervals
 	      var checkInterval = function checkInterval() {
