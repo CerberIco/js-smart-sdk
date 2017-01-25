@@ -99,6 +99,7 @@ export class CallBuilder {
     };
 
     es.onerror = options.onerror;
+    es.onopen = options.onopen.bind(es);
 
     // Check message intervals
     var checkInterval = function () {
