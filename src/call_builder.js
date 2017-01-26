@@ -85,6 +85,23 @@ export class CallBuilder {
     // Workaround to check dead connection or network issues among different eventsource implementations
     var last_msg_ts = Math.floor(Date.now() / 1000);
     var es = new EventSource(this.url.toString());
+    var stopStream;
+
+    // Check message intervals
+    var checkInterval = function () {
+      if (Math.floor(Date.now() / 1000) - last_msg_ts > response_interval) {
+        es.close();
+        context._eventStreamConnect(options);
+        return;
+      }
+
+      var checkTimer = setTimeout(checkInterval, 1000);
+
+      var stopStream = function() {
+        es.close();
+        clearTimeout(checkTimer);
+      };
+    };
 
     es.onmessage = (message) => {
       last_msg_ts = Math.floor(Date.now() / 1000);
@@ -100,18 +117,7 @@ export class CallBuilder {
 
     es.onerror = options.onerror;
     es.onopen = (e) => {
-      options.onopen(es, e);
-    };
-
-    // Check message intervals
-    var checkInterval = function () {
-      if (Math.floor(Date.now() / 1000) - last_msg_ts > response_interval) {
-        es.close();
-        context._eventStreamConnect(options);
-        return;
-      }
-
-      setTimeout(checkInterval, 1000);
+      options.onopen(stopStream);
     };
 
     checkInterval();

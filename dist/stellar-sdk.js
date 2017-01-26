@@ -2770,6 +2770,23 @@ var StellarSdk =
 	      // Workaround to check dead connection or network issues among different eventsource implementations
 	      var last_msg_ts = Math.floor(Date.now() / 1000);
 	      var es = new EventSource(this.url.toString());
+	      var stopStream;
+
+	      // Check message intervals
+	      var checkInterval = function checkInterval() {
+	        if (Math.floor(Date.now() / 1000) - last_msg_ts > response_interval) {
+	          es.close();
+	          context._eventStreamConnect(options);
+	          return;
+	        }
+
+	        var checkTimer = setTimeout(checkInterval, 1000);
+
+	        var stopStream = function stopStream() {
+	          es.close();
+	          clearTimeout(checkTimer);
+	        };
+	      };
 
 	      es.onmessage = function (message) {
 	        last_msg_ts = Math.floor(Date.now() / 1000);
@@ -2785,18 +2802,7 @@ var StellarSdk =
 
 	      es.onerror = options.onerror;
 	      es.onopen = function (e) {
-	        options.onopen(es, e);
-	      };
-
-	      // Check message intervals
-	      var checkInterval = function checkInterval() {
-	        if (Math.floor(Date.now() / 1000) - last_msg_ts > response_interval) {
-	          es.close();
-	          context._eventStreamConnect(options);
-	          return;
-	        }
-
-	        setTimeout(checkInterval, 1000);
+	        options.onopen(stopStream);
 	      };
 
 	      checkInterval();
