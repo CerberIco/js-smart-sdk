@@ -97,7 +97,7 @@ export class CallBuilder {
 
       var checkTimer = setTimeout(checkInterval, 1000);
 
-      var stopStream = function() {
+      stopStream = function() {
         es.close();
         clearTimeout(checkTimer);
       };

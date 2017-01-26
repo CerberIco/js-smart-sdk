@@ -2782,7 +2782,7 @@ var StellarSdk =
 
 	        var checkTimer = setTimeout(checkInterval, 1000);
 
-	        var stopStream = function stopStream() {
+	        stopStream = function () {
 	          es.close();
 	          clearTimeout(checkTimer);
 	        };
