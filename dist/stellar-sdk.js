@@ -2680,6 +2680,7 @@ var StellarSdk =
 	var toBluebird = __webpack_require__(123).resolve;
 
 	var response_interval = 10;
+	var stopping = false;
 
 	/**
 	 * Creates a new {@link CallBuilder} pointed to server defined by serverUrl.
@@ -2774,18 +2775,22 @@ var StellarSdk =
 
 	      // Check message intervals
 	      var checkInterval = function checkInterval() {
+	        if (stopping) {
+	          return;
+	        }
+
 	        if (Math.floor(Date.now() / 1000) - last_msg_ts > response_interval) {
 	          es.close();
 	          context._eventStreamConnect(options);
 	          return;
 	        }
 
-	        var checkTimer = setTimeout(checkInterval, 1000);
+	        setTimeout(checkInterval, 1000);
+	      };
 
-	        stopStream = function () {
-	          es.close();
-	          clearTimeout(checkTimer);
-	        };
+	      stopStream = function () {
+	        stopping = true;
+	        es.close();
 	      };
 
 	      es.onmessage = function (message) {
